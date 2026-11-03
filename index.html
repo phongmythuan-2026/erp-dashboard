@@ -21,6 +21,7 @@
         .no-scrollbar { scrollbar-width: none; }
         .tbl-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .tbl-scroll { max-height: 65vh; overflow: auto; }
+        #voucherModal .tbl-scroll { max-height: 48vh; }
         .tbl-scroll thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; box-shadow: 0 1px 0 #e2e8f0; }
         .tbl-scroll tfoot td { position: sticky; bottom: 0; background: #f8fafc; box-shadow: 0 -1px 0 #cbd5e1; }
         @media print { header { display: none !important; } }
@@ -762,6 +763,21 @@
                 </tr>`
         });
 
+        dtInit("voucher", {
+            tbody: "vmLines",
+            cols: [r => r._i, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0), r => r.dien_giai, r => r.ghi_chu],
+            row: r => `
+                <tr data-stt-rec="${esc(r.stt_rec)}" data-stt-rec0="${esc(r.stt_rec0)}">
+                    <td class="px-2.5 py-1.5 text-slate-400">${r._i}</td>
+                    <td class="px-2.5 py-1.5 font-bold text-blue-600 whitespace-nowrap">${esc(r.ma_vt)}</td>
+                    <td class="px-2.5 py-1.5 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
+                    <td class="px-2.5 py-1.5 text-slate-500">${esc(r.dvt)}</td>
+                    <td class="px-2.5 py-1.5 text-right font-bold">${Number(r.so_luong || 0).toLocaleString('vi-VN')}</td>
+                    <td class="px-2.5 py-1.5 text-slate-600">${esc(r.dien_giai)}</td>
+                    <td class="px-2.5 py-1.5 text-slate-500">${esc(r.ghi_chu)}</td>
+                </tr>`
+        });
+
         function openVoucher(soCt) {
             const lines = allPurchaseData.filter(r => (r.so_ct || '') === soCt)
                 .sort((a, b) => Number(a.stt_rec0) - Number(b.stt_rec0));
@@ -774,16 +790,7 @@
                 field("Người đề xuất", [h.ma_kh, h.fullname].filter(Boolean).join(' - ')) +
                 field("Số dòng", lines.length) + field("Tổng SL", sumBy(lines, r => Number(r.so_luong || 0)).toLocaleString('vi-VN')) +
                 `<div class="col-span-full">${field("Mục đích", h.muc_dich)}</div>`;
-            document.getElementById("vmLines").innerHTML = lines.map((r, i) => `
-                <tr data-stt-rec="${esc(r.stt_rec)}" data-stt-rec0="${esc(r.stt_rec0)}">
-                    <td class="px-2.5 py-1.5 text-slate-400">${i + 1}</td>
-                    <td class="px-2.5 py-1.5 font-bold text-blue-600 whitespace-nowrap">${esc(r.ma_vt)}</td>
-                    <td class="px-2.5 py-1.5 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
-                    <td class="px-2.5 py-1.5 text-slate-500">${esc(r.dvt)}</td>
-                    <td class="px-2.5 py-1.5 text-right font-bold">${Number(r.so_luong || 0).toLocaleString('vi-VN')}</td>
-                    <td class="px-2.5 py-1.5 text-slate-600">${esc(r.dien_giai)}</td>
-                    <td class="px-2.5 py-1.5 text-slate-500">${esc(r.ghi_chu)}</td>
-                </tr>`).join("");
+            dtSet("voucher", lines.map((r, i) => ({ ...r, _i: i + 1 })));
             const q = soCt.replace(/'/g, "\\'");
             document.getElementById("vmActions").innerHTML = String(h.trang_thai).trim() === '1'
                 ? `<button onclick="rejectVoucher('${q}')" class="px-4 py-2 text-xs font-semibold text-red-600 border border-red-300 rounded-lg hover:bg-red-50">Từ chối</button>
