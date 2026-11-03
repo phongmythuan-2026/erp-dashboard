@@ -456,6 +456,20 @@
         </div>
     </div>
 
+    <!-- Modal thông tin vật tư -->
+    <div id="materialModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[60] hidden flex items-end sm:items-center justify-center sm:p-4" onclick="if(event.target===this)closeMaterialModal()">
+        <div class="bg-white w-full sm:max-w-lg max-h-[92vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
+            <div class="flex items-center justify-between px-4 py-2 border-b border-slate-200">
+                <h3 class="font-bold text-slate-900 flex items-center space-x-2"><i class="fa-solid fa-boxes-packing text-blue-600"></i><span>Thông tin vật tư</span></h3>
+                <button onclick="closeMaterialModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="mmBody" class="overflow-y-auto p-4 text-xs space-y-3"></div>
+            <div class="px-4 py-2 border-t border-slate-200 flex justify-end">
+                <button onclick="closeMaterialModal()" class="px-4 py-2 text-xs font-semibold bg-slate-100 rounded-lg hover:bg-slate-200">Đóng</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Client-Side Javascript Logic -->
     <script>
         const WORKER_URL = "https://erp-api-gateway.phongmythuan.workers.dev";
@@ -624,7 +638,7 @@
                     <td class="p-3 font-bold text-slate-900">${esc(r.so_ct)}</td>
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_ct)}</td>
                     <td class="p-3 font-medium text-slate-800">${esc(r.ten_kh || r.ma_kh)}</td>
-                    <td class="p-3 text-slate-600">${esc(r.ten_vt || r.ma_vt)}</td>
+                    <td class="p-3 text-slate-600">${matLink(r.ma_vt, r.ten_vt || r.ma_vt)}</td>
                     <td class="p-3 text-slate-500">${esc(r.ten_nvkd || r.ma_nhomkd)}</td>
                     <td class="p-3 text-right text-slate-700">${Number(r.so_luong || 0).toLocaleString('vi-VN')} ${esc(r.dvt)}</td>
                     <td class="p-3 text-right font-bold text-blue-600">${formatVND(revOf(r))}</td>
@@ -765,7 +779,7 @@
                     <td class="px-2.5 py-2 font-medium text-slate-800">${esc(r.ten_bp || r.ma_bp)}</td>
                     <td class="px-2.5 py-2 text-slate-700">${esc(r.fullname || r.ma_kh)}</td>
                     <td class="px-2.5 py-2 text-slate-600">${esc(r.muc_dich)}</td>
-                    <td class="px-2.5 py-2 font-bold text-blue-600 whitespace-nowrap">${esc(r.ma_vt)}</td>
+                    <td class="px-2.5 py-2 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt, true)}</td>
                     <td class="px-2.5 py-2 text-slate-800">${esc(r.ten_vt)}</td>
                     <td class="px-2.5 py-2 text-slate-500">${esc(r.dvt)}</td>
                     <td class="px-2.5 py-2 text-right font-bold">${Number(r.so_luong || 0).toLocaleString('vi-VN')}</td>
@@ -780,7 +794,7 @@
             row: r => `
                 <tr data-stt-rec="${esc(r.stt_rec)}" data-stt-rec0="${esc(r.stt_rec0)}">
                     <td class="px-2.5 py-1.5 text-slate-400">${r._i}</td>
-                    <td class="px-2.5 py-1.5 font-bold text-blue-600 whitespace-nowrap">${esc(r.ma_vt)}</td>
+                    <td class="px-2.5 py-1.5 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt, true)}</td>
                     <td class="px-2.5 py-1.5 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
                     <td class="px-2.5 py-1.5 text-slate-500">${esc(r.dvt)}</td>
                     <td class="px-2.5 py-1.5 text-right font-bold">${Number(r.so_luong || 0).toLocaleString('vi-VN')}</td>
@@ -788,6 +802,26 @@
                     <td class="px-2.5 py-1.5 text-slate-500">${esc(r.ghi_chu)}</td>
                 </tr>`
         });
+
+        function matLink(ma, text, stop) {
+            if (!ma) return esc(text);
+            const q = esc(ma).replace(/'/g, "\\'");
+            return `<a href="#" onclick="${stop ? 'event.stopPropagation();' : ''}openMaterial('${q}');return false" class="font-bold text-blue-600 hover:underline">${esc(text)}</a>`;
+        }
+
+        function openMaterial(ma) {
+            const m = materialMap[ma];
+            const row = (l, v) => `<div class="flex gap-2 py-1.5 border-b border-slate-100"><span class="w-36 shrink-0 text-slate-400">${l}</span><span class="font-semibold text-slate-800 break-words min-w-0">${esc(v) || '-'}</span></div>`;
+            const pair = (a, b) => [a, b].filter(Boolean).join(' - ');
+            document.getElementById("mmBody").innerHTML = m
+                ? `<div class="text-base font-bold text-slate-900">${esc(m.ten_vt)}</div>
+                   <div>${row("Mã vật tư", m.ma_vt)}${row("Tên vật tư", m.ten_vt)}${row("Đơn vị tính", m.dvt)}
+                   ${row("Nhóm vật tư", pair(m.ma_nhvt, m.ten_nhvt))}${row("Nhóm vật tư 1", pair(m.ma_nhvt1, m.ten_nhvt1))}${row("Mã sản phẩm", pair(m.ma_msp, m.ten_msp))}</div>`
+                : `<div class="text-center text-slate-500 py-6">Không tìm thấy mã <b>${esc(ma)}</b> trong danh mục vật tư.</div>`;
+            document.getElementById("materialModal").classList.remove("hidden");
+        }
+
+        function closeMaterialModal() { document.getElementById("materialModal").classList.add("hidden"); }
 
         function openVoucher(soCt) {
             const lines = allPurchaseData.filter(r => (r.so_ct || '') === soCt)
@@ -862,7 +896,7 @@
         dtInit("materials", {
             tbody: "materialTableBody",
             cols: [r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => r.ten_nhvt || r.ma_nhvt, r => r.ten_nhvt1 || r.ma_nhvt1, r => r.ten_msp || r.ma_msp],
-            row: r => `<tr class="hover:bg-slate-50 transition">
+            row: r => `<tr class="hover:bg-blue-50 transition cursor-pointer" onclick="openMaterial('${esc(r.ma_vt).replace(/'/g, "\\'")}')">
                     <td class="p-3 font-bold text-blue-600">${esc(r.ma_vt)}</td>
                     <td class="p-3 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
                     <td class="p-3 text-slate-500">${esc(r.dvt)}</td>
