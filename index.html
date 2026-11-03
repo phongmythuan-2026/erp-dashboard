@@ -353,8 +353,9 @@
                         </h2>
                         <p class="text-xs text-slate-500">Dữ liệu nhóm theo phiếu - bấm vào phiếu để xem chi tiết</p>
                     </div>
-                    <div class="flex items-center space-x-2 text-xs">
-                        <label class="font-semibold text-slate-600">Lọc theo trạng thái:</label>
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <input id="searchPurchaseInput" oninput="filterPurchaseTable()" type="search" placeholder="Tìm số phiếu, bộ phận, người đề xuất, vật tư..." class="px-3 py-1.5 w-64 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <label class="font-semibold text-slate-600">Trạng thái:</label>
                         <select id="purchaseStatusFilter" onchange="filterPurchaseTable()" class="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             <option value="ALL">-- Tất cả trạng thái --</option>
                             <option value="1">Trạng thái = 1 (Chờ duyệt)</option>
@@ -810,11 +811,14 @@
 
         function filterPurchaseTable() {
             const st = document.getElementById("purchaseStatusFilter").value;
-            if (st === 'ALL') renderFullPurchaseTable(allPurchaseData);
-            else {
-                const filtered = allPurchaseData.filter(r => String(r.trang_thai).trim() === st);
-                renderFullPurchaseTable(filtered);
-            }
+            const kw = document.getElementById("searchPurchaseInput").value.trim().toLowerCase();
+            const rows = allPurchaseData.filter(r => {
+                if (st !== 'ALL' && String(r.trang_thai).trim() !== st) return false;
+                if (!kw) return true;
+                return [r.so_ct, r.ma_bp, r.ten_bp, r.ma_kh, r.fullname, r.muc_dich, r.ma_vt, r.ten_vt, r.dien_giai, r.ghi_chu]
+                    .some(v => String(v ?? "").toLowerCase().includes(kw));
+            });
+            renderFullPurchaseTable(rows);
         }
 
         // =================================================================
