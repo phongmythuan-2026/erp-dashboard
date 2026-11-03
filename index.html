@@ -427,7 +427,7 @@
 
     <!-- Modal chi tiết phiếu (master-child) -->
     <div id="voucherModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center sm:p-4" onclick="if(event.target===this)closeVoucherModal()">
-        <div class="bg-white w-full sm:max-w-4xl max-h-[92vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
+        <div class="bg-white w-full sm:max-w-5xl max-h-[92vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
             <div class="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-slate-200">
                 <h3 class="font-bold text-slate-900 flex items-center space-x-2"><i class="fa-solid fa-file-invoice text-blue-600"></i><span id="vmTitle">Phiếu đề xuất</span></h3>
                 <button onclick="closeVoucherModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
@@ -437,7 +437,7 @@
                 <div class="tbl-wrap rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs text-slate-700">
                         <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
-                            <tr><th class="p-3">#</th><th class="p-3">Mã VT</th><th class="p-3">Tên vật tư</th><th class="p-3">ĐVT</th><th class="p-3 text-right">Số lượng</th><th class="p-3">Ghi chú</th></tr>
+                            <tr><th class="p-3">#</th><th class="p-3">Mã VT</th><th class="p-3">Tên vật tư</th><th class="p-3">ĐVT</th><th class="p-3 text-right">Số lượng</th><th class="p-3">Diễn giải</th><th class="p-3">Ghi chú</th></tr>
                         </thead>
                         <tbody id="vmLines" class="divide-y divide-slate-100"></tbody>
                     </table>
@@ -706,7 +706,7 @@
             if (st === '1') return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">⏳ Chờ duyệt</span>`;
             if (st === '2') return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">✓ Đã duyệt</span>`;
             if (st === '3') return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">✓ Hoàn thành</span>`;
-            return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Khác</span>`;
+            return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Trạng thái ${esc(st)}</span>`;
         }
 
         function renderPendingPurchaseTable(rows) {
@@ -761,22 +761,25 @@
         });
 
         function openVoucher(soCt) {
-            const lines = allPurchaseData.filter(r => (r.so_ct || '') === soCt);
+            const lines = allPurchaseData.filter(r => (r.so_ct || '') === soCt)
+                .sort((a, b) => Number(a.stt_rec0) - Number(b.stt_rec0));
             if (!lines.length) return;
             const h = lines[0];
             const field = (l, v) => `<div class="bg-slate-50 rounded-lg p-2.5 border border-slate-200"><div class="text-[10px] uppercase font-bold text-slate-400">${l}</div><div class="font-semibold text-slate-800 break-words">${esc(v) || '-'}</div></div>`;
             document.getElementById("vmTitle").innerText = `Phiếu ${soCt}`;
             document.getElementById("vmMaster").innerHTML =
-                field("Số CT", soCt) + field("Ngày CT", h.ngay_ct) + field("Bộ phận", h.ten_bp || h.ma_bp) +
-                field("Người đề xuất", h.fullname || h.ma_kh) + field("Mục đích", h.muc_dich) +
+                field("Số CT", soCt) + field("Ngày CT", h.ngay_ct) + field("Mã bộ phận", h.ma_bp) + field("Tên bộ phận", h.ten_bp) +
+                field("Mã người đề xuất", h.ma_kh) + field("Người đề xuất", h.fullname) + field("Mục đích", h.muc_dich) +
+                field("Tổng số dòng", lines.length) + field("Tổng số lượng", sumBy(lines, r => Number(r.so_luong || 0)).toLocaleString('vi-VN')) +
                 `<div class="bg-slate-50 rounded-lg p-2.5 border border-slate-200"><div class="text-[10px] uppercase font-bold text-slate-400">Trạng thái</div>${statusBadge(h.trang_thai)}</div>`;
             document.getElementById("vmLines").innerHTML = lines.map((r, i) => `
                 <tr>
-                    <td class="p-3 text-slate-400">${i + 1}</td>
-                    <td class="p-3 font-bold text-blue-600">${esc(r.ma_vt)}</td>
+                    <td class="p-3 text-slate-400">${esc(r.stt_rec0 || i + 1)}</td>
+                    <td class="p-3 font-bold text-blue-600 whitespace-nowrap">${esc(r.ma_vt)}</td>
                     <td class="p-3 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
                     <td class="p-3 text-slate-500">${esc(r.dvt)}</td>
                     <td class="p-3 text-right font-bold">${Number(r.so_luong || 0).toLocaleString('vi-VN')}</td>
+                    <td class="p-3 text-slate-600">${esc(r.dien_giai)}</td>
                     <td class="p-3 text-slate-500">${esc(r.ghi_chu)}</td>
                 </tr>`).join("");
             const q = soCt.replace(/'/g, "\\'");
