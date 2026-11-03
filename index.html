@@ -1,1 +1,291 @@
 
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Báo Cáo Quản Trị ERP - Cloudflare D1</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased">
+
+    <!-- Modal Cấu hình API Key -->
+    <div id="authModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900">Xác Thực Hệ Thống ERP</h3>
+                <p class="text-sm text-slate-500 mt-1">Vui lòng nhập API Key để truy cập dữ liệu</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Mật khẩu API Key (X-API-KEY)</label>
+                    <input type="password" id="apiKeyInput" placeholder="Nhập API Key của anh..." class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                </div>
+                <button onclick="saveApiKey()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md">
+                    Xác Nhận Truy Cập
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header Main Navigation -->
+    <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-chart-line text-blue-400 text-2xl"></i>
+                <span class="font-bold text-lg tracking-wide">PEROMA ERP DASHBOARD</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="openAuthModal()" class="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg transition flex items-center space-x-2">
+                    <i class="fa-solid fa-[#key] fa-key text-yellow-400"></i>
+                    <span>Cấu hình Key</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Filter Bar -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-8 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-4">
+                <div class="flex items-center space-x-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase">Từ ngày:</label>
+                    <input type="date" id="fromDate" value="2024-01-01" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase">Đến ngày:</label>
+                    <input type="date" id="toDate" value="2026-12-31" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <button onclick="loadDashboardData()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-1.5 rounded-lg transition flex items-center space-x-2">
+                    <i class="fa-solid fa-filter"></i>
+                    <span>Lọc Dữ Liệu</span>
+                </button>
+            </div>
+            <div id="loadingStatus" class="text-xs text-slate-500 italic hidden flex items-center space-x-2">
+                <i class="fa-solid fa-circle-notch fa-spin text-blue-600"></i>
+                <span>Đang tải dữ liệu từ Cloudflare D1...</span>
+            </div>
+        </div>
+
+        <!-- KPI Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Card 1: Tổng Doanh Thu -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng Doanh Thu</p>
+                    <h3 id="kpiDoanhThu" class="text-2xl font-black text-slate-900 mt-1">0 ₫</h3>
+                </div>
+                <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                </div>
+            </div>
+
+            <!-- Card 2: Sản Lượng Ban -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng Sản Lượng</p>
+                    <h3 id="kpiSoLuong" class="text-2xl font-black text-slate-900 mt-1">0 Kg</h3>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+            </div>
+
+            <!-- Card 3: Số Đơn Hàng -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng Đơn Hàng</p>
+                    <h3 id="kpiDonHang" class="text-2xl font-black text-slate-900 mt-1">0</h3>
+                </div>
+                <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-file-invoice"></i>
+                </div>
+            </div>
+
+            <!-- Card 4: Tổng Khách Hàng -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Khách Hàng Mua</p>
+                    <h3 id="kpiKhachHang" class="text-2xl font-black text-slate-900 mt-1">0</h3>
+                </div>
+                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Chart 1: Top 10 Sản Phẩm -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h4 class="text-base font-bold text-slate-800 mb-4 flex items-center space-x-2">
+                    <i class="fa-solid fa-ranking-star text-amber-500"></i>
+                    <span>Top 10 Sản Phẩm Doanh Thu Cao Nhất</span>
+                </h4>
+                <div class="relative h-72">
+                    <canvas id="topProductsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 2: Doanh Số Theo NVKD -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h4 class="text-base font-bold text-slate-800 mb-4 flex items-center space-x-2">
+                    <i class="fa-solid fa-user-tie text-blue-500"></i>
+                    <span>Tỷ Trọng Doanh Số Theo Nhân Viên Kinh Doanh</span>
+                </h4>
+                <div class="relative h-72">
+                    <canvas id="staffSalesChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Client-Side Javascript -->
+    <script>
+        const WORKER_URL = "https://erp-api-gateway.phongmythuan.workers.dev";
+        let topProductsChartInstance = null;
+        let staffSalesChartInstance = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const apiKey = localStorage.getItem("ERP_API_KEY");
+            if (!apiKey) {
+                openAuthModal();
+            } else {
+                loadDashboardData();
+            }
+        });
+
+        function openAuthModal() {
+            document.getElementById("authModal").classList.remove("hidden");
+        }
+
+        function closeAuthModal() {
+            document.getElementById("authModal").classList.add("hidden");
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById("apiKeyInput").value.trim();
+            if (key) {
+                localStorage.setItem("ERP_API_KEY", key);
+                closeAuthModal();
+                loadDashboardData();
+            } else {
+                alert("Vui lòng nhập API Key!");
+            }
+        }
+
+        async function loadDashboardData() {
+            const apiKey = localStorage.getItem("ERP_API_KEY");
+            if (!apiKey) {
+                openAuthModal();
+                return;
+            }
+
+            const fromDate = document.getElementById("fromDate").value;
+            const toDate = document.getElementById("toDate").value;
+            const loadingStatus = document.getElementById("loadingStatus");
+
+            loadingStatus.classList.remove("hidden");
+
+            try {
+                const response = await fetch(`${WORKER_URL}/api/get-sales-summary?from=${fromDate}&to=${toDate}`, {
+                    method: 'GET',
+                    headers: { 'X-API-KEY': apiKey }
+                });
+
+                if (response.status === 401) {
+                    alert("API Key không hợp lệ! Vui lòng kiểm tra lại.");
+                    openAuthModal();
+                    return;
+                }
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    updateKPI(result.kpi);
+                    renderTopProductsChart(result.top_products);
+                    renderStaffSalesChart(result.sales_by_staff);
+                }
+            } catch (err) {
+                console.error("Lỗi gọi API:", err);
+                alert("Không thể kết nối tới Cloudflare Worker API!");
+            } finally {
+                loadingStatus.classList.add("hidden");
+            }
+        }
+
+        function updateKPI(kpi) {
+            document.getElementById("kpiDoanhThu").innerText = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(kpi.tong_doanh_thu || 0);
+            document.getElementById("kpiSoLuong").innerText = new Intl.NumberFormat('vi-VN').format(Math.round(kpi.tong_so_luong || 0)) + " Kg";
+            document.getElementById("kpiDonHang").innerText = new Intl.NumberFormat('vi-VN').format(kpi.tong_don_hang || 0);
+            document.getElementById("kpiKhachHang").innerText = new Intl.NumberFormat('vi-VN').format(kpi.tong_khach_hang || 0);
+        }
+
+        function renderTopProductsChart(products) {
+            const ctx = document.getElementById('topProductsChart').getContext('2d');
+            if (topProductsChartInstance) topProductsChartInstance.destroy();
+
+            const labels = products.map(p => p.ten_vt ? p.ten_vt.substring(0, 20) + "..." : p.ma_vt);
+            const data = products.map(p => p.tong_tien);
+
+            topProductsChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Doanh Thu (VND)',
+                        data: data,
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderColor: 'rgb(37, 99, 235)',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function renderStaffSalesChart(staffSales) {
+            const ctx = document.getElementById('staffSalesChart').getContext('2d');
+            if (staffSalesChartInstance) staffSalesChartInstance.destroy();
+
+            const labels = staffSales.slice(0, 8).map(s => s.ten_nvkd || s.ma_nvkd);
+            const data = staffSales.slice(0, 8).map(s => s.tong_tien);
+
+            staffSalesChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
+                            '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right' } }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
