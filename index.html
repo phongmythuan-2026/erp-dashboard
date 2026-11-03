@@ -1,15 +1,11 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Báo Cáo Quản Trị ERP - Cloudflare D1</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans antialiased">
@@ -36,23 +32,21 @@
         </div>
     </div>
 
-    <!-- Header Main Navigation -->
+    <!-- Header -->
     <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-chart-line text-blue-400 text-2xl"></i>
                 <span class="font-bold text-lg tracking-wide">PEROMA ERP DASHBOARD</span>
             </div>
-            <div class="flex items-center space-x-4">
-                <button onclick="openAuthModal()" class="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg transition flex items-center space-x-2">
-                    <i class="fa-solid fa-[#key] fa-key text-yellow-400"></i>
-                    <span>Cấu hình Key</span>
-                </button>
-            </div>
+            <button onclick="openAuthModal()" class="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg transition flex items-center space-x-2">
+                <i class="fa-solid fa-key text-yellow-400"></i>
+                <span>Cấu hình Key</span>
+            </button>
         </div>
     </header>
 
-    <!-- Main Content Container -->
+    <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <!-- Filter Bar -->
@@ -64,7 +58,7 @@
                 </div>
                 <div class="flex items-center space-x-2">
                     <label class="text-xs font-bold text-slate-500 uppercase">Đến ngày:</label>
-                    <input type="date" id="toDate" value="2026-12-31" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <input type="date" id="toDate" value="2024-12-31" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
                 <button onclick="loadDashboardData()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-1.5 rounded-lg transition flex items-center space-x-2">
                     <i class="fa-solid fa-filter"></i>
@@ -79,10 +73,9 @@
 
         <!-- KPI Cards Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <!-- Card 1: Tổng Doanh Thu -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng Doanh Thu</p>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Doanh Thu Thuần</p>
                     <h3 id="kpiDoanhThu" class="text-2xl font-black text-slate-900 mt-1">0 ₫</h3>
                 </div>
                 <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
@@ -90,10 +83,9 @@
                 </div>
             </div>
 
-            <!-- Card 2: Sản Lượng Ban -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng Sản Lượng</p>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Sản Lượng Bán Thuần</p>
                     <h3 id="kpiSoLuong" class="text-2xl font-black text-slate-900 mt-1">0 Kg</h3>
                 </div>
                 <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-xl">
@@ -101,7 +93,6 @@
                 </div>
             </div>
 
-            <!-- Card 3: Số Đơn Hàng -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
                 <div>
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng Đơn Hàng</p>
@@ -112,7 +103,6 @@
                 </div>
             </div>
 
-            <!-- Card 4: Tổng Khách Hàng -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
                 <div>
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Khách Hàng Mua</p>
@@ -126,7 +116,6 @@
 
         <!-- Charts Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <!-- Chart 1: Top 10 Sản Phẩm -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <h4 class="text-base font-bold text-slate-800 mb-4 flex items-center space-x-2">
                     <i class="fa-solid fa-ranking-star text-amber-500"></i>
@@ -137,11 +126,10 @@
                 </div>
             </div>
 
-            <!-- Chart 2: Doanh Số Theo NVKD -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <h4 class="text-base font-bold text-slate-800 mb-4 flex items-center space-x-2">
                     <i class="fa-solid fa-user-tie text-blue-500"></i>
-                    <span>Tỷ Trọng Doanh Số Theo Nhân Viên Kinh Doanh</span>
+                    <span>Tỷ Trọng Doanh Số Theo NVKD</span>
                 </h4>
                 <div class="relative h-72">
                     <canvas id="staffSalesChart"></canvas>
@@ -151,7 +139,6 @@
 
     </main>
 
-    <!-- Client-Side Javascript -->
     <script>
         const WORKER_URL = "https://erp-api-gateway.phongmythuan.workers.dev";
         let topProductsChartInstance = null;
@@ -159,20 +146,12 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             const apiKey = localStorage.getItem("ERP_API_KEY");
-            if (!apiKey) {
-                openAuthModal();
-            } else {
-                loadDashboardData();
-            }
+            if (!apiKey) openAuthModal();
+            else loadDashboardData();
         });
 
-        function openAuthModal() {
-            document.getElementById("authModal").classList.remove("hidden");
-        }
-
-        function closeAuthModal() {
-            document.getElementById("authModal").classList.add("hidden");
-        }
+        function openAuthModal() { document.getElementById("authModal").classList.remove("hidden"); }
+        function closeAuthModal() { document.getElementById("authModal").classList.add("hidden"); }
 
         function saveApiKey() {
             const key = document.getElementById("apiKeyInput").value.trim();
@@ -180,17 +159,12 @@
                 localStorage.setItem("ERP_API_KEY", key);
                 closeAuthModal();
                 loadDashboardData();
-            } else {
-                alert("Vui lòng nhập API Key!");
-            }
+            } else alert("Vui lòng nhập API Key!");
         }
 
         async function loadDashboardData() {
             const apiKey = localStorage.getItem("ERP_API_KEY");
-            if (!apiKey) {
-                openAuthModal();
-                return;
-            }
+            if (!apiKey) { openAuthModal(); return; }
 
             const fromDate = document.getElementById("fromDate").value;
             const toDate = document.getElementById("toDate").value;
@@ -205,7 +179,7 @@
                 });
 
                 if (response.status === 401) {
-                    alert("API Key không hợp lệ! Vui lòng kiểm tra lại.");
+                    alert("API Key không hợp lệ!");
                     openAuthModal();
                     return;
                 }
@@ -218,7 +192,6 @@
                 }
             } catch (err) {
                 console.error("Lỗi gọi API:", err);
-                alert("Không thể kết nối tới Cloudflare Worker API!");
             } finally {
                 loadingStatus.classList.add("hidden");
             }
@@ -235,28 +208,18 @@
             const ctx = document.getElementById('topProductsChart').getContext('2d');
             if (topProductsChartInstance) topProductsChartInstance.destroy();
 
-            const labels = products.map(p => p.ten_vt ? p.ten_vt.substring(0, 20) + "..." : p.ma_vt);
-            const data = products.map(p => p.tong_tien);
-
             topProductsChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: labels,
+                    labels: products.map(p => p.ten_vt ? p.ten_vt.substring(0, 18) + "..." : p.ma_vt),
                     datasets: [{
                         label: 'Doanh Thu (VND)',
-                        data: data,
-                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                        borderColor: 'rgb(37, 99, 235)',
-                        borderWidth: 1,
+                        data: products.map(p => p.tong_tien),
+                        backgroundColor: 'rgba(59, 130, 246, 0.85)',
                         borderRadius: 6
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
         }
 
@@ -264,26 +227,16 @@
             const ctx = document.getElementById('staffSalesChart').getContext('2d');
             if (staffSalesChartInstance) staffSalesChartInstance.destroy();
 
-            const labels = staffSales.slice(0, 8).map(s => s.ten_nvkd || s.ma_nvkd);
-            const data = staffSales.slice(0, 8).map(s => s.tong_tien);
-
             staffSalesChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: labels,
+                    labels: staffSales.slice(0, 8).map(s => s.ten_nvkd || s.ma_nvkd || 'Khác'),
                     datasets: [{
-                        data: data,
-                        backgroundColor: [
-                            '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
-                            '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'
-                        ]
+                        data: staffSales.slice(0, 8).map(s => s.tong_tien),
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b']
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'right' } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
             });
         }
     </script>
