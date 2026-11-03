@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Analytics Dashboard - PEROMA ERP System</title>
+    <title>KHSX Manager - PEROMA ERP System</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
@@ -13,7 +13,17 @@
     <style>
         .badge-live { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-        .nav-tab.active { background-color: #2563eb; color: #ffffff; font-weight: 700; shadow: 0 2px 4px rgba(37,99,235,0.2); }
+        html, body { max-width: 100%; overflow-x: hidden; }
+        .side-tab { color: #cbd5e1; }
+        .side-tab:hover { background-color: rgba(255,255,255,0.08); color: #fff; }
+        .side-tab.active { background-color: #2563eb; color: #fff; font-weight: 700; box-shadow: 0 2px 6px rgba(37,99,235,0.35); }
+        .bot-tab { color: #64748b; }
+        .bot-tab.active { color: #2563eb; font-weight: 700; }
+        .tbl-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .tbl-scroll { max-height: 65vh; overflow: auto; }
+        .tbl-scroll thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; box-shadow: 0 1px 0 #e2e8f0; }
+        .tbl-scroll tfoot td { position: sticky; bottom: 0; background: #f8fafc; box-shadow: 0 -1px 0 #cbd5e1; }
+        @media print { aside, #bottomNav, header { display: none !important; } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
@@ -25,13 +35,13 @@
                 <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
                     <i class="fa-solid fa-plug"></i>
                 </div>
-                <h3 class="text-xl font-bold text-slate-900">Cấu Hình Kết Nối MS SQL / D1</h3>
-                <p class="text-sm text-slate-500 mt-1">Vui lòng nhập X-API-KEY secret để xác thực truy cập dữ liệu</p>
+                <h3 class="text-xl font-bold text-slate-900">Kết Nối Cloudflare D1</h3>
+                <p class="text-sm text-slate-500 mt-1">Nhập X-API-KEY một lần, phiên được lưu cho đến khi xóa cookie trình duyệt</p>
             </div>
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">X-API-KEY Secret</label>
-                    <input type="password" id="apiKeyInput" placeholder="Nhập API Key bảo mật..." class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                    <input type="password" id="apiKeyInput" onkeydown="if(event.key==='Enter')saveApiKey()" placeholder="Nhập API Key bảo mật..." class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
                 </div>
                 <button onclick="saveApiKey()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md">
                     Lưu Key & Kết Nối Live
@@ -42,101 +52,74 @@
 
     <!-- Top Navigation Header -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-xl font-bold shadow-md">
+        <div class="px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-3 min-w-0">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg font-bold shadow-md shrink-0">
                     <i class="fa-solid fa-server"></i>
                 </div>
-                <div>
+                <div class="min-w-0">
                     <div class="flex items-center space-x-2">
-                        <h1 class="font-bold text-lg text-slate-900">Sales Analytics Dashboard</h1>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            <span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full badge-live"></span> SQL Live
+                        <h1 class="font-bold text-base sm:text-lg text-slate-900 truncate">KHSX Manager</h1>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                            <span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full badge-live"></span> Live
                         </span>
                     </div>
-                    <p class="text-xs text-slate-500">Kết nối MS SQL Server & Phân tích báo cáo bán hàng đa chiều</p>
+                    <p class="text-xs text-slate-500 truncate hidden sm:block">Quản lý mua hàng - Kế hoạch sản xuất & Phân tích bán hàng</p>
                 </div>
             </div>
 
-            <!-- Menu Chức Năng Chính -->
-            <nav class="hidden lg:flex items-center space-x-1 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
-                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-tab active px-4 py-1.5 rounded-lg text-xs transition flex items-center space-x-2">
-                    <i class="fa-solid fa-chart-pie"></i>
-                    <span>Dashboard Bán Hàng</span>
-                </button>
-                <button onclick="switchTab('purchase')" id="nav-purchase" class="nav-tab px-4 py-1.5 rounded-lg text-xs text-slate-600 hover:text-blue-600 transition flex items-center space-x-2">
-                    <i class="fa-solid fa-cart-flatbed"></i>
-                    <span>Danh Sách Đề Xuất Mua Hàng</span>
-                    <span id="pendingBadgeMenu" class="bg-amber-500 text-white font-extrabold text-[10px] px-1.5 py-0.2 rounded-full hidden">0</span>
-                </button>
-                <button onclick="switchTab('materials')" id="nav-materials" class="nav-tab px-4 py-1.5 rounded-lg text-xs text-slate-600 hover:text-blue-600 transition flex items-center space-x-2">
-                    <i class="fa-solid fa-boxes-packing"></i>
-                    <span>Danh Mục Vật Tư</span>
-                </button>
-            </nav>
-
-            <div class="flex items-center space-x-2">
-                <button onclick="openAuthModal()" class="px-3 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-300 transition flex items-center space-x-1.5">
-                    <i class="fa-solid fa-plug text-blue-600"></i>
-                    <span>Cấu Hình MS SQL</span>
-                </button>
-                <button onclick="window.print()" class="px-3.5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition flex items-center space-x-1.5">
+            <div class="flex items-center space-x-2 shrink-0">
+                <button onclick="window.print()" class="px-3 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition flex items-center space-x-1.5">
                     <i class="fa-solid fa-file-export"></i>
-                    <span>Xuất Báo Cáo</span>
+                    <span class="hidden sm:inline">Xuất Báo Cáo</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Mobile Navigation Sub-bar -->
-    <div class="lg:hidden bg-slate-100 border-b border-slate-200 px-4 py-2 flex justify-around text-xs font-semibold text-slate-600">
-        <button onclick="switchTab('dashboard')" class="hover:text-blue-600 flex items-center space-x-1"><i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span></button>
-        <button onclick="switchTab('purchase')" class="hover:text-blue-600 flex items-center space-x-1"><i class="fa-solid fa-cart-flatbed"></i> <span>Đề Xuất Mua</span></button>
-        <button onclick="switchTab('materials')" class="hover:text-blue-600 flex items-center space-x-1"><i class="fa-solid fa-boxes-packing"></i> <span>Vật Tư</span></button>
-    </div>
+    <div class="flex flex-1 min-w-0">
+    <!-- Sidebar (desktop) -->
+    <aside class="hidden lg:flex flex-col w-60 shrink-0 bg-slate-900 text-slate-200 sticky top-16 self-start h-[calc(100vh-4rem)] p-3 space-y-1">
+        <p class="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Báo cáo</p>
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="side-tab active w-full text-left px-3 py-2.5 rounded-lg text-sm transition flex items-center space-x-3">
+            <i class="fa-solid fa-chart-pie w-5 text-center"></i><span>Dashboard</span>
+        </button>
+        <p class="px-3 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Mua hàng</p>
+        <button onclick="switchTab('purchase')" id="nav-purchase" class="side-tab w-full text-left px-3 py-2.5 rounded-lg text-sm transition flex items-center space-x-3">
+            <i class="fa-solid fa-cart-flatbed w-5 text-center"></i><span class="flex-1">Đề xuất mua hàng</span>
+            <span id="pendingBadgeMenu" class="bg-amber-500 text-white font-extrabold text-[10px] px-1.5 rounded-full hidden">0</span>
+        </button>
+        <p class="px-3 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Danh mục</p>
+        <button onclick="switchTab('materials')" id="nav-materials" class="side-tab w-full text-left px-3 py-2.5 rounded-lg text-sm transition flex items-center space-x-3">
+            <i class="fa-solid fa-boxes-packing w-5 text-center"></i><span>Vật tư</span>
+        </button>
+    </aside>
 
     <!-- MAIN CONTAINER -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-grow">
+    <main class="flex-1 min-w-0 px-3 sm:px-6 py-4 sm:py-6 pb-24 lg:pb-6 space-y-6">
 
         <!-- ================================================================= -->
         <!-- MÀN HÌNH 1: DASHBOARD BÁN HÀNG                                    -->
         <!-- ================================================================= -->
-        <div id="screen-dashboard" class="space-y-6">
+        <div id="screen-dashboard" class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6">
 
-            <!-- THÊM MỚI: DANH SÁCH ĐỀ XUẤT MUA HÀNG CHỜ DUYỆT (TRẠNG THÁI = 1) -->
-            <div class="bg-amber-50/70 rounded-2xl shadow-sm border border-amber-200 p-5 space-y-3">
-                <div class="flex items-center justify-between border-b border-amber-200/60 pb-3">
-                    <div class="flex items-center space-x-2">
-                        <div class="w-8 h-8 bg-amber-500 text-white rounded-lg flex items-center justify-center font-bold text-sm shadow-sm">
+            <!-- CỘT PHẢI: PHIẾU ĐỀ XUẤT MUA HÀNG CHỜ DUYỆT -->
+            <aside class="xl:col-start-2 xl:row-start-1 min-w-0">
+              <div class="bg-amber-50/70 rounded-2xl shadow-sm border border-amber-200 p-4 space-y-3 xl:sticky xl:top-20">
+                <div class="flex items-center justify-between border-b border-amber-200/60 pb-3 gap-2">
+                    <div class="flex items-center space-x-2 min-w-0">
+                        <div class="w-8 h-8 bg-amber-500 text-white rounded-lg flex items-center justify-center text-sm shadow-sm shrink-0">
                             <i class="fa-solid fa-clock-rotate-left"></i>
                         </div>
-                        <div>
-                            <h3 class="font-bold text-slate-900 text-sm">Phiếu Đề Xuất Mua Hàng Đang Chờ Duyệt</h3>
-                            <p class="text-xs text-amber-800">Các phiếu mới gửi cần xử lý phê duyệt (Trạng thái = 1)</p>
-                        </div>
+                        <h3 class="font-bold text-slate-900 text-sm truncate">Phiếu Chờ Duyệt</h3>
                     </div>
-                    <span id="pendingCountBadge" class="bg-amber-500 text-white font-extrabold text-xs px-3 py-1 rounded-full shadow-sm">0 phiếu</span>
+                    <span id="pendingCountBadge" class="bg-amber-500 text-white font-extrabold text-xs px-3 py-1 rounded-full shadow-sm shrink-0">0 phiếu</span>
                 </div>
+                <div id="pendingPurchaseBody" class="space-y-3 xl:max-h-[calc(100vh-10rem)] overflow-y-auto"></div>
+              </div>
+            </aside>
 
-                <div class="overflow-x-auto rounded-xl border border-amber-200 bg-white">
-                    <table class="w-full text-left text-xs text-slate-700">
-                        <thead class="bg-amber-100/60 uppercase text-[11px] font-bold text-amber-900 border-b border-amber-200">
-                            <tr>
-                                <th class="p-3">Số Phiếu</th>
-                                <th class="p-3">Ngày CT</th>
-                                <th class="p-3">Bộ Phận / Người Đề Xuất</th>
-                                <th class="p-3">Tên Vật Tư Sau Đề Xuất</th>
-                                <th class="p-3 text-right">Số Lượng</th>
-                                <th class="p-3">Mục Đích / Ghi Chú</th>
-                                <th class="p-3 text-center">Trạng Thái</th>
-                            </tr>
-                        </thead>
-                        <tbody id="pendingPurchaseBody" class="divide-y divide-slate-100">
-                            <!-- JS render danh sách phiếu chờ duyệt -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+          <div class="xl:col-start-1 xl:row-start-1 min-w-0 space-y-6">
 
             <!-- BỘ ĐIỀU KIỆN PHÂN TÍCH BÁO CÁO (CHUẨN MẪU HÌNH 1) -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
@@ -159,7 +142,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4 text-xs">
                     <div>
                         <label class="block font-bold text-slate-600 mb-1">Từ ngày</label>
                         <input type="date" id="fromDate" value="2024-01-01" onchange="loadDashboardData()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -205,7 +188,7 @@
             </div>
 
             <!-- 4 THẺ KPI CHI TIẾT (CHUẨN MẪU HÌNH 1) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-5">
                 <!-- KPI 1 -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 border-b-4 border-b-blue-600 relative">
                     <div class="flex items-center justify-between">
@@ -276,7 +259,7 @@
             </div>
 
             <!-- 4 BIỂU ĐỒ BÁO CÁO MẪU (CHUẨN MẪU HÌNH 2 & 3) -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <!-- Biểu đồ 1: Xu hướng Doanh thu & Lợi nhuận -->
                 <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                     <div class="mb-4">
@@ -326,7 +309,7 @@
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
-                        <h3 class="font-bold text-slate-900 text-sm">Chi Tiết Giao Dịch Bán Hàng Trích Xuất Từ MS SQL</h3>
+                        <h3 class="font-bold text-slate-900 text-sm">Chi Tiết Giao Dịch Bán Hàng</h3>
                         <p class="text-xs text-slate-400">Danh sách kết quả đáp ứng trọn vẹn bộ điều kiện lọc</p>
                     </div>
                 </div>
@@ -362,6 +345,7 @@
                 </div>
             </div>
 
+          </div>
         </div>
 
         <!-- ================================================================= -->
@@ -375,7 +359,7 @@
                             <i class="fa-solid fa-cart-flatbed text-blue-600"></i>
                             <span>Danh Sách Tất Cả Đề Xuất Mua Hàng</span>
                         </h2>
-                        <p class="text-xs text-slate-500">Trích xuất trực tiếp từ bảng de_xuat_mua_hang trên Cloudflare D1</p>
+                        <p class="text-xs text-slate-500">Dữ liệu nhóm theo phiếu - bấm vào phiếu để xem chi tiết</p>
                     </div>
                     <div class="flex items-center space-x-2 text-xs">
                         <label class="font-semibold text-slate-600">Lọc theo trạng thái:</label>
@@ -388,18 +372,16 @@
                     </div>
                 </div>
 
-                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                <div class="tbl-wrap rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs text-slate-700">
                         <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
                             <tr>
                                 <th class="p-3">Số CT</th>
                                 <th class="p-3">Ngày CT</th>
-                                <th class="p-3">Bộ Phận (Tên BP)</th>
+                                <th class="p-3">Bộ Phận</th>
                                 <th class="p-3">Người Đề Xuất</th>
                                 <th class="p-3">Mục Đích</th>
-                                <th class="p-3">Mã & Tên Vật Tư</th>
-                                <th class="p-3 text-right">Số Lượng</th>
-                                <th class="p-3">Ghi Chú</th>
+                                <th class="p-3 text-right">Số Dòng VT</th>
                                 <th class="p-3 text-center">Trạng Thái</th>
                             </tr>
                         </thead>
@@ -424,7 +406,7 @@
                         </h2>
                         <p class="text-xs text-slate-500">Đã đồng bộ từ bảng danh_muc_vat_tu (indmvt & InDmNhVt)</p>
                     </div>
-                    <div class="relative w-72">
+                    <div class="relative w-full sm:w-72">
                         <input type="text" id="searchMaterialInput" onkeyup="filterMaterialTable()" placeholder="Tìm theo mã vật tư, tên vật tư..." class="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
                     </div>
@@ -451,18 +433,59 @@
         </div>
 
     </main>
+    </div>
+
+    <!-- Bottom navigation (mobile) -->
+    <nav id="bottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 grid grid-cols-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+        <button onclick="switchTab('dashboard')" data-tab="dashboard" class="bot-tab active py-2 flex flex-col items-center text-[11px] gap-0.5"><i class="fa-solid fa-chart-pie text-base"></i><span>Dashboard</span></button>
+        <button onclick="switchTab('purchase')" data-tab="purchase" class="bot-tab py-2 flex flex-col items-center text-[11px] gap-0.5 relative"><i class="fa-solid fa-cart-flatbed text-base"></i><span>Đề xuất mua</span><span id="pendingBadgeBottom" class="absolute top-1 right-[22%] bg-amber-500 text-white font-extrabold text-[9px] px-1.5 rounded-full hidden">0</span></button>
+        <button onclick="switchTab('materials')" data-tab="materials" class="bot-tab py-2 flex flex-col items-center text-[11px] gap-0.5"><i class="fa-solid fa-boxes-packing text-base"></i><span>Vật tư</span></button>
+    </nav>
+
+    <!-- Modal chi tiết phiếu (master-child) -->
+    <div id="voucherModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center sm:p-4" onclick="if(event.target===this)closeVoucherModal()">
+        <div class="bg-white w-full sm:max-w-4xl max-h-[92vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
+            <div class="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-slate-200">
+                <h3 class="font-bold text-slate-900 flex items-center space-x-2"><i class="fa-solid fa-file-invoice text-blue-600"></i><span id="vmTitle">Phiếu đề xuất</span></h3>
+                <button onclick="closeVoucherModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="overflow-y-auto p-4 sm:p-6 space-y-4">
+                <div id="vmMaster" class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs"></div>
+                <div class="tbl-wrap rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
+                            <tr><th class="p-3">#</th><th class="p-3">Mã VT</th><th class="p-3">Tên vật tư</th><th class="p-3">ĐVT</th><th class="p-3 text-right">Số lượng</th><th class="p-3">Ghi chú</th></tr>
+                        </thead>
+                        <tbody id="vmLines" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="vmActions" class="px-4 sm:px-6 py-3 border-t border-slate-200 flex justify-end gap-2"></div>
+        </div>
+    </div>
 
     <!-- Client-Side Javascript Logic -->
     <script>
         const WORKER_URL = "https://erp-api-gateway.phongmythuan.workers.dev";
+
+        // Phiên API key lưu bằng cookie (10 năm) - chỉ mất khi người dùng xóa cookie
+        function getApiKey() {
+            const m = document.cookie.match(/(?:^|;\s*)ERP_API_KEY=([^;]*)/);
+            return m ? decodeURIComponent(m[1]) : "";
+        }
+        function setApiKey(key) {
+            document.cookie = `ERP_API_KEY=${encodeURIComponent(key)}; max-age=315360000; path=/; SameSite=Strict; Secure`;
+        }
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         
+        const DT = {};
         let allPurchaseData = [];
         let allMaterialData = [];
         let rawSalesData = [];
         let chartInstances = {};
 
         document.addEventListener("DOMContentLoaded", () => {
-            const apiKey = localStorage.getItem("ERP_API_KEY");
+            const apiKey = getApiKey();
             if (!apiKey) openAuthModal();
             else {
                 loadDashboardData();
@@ -472,14 +495,16 @@
         });
 
         function switchTab(tabName) {
-            document.querySelectorAll(".nav-tab").forEach(btn => btn.classList.remove("active"));
+            document.querySelectorAll(".side-tab").forEach(btn => btn.classList.remove("active"));
             document.getElementById(`nav-${tabName}`).classList.add("active");
+            document.querySelectorAll(".bot-tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tabName));
 
             document.getElementById("screen-dashboard").classList.add("hidden");
             document.getElementById("screen-purchase").classList.add("hidden");
             document.getElementById("screen-materials").classList.add("hidden");
 
             document.getElementById(`screen-${tabName}`).classList.remove("hidden");
+            window.scrollTo({ top: 0 });
         }
 
         function openAuthModal() { document.getElementById("authModal").classList.remove("hidden"); }
@@ -488,7 +513,7 @@
         function saveApiKey() {
             const key = document.getElementById("apiKeyInput").value.trim();
             if (key) {
-                localStorage.setItem("ERP_API_KEY", key);
+                setApiKey(key);
                 closeAuthModal();
                 loadDashboardData();
                 loadDeXuatMuaHang();
@@ -504,7 +529,7 @@
         // 1. TẢI VÀ HIỂN THỊ DỮ LIỆU DASHBOARD BÁN HÀNG (CHUẨN MẪU)
         // =================================================================
         async function loadDashboardData() {
-            const apiKey = localStorage.getItem("ERP_API_KEY");
+            const apiKey = getApiKey();
             if (!apiKey) return openAuthModal();
 
             const fromDate = document.getElementById("fromDate").value;
@@ -554,43 +579,43 @@
         }
 
         function renderSalesTable(rows) {
-            const tbody = document.getElementById("tableBody");
-            tbody.innerHTML = "";
-
-            let sumRev = 0, sumCOGS = 0, sumProfit = 0;
             document.getElementById("recordCountBadge").innerText = `Hiển thị ${rows.length} / ${rows.length} giao dịch`;
 
-            rows.forEach(r => {
+            const items = rows.map(r => {
                 const rev = r.doanh_thu_thuan || r.tien2 || 0;
                 const cogs = rev * 0.662;
-                const profit = rev - cogs;
-
-                sumRev += rev;
-                sumCOGS += cogs;
-                sumProfit += profit;
-
-                const tr = document.createElement("tr");
-                tr.className = "hover:bg-slate-50 transition";
-                tr.innerHTML = `
-                    <td class="p-3 font-bold text-slate-900">${r.so_ct || ''}</td>
-                    <td class="p-3 text-slate-500">${r.ngay_ct || ''}</td>
-                    <td class="p-3 font-medium text-slate-800">${r.ten_kh || r.ma_kh || ''}</td>
-                    <td class="p-3 text-slate-600">${r.ten_vt || r.ma_vt || ''}</td>
-                    <td class="p-3 text-slate-500">${r.ten_nvkd || r.ma_nhomkd || ''}</td>
-                    <td class="p-3 text-right font-bold text-blue-600">${formatVND(rev)}</td>
-                    <td class="p-3 text-right text-slate-500">${formatVND(cogs)}</td>
-                    <td class="p-3 text-right font-bold text-emerald-600">${formatVND(profit)}</td>
-                    <td class="p-3 text-center">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">✓ Hoàn thành</span>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+                return { r, rev, cogs, profit: rev - cogs };
             });
 
-            document.getElementById("footTotalRevenue").innerText = formatVND(sumRev);
-            document.getElementById("footTotalCOGS").innerText = formatVND(sumCOGS);
-            document.getElementById("footTotalProfit").innerText = formatVND(sumProfit);
+            document.getElementById("footTotalRevenue").innerText = formatVND(items.reduce((s, i) => s + i.rev, 0));
+            document.getElementById("footTotalCOGS").innerText = formatVND(items.reduce((s, i) => s + i.cogs, 0));
+            document.getElementById("footTotalProfit").innerText = formatVND(items.reduce((s, i) => s + i.profit, 0));
+            dtSet("sales", items);
         }
+
+        function filterTableBySearch() {
+            const kw = document.getElementById("searchInput").value.toLowerCase();
+            const filtered = rawSalesData.filter(r =>
+                [r.so_ct, r.ten_kh, r.ma_kh, r.ten_vt, r.ma_vt].some(v => String(v ?? '').toLowerCase().includes(kw)));
+            renderSalesTable(filtered);
+        }
+
+        dtInit("sales", {
+            tbody: "tableBody",
+            cols: [i => i.r.so_ct, i => i.r.ngay_ct, i => i.r.ten_kh || i.r.ma_kh, i => i.r.ten_vt || i.r.ma_vt,
+                   i => i.r.ten_nvkd || i.r.ma_nhomkd, i => i.rev, i => i.cogs, i => i.profit, () => 1],
+            row: i => `<tr class="hover:bg-slate-50 transition">
+                    <td class="p-3 font-bold text-slate-900">${esc(i.r.so_ct)}</td>
+                    <td class="p-3 text-slate-500">${esc(i.r.ngay_ct)}</td>
+                    <td class="p-3 font-medium text-slate-800">${esc(i.r.ten_kh || i.r.ma_kh)}</td>
+                    <td class="p-3 text-slate-600">${esc(i.r.ten_vt || i.r.ma_vt)}</td>
+                    <td class="p-3 text-slate-500">${esc(i.r.ten_nvkd || i.r.ma_nhomkd)}</td>
+                    <td class="p-3 text-right font-bold text-blue-600">${formatVND(i.rev)}</td>
+                    <td class="p-3 text-right text-slate-500">${formatVND(i.cogs)}</td>
+                    <td class="p-3 text-right font-bold text-emerald-600">${formatVND(i.profit)}</td>
+                    <td class="p-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">✓ Hoàn thành</span></td>
+                </tr>`
+        });
 
         function renderSampleCharts(summary) {
             // Chart 1: Line Chart Xu hướng
@@ -638,7 +663,7 @@
         // 2. TẢI VÀ HIỂN THỊ ĐỀ XUẤT MUA HÀNG (TRẠNG THÁI = 1 CHỜ DUYỆT)
         // =================================================================
         async function loadDeXuatMuaHang() {
-            const apiKey = localStorage.getItem("ERP_API_KEY");
+            const apiKey = getApiKey();
             if (!apiKey) return;
 
             try {
@@ -650,7 +675,7 @@
                 if (result.status === 'success') {
                     allPurchaseData = result.data || [];
                     
-                    const pendingRows = allPurchaseData.filter(item => String(item.trang_thai).trim() === '1');
+                    const pendingRows = allPurchaseData.filter(item => String(item.trang_thai).trim() === '1' && Number(item.so_luong) > 0);
                     renderPendingPurchaseTable(pendingRows);
                     renderFullPurchaseTable(allPurchaseData);
                 }
@@ -659,71 +684,110 @@
             }
         }
 
+        function groupVouchers(rows) {
+            const map = new Map();
+            rows.forEach(r => {
+                const k = r.so_ct || '';
+                if (!map.has(k)) map.set(k, { so_ct: k, head: r, lines: [] });
+                map.get(k).lines.push(r);
+            });
+            return [...map.values()];
+        }
+
+        function statusBadge(st) {
+            st = String(st).trim();
+            if (st === '1') return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">⏳ Chờ duyệt</span>`;
+            if (st === '2') return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">✓ Đã duyệt</span>`;
+            if (st === '3') return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">✓ Hoàn thành</span>`;
+            return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Khác</span>`;
+        }
+
         function renderPendingPurchaseTable(rows) {
-            const tbody = document.getElementById("pendingPurchaseBody");
-            const badgeCount = document.getElementById("pendingCountBadge");
+            const box = document.getElementById("pendingPurchaseBody");
+            const groups = groupVouchers(rows);
             const menuBadge = document.getElementById("pendingBadgeMenu");
-            
-            tbody.innerHTML = "";
-            badgeCount.innerText = `${rows.length} phiếu`;
+            const botBadge = document.getElementById("pendingBadgeBottom");
+            document.getElementById("pendingCountBadge").innerText = `${groups.length} phiếu`;
+            [menuBadge, botBadge].forEach(b => {
+                b.innerText = groups.length;
+                b.classList.toggle("hidden", groups.length === 0);
+            });
 
-            if (rows.length > 0) {
-                menuBadge.innerText = rows.length;
-                menuBadge.classList.remove("hidden");
-            } else {
-                menuBadge.classList.add("hidden");
-            }
-
-            if (rows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 italic">Không có phiếu đề xuất mua hàng nào đang chờ duyệt (Trạng thái = 1)</td></tr>`;
+            if (groups.length === 0) {
+                box.innerHTML = `<p class="p-4 text-center text-xs text-slate-400 italic">Không có phiếu nào đang chờ duyệt</p>`;
                 return;
             }
 
-            rows.forEach(r => {
-                const tr = document.createElement("tr");
-                tr.className = "hover:bg-amber-100/40 transition";
-                tr.innerHTML = `
-                    <td class="p-3 font-bold text-amber-900">${r.so_ct || ''}</td>
-                    <td class="p-3 text-slate-500">${r.ngay_ct || ''}</td>
-                    <td class="p-3 font-medium text-slate-800">${r.ten_bp || r.ma_bp || ''} <span class="text-slate-400">(${r.fullname || ''})</span></td>
-                    <td class="p-3 font-bold text-slate-800">${r.ten_vt || r.ma_vt || ''}</td>
-                    <td class="p-3 text-right font-extrabold text-blue-600">${Number(r.so_luong || 0).toLocaleString('vi-VN')} ${r.dvt || ''}</td>
-                    <td class="p-3 text-slate-600">${r.muc_dich || r.ghi_chu || ''}</td>
-                    <td class="p-3 text-center">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">⏳ Chờ duyệt</span>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            box.innerHTML = groups.map(g => `
+                <div class="bg-white rounded-xl border border-amber-200 p-3 space-y-2 text-xs">
+                    <button onclick="openVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')" class="w-full text-left">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-bold text-blue-700 hover:underline">${esc(g.so_ct)}</span>
+                            <span class="text-slate-400">${esc(g.head.ngay_ct)}</span>
+                        </div>
+                        <div class="text-slate-700 mt-1">${esc(g.head.ten_bp || g.head.ma_bp)} <span class="text-slate-400">· ${esc(g.head.fullname)}</span></div>
+                        <div class="text-slate-500 truncate">${esc(g.head.muc_dich || g.head.ghi_chu)}</div>
+                        <div class="text-slate-500 mt-1">${g.lines.length} dòng vật tư</div>
+                    </button>
+                    <div class="flex gap-2 pt-1">
+                        <button onclick="approveVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 rounded-lg"><i class="fa-solid fa-check mr-1"></i>Duyệt</button>
+                        <button onclick="rejectVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')" class="flex-1 bg-white hover:bg-red-50 text-red-600 border border-red-300 font-semibold py-1.5 rounded-lg"><i class="fa-solid fa-xmark mr-1"></i>Từ chối</button>
+                    </div>
+                </div>`).join("");
         }
 
         function renderFullPurchaseTable(rows) {
-            const tbody = document.getElementById("fullPurchaseTableBody");
-            tbody.innerHTML = "";
-
-            rows.forEach(r => {
-                const statusStr = String(r.trang_thai).trim();
-                let statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Khác</span>`;
-                if (statusStr === '1') statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">⏳ Chờ duyệt</span>`;
-                else if (statusStr === '2') statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">✓ Đã duyệt</span>`;
-                else if (statusStr === '3') statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">✓ Hoàn thành</span>`;
-
-                const tr = document.createElement("tr");
-                tr.className = "hover:bg-slate-50 transition";
-                tr.innerHTML = `
-                    <td class="p-3 font-bold text-slate-900">${r.so_ct || ''}</td>
-                    <td class="p-3 text-slate-500">${r.ngay_ct || ''}</td>
-                    <td class="p-3 font-medium text-slate-800">${r.ten_bp || r.ma_bp || ''}</td>
-                    <td class="p-3 text-slate-700">${r.fullname || r.ma_kh || ''}</td>
-                    <td class="p-3 text-slate-600">${r.muc_dich || ''}</td>
-                    <td class="p-3 font-semibold text-slate-800">${r.ten_vt || r.ma_vt || ''}</td>
-                    <td class="p-3 text-right font-bold text-blue-600">${Number(r.so_luong || 0).toLocaleString('vi-VN')} ${r.dvt || ''}</td>
-                    <td class="p-3 text-slate-500">${r.ghi_chu || ''}</td>
-                    <td class="p-3 text-center">${statusBadge}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+            dtSet("purchase", groupVouchers(rows));
         }
+
+        dtInit("purchase", {
+            tbody: "fullPurchaseTableBody",
+            cols: [g => g.so_ct, g => g.head.ngay_ct, g => g.head.ten_bp || g.head.ma_bp, g => g.head.fullname || g.head.ma_kh,
+                   g => g.head.muc_dich, g => g.lines.length, g => Number(g.head.trang_thai)],
+            row: g => `
+                <tr class="hover:bg-blue-50 transition cursor-pointer" onclick="openVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')">
+                    <td class="p-3 font-bold text-blue-700">${esc(g.so_ct)}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(g.head.ngay_ct)}</td>
+                    <td class="p-3 font-medium text-slate-800">${esc(g.head.ten_bp || g.head.ma_bp)}</td>
+                    <td class="p-3 text-slate-700">${esc(g.head.fullname || g.head.ma_kh)}</td>
+                    <td class="p-3 text-slate-600">${esc(g.head.muc_dich)}</td>
+                    <td class="p-3 text-right font-bold text-slate-700">${g.lines.length}</td>
+                    <td class="p-3 text-center">${statusBadge(g.head.trang_thai)}</td>
+                </tr>`
+        });
+
+        function openVoucher(soCt) {
+            const lines = allPurchaseData.filter(r => (r.so_ct || '') === soCt);
+            if (!lines.length) return;
+            const h = lines[0];
+            const field = (l, v) => `<div class="bg-slate-50 rounded-lg p-2.5 border border-slate-200"><div class="text-[10px] uppercase font-bold text-slate-400">${l}</div><div class="font-semibold text-slate-800 break-words">${esc(v) || '-'}</div></div>`;
+            document.getElementById("vmTitle").innerText = `Phiếu ${soCt}`;
+            document.getElementById("vmMaster").innerHTML =
+                field("Số CT", soCt) + field("Ngày CT", h.ngay_ct) + field("Bộ phận", h.ten_bp || h.ma_bp) +
+                field("Người đề xuất", h.fullname || h.ma_kh) + field("Mục đích", h.muc_dich) +
+                `<div class="bg-slate-50 rounded-lg p-2.5 border border-slate-200"><div class="text-[10px] uppercase font-bold text-slate-400">Trạng thái</div>${statusBadge(h.trang_thai)}</div>`;
+            document.getElementById("vmLines").innerHTML = lines.map((r, i) => `
+                <tr>
+                    <td class="p-3 text-slate-400">${i + 1}</td>
+                    <td class="p-3 font-bold text-blue-600">${esc(r.ma_vt)}</td>
+                    <td class="p-3 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
+                    <td class="p-3 text-slate-500">${esc(r.dvt)}</td>
+                    <td class="p-3 text-right font-bold">${Number(r.so_luong || 0).toLocaleString('vi-VN')}</td>
+                    <td class="p-3 text-slate-500">${esc(r.ghi_chu)}</td>
+                </tr>`).join("");
+            const q = soCt.replace(/'/g, "\\'");
+            document.getElementById("vmActions").innerHTML = String(h.trang_thai).trim() === '1'
+                ? `<button onclick="rejectVoucher('${q}')" class="px-4 py-2 text-xs font-semibold text-red-600 border border-red-300 rounded-lg hover:bg-red-50">Từ chối</button>
+                   <button onclick="approveVoucher('${q}')" class="px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Duyệt</button>`
+                : `<button onclick="closeVoucherModal()" class="px-4 py-2 text-xs font-semibold bg-slate-100 rounded-lg hover:bg-slate-200">Đóng</button>`;
+            document.getElementById("voucherModal").classList.remove("hidden");
+        }
+
+        function closeVoucherModal() { document.getElementById("voucherModal").classList.add("hidden"); }
+
+        // TODO: gọi API cập nhật trạng thái lên ERP
+        function approveVoucher(soCt) { alert(`Duyệt phiếu ${soCt}: chức năng cập nhật ERP chưa được triển khai.`); }
+        function rejectVoucher(soCt) { alert(`Từ chối phiếu ${soCt}: chức năng cập nhật ERP chưa được triển khai.`); }
 
         function filterPurchaseTable() {
             const st = document.getElementById("purchaseStatusFilter").value;
@@ -738,7 +802,7 @@
         // 3. TẢI VÀ HIỂN THỊ DANH MỤC VẬT TƯ
         // =================================================================
         async function loadDanhMucVatTu() {
-            const apiKey = localStorage.getItem("ERP_API_KEY");
+            const apiKey = getApiKey();
             if (!apiKey) return;
 
             try {
@@ -757,23 +821,21 @@
         }
 
         function renderMaterialTable(rows) {
-            const tbody = document.getElementById("materialTableBody");
-            tbody.innerHTML = "";
-
-            rows.forEach(r => {
-                const tr = document.createElement("tr");
-                tr.className = "hover:bg-slate-50 transition";
-                tr.innerHTML = `
-                    <td class="p-3 font-bold text-blue-600">${r.ma_vt || ''}</td>
-                    <td class="p-3 font-semibold text-slate-800">${r.ten_vt || ''}</td>
-                    <td class="p-3 text-slate-500">${r.dvt || ''}</td>
-                    <td class="p-3 text-slate-600">${r.ten_nhvt || r.ma_nhvt || ''}</td>
-                    <td class="p-3 text-slate-600">${r.ten_nhvt1 || r.ma_nhvt1 || ''}</td>
-                    <td class="p-3 text-slate-500">${r.ten_msp || r.ma_msp || ''}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+            dtSet("materials", rows);
         }
+
+        dtInit("materials", {
+            tbody: "materialTableBody",
+            cols: [r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => r.ten_nhvt || r.ma_nhvt, r => r.ten_nhvt1 || r.ma_nhvt1, r => r.ten_msp || r.ma_msp],
+            row: r => `<tr class="hover:bg-slate-50 transition">
+                    <td class="p-3 font-bold text-blue-600">${esc(r.ma_vt)}</td>
+                    <td class="p-3 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
+                    <td class="p-3 text-slate-500">${esc(r.dvt)}</td>
+                    <td class="p-3 text-slate-600">${esc(r.ten_nhvt || r.ma_nhvt)}</td>
+                    <td class="p-3 text-slate-600">${esc(r.ten_nhvt1 || r.ma_nhvt1)}</td>
+                    <td class="p-3 text-slate-500">${esc(r.ten_msp || r.ma_msp)}</td>
+                </tr>`
+        });
 
         function filterMaterialTable() {
             const kw = document.getElementById("searchMaterialInput").value.toLowerCase();
@@ -782,6 +844,95 @@
                 (r.ten_vt && r.ten_vt.toLowerCase().includes(kw))
             );
             renderMaterialTable(filtered);
+        }
+
+        // =================================================================
+        // BẢNG DỮ LIỆU: SẮP XẾP + PHÂN TRANG + CỐ ĐỊNH HEADER
+        // =================================================================
+        function dtInit(id, cfg) {
+            const tbody = document.getElementById(cfg.tbody);
+            const table = tbody.closest("table");
+            const wrap = table.parentElement;
+            wrap.classList.add("tbl-scroll");
+
+            const pager = document.createElement("div");
+            pager.className = "flex flex-wrap items-center justify-between gap-2 pt-3 text-xs text-slate-600";
+            wrap.after(pager);
+
+            const s = DT[id] = { cfg, tbody, pager, rows: [], sortCol: -1, dir: 1, page: 1, size: 25 };
+            table.tHead.querySelectorAll("th").forEach((th, i) => {
+                th.classList.add("cursor-pointer", "select-none", "whitespace-nowrap");
+                th.insertAdjacentHTML("beforeend", ` <i class="fa-solid fa-sort text-slate-300 ml-1 sort-ico"></i>`);
+                th.addEventListener("click", () => {
+                    s.dir = s.sortCol === i ? -s.dir : 1;
+                    s.sortCol = i;
+                    s.page = 1;
+                    dtRender(id);
+                });
+            });
+        }
+
+        function dtSet(id, rows) {
+            const s = DT[id];
+            s.rows = rows;
+            s.page = 1;
+            dtRender(id);
+        }
+
+        function dtGo(id, page) { DT[id].page = page; dtRender(id); }
+        function dtSize(id, size) { DT[id].size = Number(size); DT[id].page = 1; dtRender(id); }
+
+        function dtRender(id) {
+            const s = DT[id];
+            let rows = s.rows;
+            if (s.sortCol >= 0) {
+                const get = s.cfg.cols[s.sortCol];
+                rows = [...rows].sort((a, b) => {
+                    const x = get(a), y = get(b);
+                    const nx = typeof x === "number", ny = typeof y === "number";
+                    if (nx && ny) return (x - y) * s.dir;
+                    return String(x ?? "").localeCompare(String(y ?? ""), "vi", { numeric: true }) * s.dir;
+                });
+            }
+
+            s.tbody.closest("table").tHead.querySelectorAll("th").forEach((th, i) => {
+                const ico = th.querySelector(".sort-ico");
+                if (!ico) return;
+                ico.className = "sort-ico fa-solid ml-1 " + (i === s.sortCol
+                    ? (s.dir === 1 ? "fa-sort-up text-blue-600" : "fa-sort-down text-blue-600")
+                    : "fa-sort text-slate-300");
+            });
+
+            const total = rows.length;
+            const pages = Math.max(1, Math.ceil(total / s.size));
+            s.page = Math.min(s.page, pages);
+            const start = (s.page - 1) * s.size;
+            const slice = rows.slice(start, start + s.size);
+            const cols = s.cfg.cols.length;
+
+            s.tbody.innerHTML = slice.length
+                ? slice.map(s.cfg.row).join("")
+                : `<tr><td colspan="${cols}" class="p-4 text-center text-slate-400 italic">Không có dữ liệu</td></tr>`;
+
+            const from = total ? start + 1 : 0;
+            const to = Math.min(start + s.size, total);
+            const lo = Math.max(1, Math.min(s.page - 2, pages - 4));
+            const hi = Math.min(pages, lo + 4);
+            const btn = (label, p, disabled, active) =>
+                `<button ${disabled ? "disabled" : `onclick="dtGo('${id}',${p})"`} class="min-w-[2rem] px-2 py-1 rounded-md border ${active ? "bg-blue-600 text-white border-blue-600" : "bg-white border-slate-300 hover:bg-slate-100"} ${disabled ? "opacity-40 cursor-not-allowed" : ""}">${label}</button>`;
+            let nums = "";
+            for (let p = lo; p <= hi; p++) nums += btn(p, p, false, p === s.page);
+
+            s.pager.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span>Hiển thị <b>${from}-${to}</b> / <b>${total}</b></span>
+                    <select onchange="dtSize('${id}', this.value)" class="px-2 py-1 border border-slate-300 rounded-md">
+                        ${[10, 25, 50, 100].map(n => `<option value="${n}" ${n === s.size ? "selected" : ""}>${n} dòng/trang</option>`).join("")}
+                    </select>
+                </div>
+                <div class="flex items-center gap-1">
+                    ${btn("«", 1, s.page === 1)}${btn("‹", s.page - 1, s.page === 1)}${nums}${btn("›", s.page + 1, s.page === pages)}${btn("»", pages, s.page === pages)}
+                </div>`;
         }
 
         // =================================================================
