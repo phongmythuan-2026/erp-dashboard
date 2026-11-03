@@ -352,7 +352,7 @@
                             <i class="fa-solid fa-cart-flatbed text-blue-600"></i>
                             <span>Danh Sách Tất Cả Đề Xuất Mua Hàng</span>
                         </h2>
-                        <p class="text-xs text-slate-500">Dữ liệu nhóm theo phiếu - bấm vào phiếu để xem chi tiết</p>
+                        <p class="text-xs text-slate-500">Hiển thị toàn bộ dòng vật tư - bấm vào một dòng để xem phiếu (master-child)</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 text-xs">
                         <input id="searchPurchaseInput" oninput="filterPurchaseTable()" type="search" placeholder="Tìm số phiếu, bộ phận, người đề xuất, vật tư..." class="px-3 py-1.5 w-64 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -376,7 +376,12 @@
                                 <th class="p-3">Bộ Phận</th>
                                 <th class="p-3">Người Đề Xuất</th>
                                 <th class="p-3">Mục Đích</th>
-                                <th class="p-3 text-right">Số Dòng VT</th>
+                                <th class="p-3">Mã VT</th>
+                                <th class="p-3">Tên Vật Tư</th>
+                                <th class="p-3">ĐVT</th>
+                                <th class="p-3 text-right">Số Lượng</th>
+                                <th class="p-3">Diễn Giải</th>
+                                <th class="p-3">Ghi Chú</th>
                                 <th class="p-3 text-center">Trạng Thái</th>
                             </tr>
                         </thead>
@@ -746,25 +751,29 @@
         }
 
         function renderFullPurchaseTable(rows) {
-            dtSet("purchase", groupVouchers(rows));
+            dtSet("purchase", rows);
         }
 
         dtInit("purchase", {
             tbody: "fullPurchaseTableBody",
-            cols: [g => g.so_ct, g => g.head.ngay_ct, g => g.head.ten_bp || g.head.ma_bp, g => g.head.fullname || g.head.ma_kh,
-                   g => g.head.muc_dich, g => g.lines.length, g => Number(g.head.trang_thai)],
-            row: g => `
-                <tr class="hover:bg-blue-50 transition cursor-pointer" onclick="openVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')">
-                    <td class="p-3 font-bold text-blue-700">${esc(g.so_ct)}</td>
-                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(g.head.ngay_ct)}</td>
-                    <td class="p-3 font-medium text-slate-800">${esc(g.head.ten_bp || g.head.ma_bp)}</td>
-                    <td class="p-3 text-slate-700">${esc(g.head.fullname || g.head.ma_kh)}</td>
-                    <td class="p-3 text-slate-600">${esc(g.head.muc_dich)}</td>
-                    <td class="p-3 text-right font-bold text-slate-700">${g.lines.length}</td>
-                    <td class="p-3 text-center">${statusBadge(g.head.trang_thai)}</td>
+            cols: [r => r.so_ct, r => r.ngay_ct, r => r.ten_bp || r.ma_bp, r => r.fullname || r.ma_kh, r => r.muc_dich,
+                   r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0), r => r.dien_giai, r => r.ghi_chu, r => Number(r.trang_thai)],
+            row: r => `
+                <tr class="hover:bg-blue-50 transition cursor-pointer" onclick="openVoucher('${esc(r.so_ct).replace(/'/g, "\\'")}')">
+                    <td class="px-2.5 py-2 font-bold text-blue-700 whitespace-nowrap">${esc(r.so_ct)}</td>
+                    <td class="px-2.5 py-2 text-slate-500 whitespace-nowrap">${esc(r.ngay_ct)}</td>
+                    <td class="px-2.5 py-2 font-medium text-slate-800">${esc(r.ten_bp || r.ma_bp)}</td>
+                    <td class="px-2.5 py-2 text-slate-700">${esc(r.fullname || r.ma_kh)}</td>
+                    <td class="px-2.5 py-2 text-slate-600">${esc(r.muc_dich)}</td>
+                    <td class="px-2.5 py-2 font-bold text-blue-600 whitespace-nowrap">${esc(r.ma_vt)}</td>
+                    <td class="px-2.5 py-2 text-slate-800">${esc(r.ten_vt)}</td>
+                    <td class="px-2.5 py-2 text-slate-500">${esc(r.dvt)}</td>
+                    <td class="px-2.5 py-2 text-right font-bold">${Number(r.so_luong || 0).toLocaleString('vi-VN')}</td>
+                    <td class="px-2.5 py-2 text-slate-600">${esc(r.dien_giai)}</td>
+                    <td class="px-2.5 py-2 text-slate-500">${esc(r.ghi_chu)}</td>
+                    <td class="px-2.5 py-2 text-center">${statusBadge(r.trang_thai)}</td>
                 </tr>`
         });
-
         dtInit("voucher", {
             tbody: "vmLines",
             cols: [r => r._i, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0), r => r.dien_giai, r => r.ghi_chu],
