@@ -166,11 +166,11 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 text-xs">
                     <div>
                         <label class="block font-bold text-slate-600 mb-1">Từ ngày</label>
-                        <input type="date" id="fromDate" onchange="loadDashboardData()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="text" id="fromDate" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" onchange="onDateInputChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                     <div>
                         <label class="block font-bold text-slate-600 mb-1">Đến ngày</label>
-                        <input type="date" id="toDate" onchange="loadDashboardData()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="text" id="toDate" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" onchange="onDateInputChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                     <div>
                         <label class="block font-bold text-slate-600 mb-1">Nhóm vật tư</label>
@@ -581,8 +581,8 @@
 
         function initializeApplication() {
             const now = new Date();
-            document.getElementById("fromDate").value = toDateStr(new Date(now.getFullYear(), now.getMonth() - 4, 1));
-            document.getElementById("toDate").value = toDateStr(now);
+            setDateInput("fromDate", new Date(now.getFullYear(), now.getMonth() - 4, 1));
+            setDateInput("toDate", now);
             if (!APPS_SCRIPT_URL || !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(APPS_SCRIPT_URL)) {
                 document.getElementById("loginButton").disabled = true;
                 showAuthMessage("Chưa cấu hình URL triển khai Apps Script trong erp-dashboard/config.js.", true);
@@ -971,6 +971,25 @@
         // 1. TẢI VÀ HIỂN THỊ DỮ LIỆU DASHBOARD BÁN HÀNG (CHUẨN MẪU)
         // =================================================================
         const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+        // Ô ngày hiển thị dd/mm/yyyy; getDateInput trả về yyyy-mm-dd (rỗng nếu chưa hợp lệ).
+        function setDateInput(id, date) {
+            const iso = toDateStr(date);
+            document.getElementById(id).value = `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+        }
+
+        function getDateInput(id) {
+            const match = document.getElementById(id).value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (!match) return "";
+            const [day, month, year] = [Number(match[1]), Number(match[2]), Number(match[3])];
+            const date = new Date(year, month - 1, day);
+            if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return "";
+            return toDateStr(date);
+        }
+
+        function onDateInputChange() {
+            if (getDateInput("fromDate") && getDateInput("toDate")) loadDashboardData();
+        }
         const revOf = r => Number(r.doanh_thu_thuan || r.tien2 || 0);
         const sumBy = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
 
@@ -981,8 +1000,8 @@
                 return false;
             }
 
-            const fromDate = document.getElementById("fromDate").value;
-            const toDate = document.getElementById("toDate").value;
+            const fromDate = getDateInput("fromDate");
+            const toDate = getDateInput("toDate");
 
             try {
                 const result = await api("getData", token, "ban_hang", fromDate, toDate);
@@ -1001,7 +1020,9 @@
         }
 
         function getDashboardDateRange() {
-            return [document.getElementById("fromDate").value, document.getElementById("toDate").value];
+            const range = [getDateInput("fromDate"), getDateInput("toDate")];
+            if (!range[0] || !range[1]) throw new Error("Từ ngày/Đến ngày phải có định dạng dd/mm/yyyy.");
+            return range;
         }
 
         async function refreshSalesFromSql() {
@@ -1576,8 +1597,8 @@
                 year: [new Date(y, 0, 1), now]
             };
             const [from, to] = ranges[type] || ranges.all;
-            document.getElementById("fromDate").value = toDateStr(from);
-            document.getElementById("toDate").value = toDateStr(to);
+            setDateInput("fromDate", from);
+            setDateInput("toDate", to);
             loadDashboardData();
         }
 
