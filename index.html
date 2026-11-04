@@ -1264,15 +1264,33 @@
 
         function closeVoucherModal() { document.getElementById("voucherModal").classList.add("hidden"); }
 
-        // ERP write integration is not configured in the current GAS project.
-        function approveVoucher(soCt) {
+        async function updateVoucherStatus(soCt, action) {
             if (!isAdmin()) return;
-            alert(`Duyệt phiếu ${soCt}: chưa cấu hình API cập nhật trạng thái lên ERP.`);
+            const voucher = allPurchaseData.find(row => String(row.so_ct || '') === soCt);
+            if (!voucher || !voucher.stt_rec) {
+                return reportDataError("Lỗi cập nhật phiếu", new Error("Không tìm thấy mã stt_rec của phiếu."));
+            }
+            const actionLabel = action === "approve" ? "duyệt" : "từ chối";
+            if (!confirm(`Xác nhận ${actionLabel} phiếu ${soCt}?`)) return;
+
+            try {
+                const result = await api(
+                    "setPurchaseVoucherStatus",
+                    getSessionToken(),
+                    voucher.stt_rec,
+                    soCt,
+                    action
+                );
+                if (!await loadDeXuatMuaHang()) return;
+                closeVoucherModal();
+                showAppSuccess(result.message);
+            } catch (error) {
+                reportDataError("Lỗi cập nhật trạng thái phiếu mua hàng", error);
+            }
         }
-        function rejectVoucher(soCt) {
-            if (!isAdmin()) return;
-            alert(`Từ chối phiếu ${soCt}: chưa cấu hình API cập nhật trạng thái lên ERP.`);
-        }
+
+        function approveVoucher(soCt) { return updateVoucherStatus(soCt, "approve"); }
+        function rejectVoucher(soCt) { return updateVoucherStatus(soCt, "reject"); }
 
         function filterPurchaseTable() {
             const st = document.getElementById("purchaseStatusFilter").value;
