@@ -1268,6 +1268,12 @@
             tbody: "fullPurchaseTableBody",
             cols: [r => r.so_ct, r => r.ngay_ct, r => r.ten_bp || r.ma_bp, r => r.fullname || r.ma_kh, r => r.muc_dich,
                    r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0), r => r.dien_giai, r => r.ghi_chu, r => Number(r.trang_thai)],
+            priorityCompare: (a, b) => Number(a.trang_thai) === 1
+                ? (Number(b.trang_thai) === 1 ? 0 : -1)
+                : (Number(b.trang_thai) === 1 ? 1 : 0),
+            defaultCompare: (a, b) =>
+                String(a.stt_rec ?? "").localeCompare(String(b.stt_rec ?? ""), "vi", { numeric: true }) ||
+                String(a.stt_rec0 ?? "").localeCompare(String(b.stt_rec0 ?? ""), "vi", { numeric: true }),
             row: r => `
                 <tr class="hover:bg-blue-50 transition cursor-pointer" onclick="openVoucher('${esc(r.so_ct).replace(/'/g, "\\'")}')">
                     <td class="px-2.5 py-2 font-bold text-blue-700 whitespace-nowrap">${esc(r.so_ct)}</td>
@@ -1489,13 +1495,22 @@
         function dtRender(id) {
             const s = DT[id];
             let rows = s.rows;
-            if (s.sortCol >= 0) {
-                const get = s.cfg.cols[s.sortCol];
+            if (s.sortCol >= 0 || s.cfg.priorityCompare || s.cfg.defaultCompare) {
+                const get = s.sortCol >= 0 ? s.cfg.cols[s.sortCol] : null;
                 rows = [...rows].sort((a, b) => {
-                    const x = get(a), y = get(b);
-                    const nx = typeof x === "number", ny = typeof y === "number";
-                    if (nx && ny) return (x - y) * s.dir;
-                    return String(x ?? "").localeCompare(String(y ?? ""), "vi", { numeric: true }) * s.dir;
+                    if (s.cfg.priorityCompare) {
+                        const priority = s.cfg.priorityCompare(a, b);
+                        if (priority) return priority;
+                    }
+                    if (get) {
+                        const x = get(a), y = get(b);
+                        const nx = typeof x === "number", ny = typeof y === "number";
+                        const result = nx && ny
+                            ? x - y
+                            : String(x ?? "").localeCompare(String(y ?? ""), "vi", { numeric: true });
+                        if (result) return result * s.dir;
+                    }
+                    return s.cfg.defaultCompare ? s.cfg.defaultCompare(a, b) : 0;
                 });
             }
 
