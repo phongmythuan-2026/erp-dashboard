@@ -839,9 +839,10 @@
             const button = document.querySelector("#userForm button[title='Tải lại danh sách bộ phận']");
             button.disabled = true;
             try {
-                managedDepartments = await api("getDepartments", getSessionToken(), true, ...getDashboardDateRange());
+                const departmentResult = await api("getDepartments", getSessionToken(), true, ...getDashboardDateRange());
+                managedDepartments = departmentResult.rows;
                 renderDepartmentOptions();
-                showAppSuccess("Đã cập nhật danh sách bộ phận từ SQL.");
+                showAppSuccess(departmentResult.message);
             } catch (error) {
                 reportDataError("Lỗi tải danh sách bộ phận", error);
             } finally {
