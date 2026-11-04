@@ -624,7 +624,7 @@
                     reject(new Error("Apps Script không phản hồi. Vui lòng thử lại."));
                 }, RPC_TIMEOUT_MS);
                 rpcRequests.set(id, { resolve, reject, timeout, bridgeWindow });
-                bridgeWindow.postMessage({ type: "erp-rpc", id, method, args }, window.location.origin);
+                bridgeWindow.postMessage({ type: "erp-rpc", id, method, args }, "*");
             });
         }
 
