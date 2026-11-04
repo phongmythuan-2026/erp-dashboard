@@ -118,25 +118,25 @@
         <!-- ================================================================= -->
         <!-- MÀN HÌNH 1: DASHBOARD BÁN HÀNG                                    -->
         <!-- ================================================================= -->
-        <div id="screen-dashboard" class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6">
+        <div id="screen-dashboard" class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-4">
 
             <!-- CỘT PHẢI: PHIẾU ĐỀ XUẤT MUA HÀNG CHỜ DUYỆT -->
-            <aside class="xl:col-start-2 xl:row-start-1 min-w-0">
-              <div class="bg-amber-50/70 rounded-2xl shadow-sm border border-amber-200 p-4 space-y-3 xl:sticky xl:top-36">
-                <div class="flex items-center justify-between border-b border-amber-200/60 pb-3 gap-2">
+            <aside class="order-2 xl:col-start-2 xl:row-start-1 min-w-0 self-start">
+              <div class="bg-amber-50/70 rounded-2xl shadow-sm border border-amber-200 p-3 space-y-2">
+                <div class="flex items-center justify-between border-b border-amber-200/60 pb-2 gap-2">
                     <div class="flex items-center space-x-2 min-w-0">
-                        <div class="w-8 h-8 bg-amber-500 text-white rounded-lg flex items-center justify-center text-sm shadow-sm shrink-0">
+                        <div class="w-7 h-7 bg-amber-500 text-white rounded-lg flex items-center justify-center text-xs shadow-sm shrink-0">
                             <i class="fa-solid fa-clock-rotate-left"></i>
                         </div>
                         <h3 class="font-bold text-slate-900 text-sm truncate">Phiếu Chờ Duyệt</h3>
                     </div>
-                    <span id="pendingCountBadge" class="bg-amber-500 text-white font-extrabold text-xs px-3 py-1 rounded-full shadow-sm shrink-0">0 phiếu</span>
+                    <span id="pendingCountBadge" class="bg-amber-500 text-white font-extrabold text-[11px] px-2.5 py-1 rounded-full shadow-sm shrink-0">0 phiếu</span>
                 </div>
-                <div id="pendingPurchaseBody" class="space-y-3 xl:max-h-[calc(100vh-10rem)] overflow-y-auto"></div>
+                <div id="pendingPurchaseBody" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
               </div>
             </aside>
 
-          <div class="xl:col-start-1 xl:row-start-1 min-w-0 space-y-6">
+          <div class="order-1 xl:col-start-1 xl:row-start-1 min-w-0 space-y-6">
 
             <!-- BỘ ĐIỀU KIỆN PHÂN TÍCH BÁO CÁO (CHUẨN MẪU HÌNH 1) -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
@@ -466,10 +466,16 @@
                     <h2 class="font-bold text-slate-900 text-base">Quản lý người dùng</h2>
                     <p class="text-xs text-slate-500 mt-1">Chỉ admin được tạo tài khoản, đổi vai trò hoặc đặt lại mật khẩu.</p>
                 </div>
-                <form id="userForm" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3" onsubmit="saveManagedUser(event)">
+                <form id="userForm" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3" onsubmit="saveManagedUser(event)">
                     <input id="userEmail" type="email" required autocomplete="off" placeholder="Email người dùng" class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
                     <input id="userName" type="text" required maxlength="120" placeholder="Họ tên" class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
                     <input id="userPassword" type="password" minlength="12" autocomplete="new-password" placeholder="Mật khẩu (tối thiểu 12 ký tự)" class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                    <div class="flex gap-1">
+                        <select id="userDepartment" required class="min-w-0 flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                            <option value="">-- Chọn bộ phận --</option>
+                        </select>
+                        <button type="button" onclick="reloadDepartments()" title="Tải lại danh sách bộ phận" class="px-2.5 text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50"><i class="fa-solid fa-arrows-rotate"></i></button>
+                    </div>
                     <select id="userRole" class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
                         <option value="user">User - chỉ xem</option>
                         <option value="admin">Admin</option>
@@ -485,7 +491,7 @@
                 <div class="tbl-wrap rounded-xl border border-slate-200">
                     <table class="w-full text-left text-sm text-slate-700">
                         <thead class="bg-slate-50 text-xs font-bold text-slate-500 border-b border-slate-200">
-                            <tr><th class="p-3">Email</th><th class="p-3">Họ tên</th><th class="p-3">Vai trò</th><th class="p-3 text-right">Thao tác</th></tr>
+                            <tr><th class="p-3">Email</th><th class="p-3">Họ tên</th><th class="p-3">Mã bộ phận</th><th class="p-3">Vai trò</th><th class="p-3 text-right">Thao tác</th></tr>
                         </thead>
                         <tbody id="usersTableBody" class="divide-y divide-slate-100"></tbody>
                     </table>
@@ -553,6 +559,7 @@
         let chartInstances = {};
         let currentUser = null;
         let managedUsers = [];
+        let managedDepartments = [];
 
         function initializeApplication() {
             const now = new Date();
@@ -783,10 +790,41 @@
         async function loadManagedUsers() {
             if (!isAdmin()) return;
             try {
-                managedUsers = await api("listUsers", getSessionToken());
+                const token = getSessionToken();
+                const [users, departments] = await Promise.all([
+                    api("listUsers", token),
+                    api("getDepartments", token, false)
+                ]);
+                managedUsers = users;
+                managedDepartments = departments;
+                renderDepartmentOptions();
                 renderManagedUsers();
             } catch (error) {
                 reportDataError("Lỗi tải danh sách user", error);
+            }
+        }
+
+        function renderDepartmentOptions(selected = document.getElementById("userDepartment").value) {
+            const select = document.getElementById("userDepartment");
+            select.innerHTML = `<option value="">-- Chọn bộ phận --</option>` +
+                managedDepartments.map(department =>
+                    `<option value="${esc(department.ma_bp)}">${esc(department.ma_bp)} - ${esc(department.ten_bp)}</option>`
+                ).join("");
+            select.value = selected;
+        }
+
+        async function reloadDepartments() {
+            if (!isAdmin()) return;
+            const button = document.querySelector("#userForm button[title='Tải lại danh sách bộ phận']");
+            button.disabled = true;
+            try {
+                managedDepartments = await api("getDepartments", getSessionToken(), true);
+                renderDepartmentOptions();
+                showAppSuccess("Đã cập nhật danh sách bộ phận từ SQL.");
+            } catch (error) {
+                reportDataError("Lỗi tải danh sách bộ phận", error);
+            } finally {
+                button.disabled = false;
             }
         }
 
@@ -796,6 +834,7 @@
                 <tr>
                     <td class="p-3">${esc(user.useremail)}</td>
                     <td class="p-3">${esc(user.ho_ten)}</td>
+                    <td class="p-3">${esc(user.ma_bp || "")}</td>
                     <td class="p-3">${user.role === "admin" ? "Admin" : "User - chỉ xem"}</td>
                     <td class="p-3 text-right whitespace-nowrap">
                         <button data-edit-user="${esc(user.useremail)}" class="px-2.5 py-1 text-blue-700 hover:bg-blue-50 rounded">Sửa</button>
@@ -818,6 +857,7 @@
             document.getElementById("userName").value = user.ho_ten;
             document.getElementById("userPassword").value = "";
             document.getElementById("userPassword").required = false;
+            document.getElementById("userDepartment").value = user.ma_bp || "";
             document.getElementById("userRole").value = user.role;
             document.getElementById("saveUserButton").textContent = "Lưu thay đổi";
             document.getElementById("cancelUserEditButton").classList.remove("hidden");
@@ -843,10 +883,17 @@
                 const result = await api("saveUser", getSessionToken(), email,
                     document.getElementById("userName").value,
                     password,
-                    document.getElementById("userRole").value);
+                    document.getElementById("userRole").value,
+                    document.getElementById("userDepartment").value);
                 managedUsers = result.users;
+                if (email.toLowerCase() === currentUser.useremail.toLowerCase()) {
+                    currentUser = result.users.find(user => user.useremail === email.toLowerCase());
+                }
                 renderManagedUsers();
                 resetUserForm();
+                if (email.toLowerCase() === currentUser.useremail.toLowerCase()) {
+                    await loadDeXuatMuaHang();
+                }
                 showAppSuccess(result.message);
             } catch (error) {
                 reportDataError("Lỗi lưu user", error);
@@ -1117,7 +1164,7 @@
                 if (result.status === 'success') {
                     allPurchaseData = result.data || [];
                     
-                    const pendingRows = allPurchaseData.filter(item => String(item.trang_thai).trim() === '1' && Number(item.so_luong) > 0);
+                    const pendingRows = allPurchaseData.filter(item => String(item.trang_thai).trim() === '1');
                     renderPendingPurchaseTable(pendingRows);
                     renderFullPurchaseTable(allPurchaseData);
                     return true;
@@ -1162,19 +1209,16 @@
             }
 
             box.innerHTML = groups.map(g => `
-                <div class="bg-white rounded-xl border border-amber-200 p-3 space-y-2 text-xs">
-                    <button onclick="openVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')" class="w-full text-left">
+                <div class="bg-white rounded-lg border border-amber-200 px-2.5 py-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 text-xs">
+                    <button onclick="openVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')" class="min-w-0 text-left">
                         <div class="flex items-center justify-between gap-2">
                             <span class="font-bold text-blue-700 hover:underline">${esc(g.so_ct)}</span>
-                            <span class="text-slate-400">${esc(g.head.ngay_ct)}</span>
+                            <span class="text-slate-400 text-[10px] shrink-0">${esc(g.head.ngay_ct)}</span>
                         </div>
-                        <div class="text-slate-700 mt-1">${esc(g.head.ten_bp || g.head.ma_bp)} <span class="text-slate-400">· ${esc(g.head.fullname)}</span></div>
-                        <div class="text-slate-500 truncate">${esc(g.head.muc_dich || g.head.ghi_chu)}</div>
-                        <div class="text-slate-500 mt-1">${g.lines.length} dòng vật tư</div>
+                        <div class="text-slate-600 truncate mt-0.5">${esc(g.head.ten_bp || g.head.ma_bp)} · ${esc(g.head.fullname)}</div>
+                        <div class="text-slate-400 text-[10px] mt-0.5">${g.lines.length} dòng vật tư</div>
                     </button>
-                    ${isAdmin() ? `<div class="flex pt-1">
-                        <button onclick="approveVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 rounded-lg"><i class="fa-solid fa-check mr-1"></i>Duyệt</button>
-                    </div>` : ""}
+                    ${isAdmin() ? `<button onclick="approveVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-semibold px-2 py-1.5 rounded-lg whitespace-nowrap"><i class="fa-solid fa-check mr-1"></i>Duyệt</button>` : ""}
                 </div>`).join("");
         }
 
