@@ -9,7 +9,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css">
     <style>
         .badge-live { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
@@ -29,26 +29,37 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <!-- Modal Cấu Hình API Key (X-API-KEY) -->
+    <!-- Đăng nhập OTP -->
     <div id="authModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
             <div class="text-center mb-6">
                 <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
-                    <i class="fa-solid fa-plug"></i>
+                    <i class="fa-solid fa-shield-halved"></i>
                 </div>
-                <h3 class="text-xl font-bold text-slate-900">Kết Nối Cloudflare D1</h3>
-                <p class="text-sm text-slate-500 mt-1">Nhập X-API-KEY một lần, phiên được lưu cho đến khi xóa cookie trình duyệt</p>
+                <h3 class="text-xl font-bold text-slate-900">Đăng nhập PEROMA ERP</h3>
+                <p class="text-sm text-slate-500 mt-1">Mã xác thực sẽ được gửi đến email Gmail đã được cấp quyền</p>
             </div>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">X-API-KEY Secret</label>
-                    <input type="password" id="apiKeyInput" onkeydown="if(event.key==='Enter')saveApiKey()" placeholder="Nhập API Key bảo mật..." class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Email</label>
+                    <input type="email" id="otpEmail" value="phongmythuan@gmail.com" readonly autocomplete="email" onkeydown="if(event.key==='Enter')requestLoginOtp()" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
                 </div>
-                <button onclick="saveApiKey()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md">
-                    Lưu Key & Kết Nối Live
+                <div id="otpCodeGroup" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Mã OTP</label>
+                    <input type="text" id="otpCode" inputmode="numeric" autocomplete="one-time-code" onkeydown="if(event.key==='Enter')verifyLoginOtp()" maxlength="6" placeholder="Nhập mã 6 chữ số" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm tracking-[0.3em]">
+                </div>
+                <p id="authMessage" role="status" class="hidden text-sm text-slate-600"></p>
+                <button id="otpActionButton" onclick="requestLoginOtp()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md">
+                    Gửi mã OTP
                 </button>
+                <button id="otpVerifyButton" onclick="verifyLoginOtp()" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md">Xác thực và đăng nhập</button>
             </div>
         </div>
+    </div>
+    <iframe id="appsScriptBridge" title="Kết nối Apps Script" class="hidden" aria-hidden="true"></iframe>
+    <div id="appError" role="alert" class="fixed bottom-4 right-4 z-[70] hidden max-w-lg items-start gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-lg">
+        <span id="appErrorMessage"></span>
+        <button onclick="document.getElementById('appError').classList.add('hidden');document.getElementById('appError').classList.remove('flex')" aria-label="Đóng thông báo" class="font-bold">×</button>
     </div>
 
     <!-- Top Navigation Header -->
@@ -62,7 +73,7 @@
                     <div class="flex items-center space-x-2">
                         <h1 class="font-bold text-base sm:text-lg text-slate-900 truncate">KHSX Manager</h1>
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-                            <span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full badge-live"></span> Live
+                            <span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full badge-live"></span> Đồng bộ
                         </span>
                     </div>
                     <p class="text-xs text-slate-500 truncate hidden sm:block">Quản lý mua hàng - Kế hoạch sản xuất & Phân tích bán hàng</p>
@@ -85,6 +96,10 @@
         </nav>
 
             <div class="flex items-center space-x-2 shrink-0">
+                <button onclick="logout()" class="px-3 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span class="hidden sm:inline">Đăng xuất</span>
+                </button>
                 <button onclick="window.print()" class="px-3 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition flex items-center space-x-1.5">
                     <i class="fa-solid fa-file-export"></i>
                     <span class="hidden sm:inline">Xuất Báo Cáo</span>
@@ -139,6 +154,9 @@
                         <button onclick="setQuickDate('year')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition font-medium">Năm nay</button>
                         <button onclick="resetFilters()" class="px-2.5 py-1 text-red-600 hover:bg-red-50 rounded-md transition font-medium flex items-center space-x-1">
                             <i class="fa-solid fa-rotate-left"></i> <span>Đặt lại</span>
+                        </button>
+                        <button id="refreshSalesButton" onclick="refreshSalesFromSql()" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md transition font-semibold flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-rotate"></i><span>Đọc mới từ SQL</span>
                         </button>
                     </div>
                 </div>
@@ -355,6 +373,9 @@
                         <p class="text-xs text-slate-500">Hiển thị toàn bộ dòng vật tư - bấm vào một dòng để xem phiếu (master-child)</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <button id="refreshPurchaseButton" onclick="refreshReferenceTable('de_xuat_mua_hang')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-rotate"></i><span>Tải mới từ SQL</span>
+                        </button>
                         <input id="searchPurchaseInput" oninput="filterPurchaseTable()" type="search" placeholder="Tìm số phiếu, bộ phận, người đề xuất, vật tư..." class="px-3 py-1.5 w-64 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         <label class="font-semibold text-slate-600">Trạng thái:</label>
                         <select id="purchaseStatusFilter" onchange="filterPurchaseTable()" class="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -406,9 +427,14 @@
                         </h2>
                         <p class="text-xs text-slate-500">Đã đồng bộ từ bảng danh_muc_vat_tu (indmvt & InDmNhVt)</p>
                     </div>
-                    <div class="relative w-full sm:w-72">
-                        <input type="text" id="searchMaterialInput" onkeyup="filterMaterialTable()" placeholder="Tìm theo mã vật tư, tên vật tư..." class="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="refreshMaterialsButton" onclick="refreshReferenceTable('danh_muc_vat_tu')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-rotate"></i><span>Tải mới từ SQL</span>
+                        </button>
+                        <div class="relative w-full sm:w-72">
+                            <input type="text" id="searchMaterialInput" onkeyup="filterMaterialTable()" placeholder="Tìm theo mã vật tư, tên vật tư..." class="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        </div>
                     </div>
                 </div>
 
@@ -470,19 +496,17 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
     <!-- Client-Side Javascript Logic -->
     <script>
-        const WORKER_URL = "https://erp-api-gateway.phongmythuan.workers.dev";
-
-        // Phiên API key lưu bằng cookie (10 năm) - chỉ mất khi người dùng xóa cookie
-        function getApiKey() {
-            const m = document.cookie.match(/(?:^|;\s*)ERP_API_KEY=([^;]*)/);
-            return m ? decodeURIComponent(m[1]) : "";
-        }
-        function setApiKey(key) {
-            document.cookie = `ERP_API_KEY=${encodeURIComponent(key)}; max-age=315360000; path=/; SameSite=Strict; Secure`;
-        }
+        const APPS_SCRIPT_URL = window.ERP_CONFIG && window.ERP_CONFIG.appsScriptUrl;
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const RPC_TIMEOUT_MS = 240000;
+        const rpcRequests = new Map();
+        let rpcCounter = 0;
+        let bridgeReady = false;
+        let resolveBridgeReady;
+        const bridgeReadyPromise = new Promise(resolve => { resolveBridgeReady = resolve; });
         
         const DT = {};
         let allPurchaseData = [];
@@ -493,15 +517,30 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             const now = new Date();
-            document.getElementById("fromDate").value = toDateStr(new Date(now.getFullYear(), 0, 1));
+            document.getElementById("fromDate").value = toDateStr(new Date(now.getFullYear(), now.getMonth() - 4, 1));
             document.getElementById("toDate").value = toDateStr(now);
-            const apiKey = getApiKey();
-            if (!apiKey) openAuthModal();
-            else {
-                loadDashboardData();
-                loadDeXuatMuaHang();
-                loadDanhMucVatTu();
+            if (!APPS_SCRIPT_URL || !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(APPS_SCRIPT_URL)) {
+                document.getElementById("otpActionButton").disabled = true;
+                document.getElementById("otpVerifyButton").disabled = true;
+                showAuthMessage("Chưa cấu hình URL triển khai Apps Script trong erp-dashboard/config.js.", true);
+                openAuthModal();
+                return;
             }
+            window.addEventListener("message", handleRpcResponse);
+            const bridge = document.getElementById("appsScriptBridge");
+            bridge.addEventListener("load", () => {
+                bridgeReady = true;
+                resolveBridgeReady();
+            });
+            bridge.src = APPS_SCRIPT_URL;
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            api("validateSession", token)
+                .then(session => {
+                    saveSessionToken(token, session.expiresAt);
+                    return loadApplicationData();
+                })
+                .catch(handleSessionError);
         });
 
         function switchTab(tabName) {
@@ -519,15 +558,133 @@
         function openAuthModal() { document.getElementById("authModal").classList.remove("hidden"); }
         function closeAuthModal() { document.getElementById("authModal").classList.add("hidden"); }
 
-        function saveApiKey() {
-            const key = document.getElementById("apiKeyInput").value.trim();
-            if (key) {
-                setApiKey(key);
+        function getSessionToken() {
+            const token = localStorage.getItem("erpSessionToken");
+            const expiresAt = Number(localStorage.getItem("erpSessionExpiresAt") || 0);
+            if (token && expiresAt > Date.now()) return token;
+            if (token) clearSessionToken();
+            return sessionStorage.getItem("erpSessionToken") || "";
+        }
+
+        function saveSessionToken(token, expiresAt) {
+            localStorage.setItem("erpSessionToken", token);
+            localStorage.setItem("erpSessionExpiresAt", String(expiresAt));
+            sessionStorage.removeItem("erpSessionToken");
+        }
+
+        function clearSessionToken() {
+            localStorage.removeItem("erpSessionToken");
+            localStorage.removeItem("erpSessionExpiresAt");
+            sessionStorage.removeItem("erpSessionToken");
+        }
+
+        async function callRpc(method, ...args) {
+            if (!bridgeReady) {
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => reject(new Error("Không thể kết nối Apps Script.")), RPC_TIMEOUT_MS);
+                    bridgeReadyPromise.then(() => {
+                        clearTimeout(timeout);
+                        resolve();
+                    });
+                });
+            }
+            const frame = document.getElementById("appsScriptBridge");
+            const id = `rpc-${Date.now()}-${++rpcCounter}`;
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    rpcRequests.delete(id);
+                    reject(new Error("Apps Script không phản hồi. Vui lòng thử lại."));
+                }, RPC_TIMEOUT_MS);
+                rpcRequests.set(id, { resolve, reject, timeout });
+                frame.contentWindow.postMessage({ type: "erp-rpc", id, method, args }, "*");
+            });
+        }
+
+        function handleRpcResponse(event) {
+            const frame = document.getElementById("appsScriptBridge");
+            if (event.source !== frame.contentWindow || !event.data || event.data.type !== "erp-rpc-result") return;
+            const pending = rpcRequests.get(event.data.id);
+            if (!pending) return;
+            clearTimeout(pending.timeout);
+            rpcRequests.delete(event.data.id);
+            if (event.data.ok) pending.resolve(event.data.result);
+            else pending.reject(new Error(event.data.result && event.data.result.message || "Yêu cầu không thành công."));
+        }
+
+        function api(method, ...args) {
+            return callRpc(method, ...args);
+        }
+
+        function showAuthMessage(message, isError) {
+            const element = document.getElementById("authMessage");
+            element.textContent = message;
+            element.classList.remove("hidden", "text-red-600", "text-slate-600");
+            element.classList.add(isError ? "text-red-600" : "text-slate-600");
+        }
+
+        async function requestLoginOtp() {
+            const email = document.getElementById("otpEmail").value.trim();
+            if (!email) return showAuthMessage("Vui lòng nhập email.", true);
+            const button = document.getElementById("otpActionButton");
+            button.disabled = true;
+            try {
+                const result = await api("requestOtp", email);
+                showAuthMessage(result.message, false);
+                document.getElementById("otpCodeGroup").classList.remove("hidden");
+                document.getElementById("otpVerifyButton").classList.remove("hidden");
+                document.getElementById("otpCode").focus();
+            } catch (error) {
+                showAuthMessage(error.message, true);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function verifyLoginOtp() {
+            const email = document.getElementById("otpEmail").value.trim();
+            const code = document.getElementById("otpCode").value.trim();
+            const button = document.getElementById("otpVerifyButton");
+            button.disabled = true;
+            try {
+                const result = await api("verifyOtp", email, code);
+                saveSessionToken(result.token, result.expiresAt);
                 closeAuthModal();
-                loadDashboardData();
-                loadDeXuatMuaHang();
-                loadDanhMucVatTu();
-            } else alert("Vui lòng nhập API Key!");
+                await loadApplicationData();
+            } catch (error) {
+                showAuthMessage(error.message, true);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function logout() {
+            const token = getSessionToken();
+            clearSessionToken();
+            if (token) {
+                try { await api("logout", token); }
+                catch (error) { console.error("Lỗi kết thúc phiên:", error); }
+            }
+            openAuthModal();
+        }
+
+        function handleSessionError(error) {
+            console.error("Lỗi xác thực phiên:", error);
+            if (/phiên đăng nhập/i.test(error.message)) clearSessionToken();
+            openAuthModal();
+            showAuthMessage(error.message, true);
+        }
+
+        function reportDataError(title, error) {
+            console.error(title, error);
+            if (/phiên đăng nhập/i.test(error.message)) return handleSessionError(error);
+            const element = document.getElementById("appError");
+            document.getElementById("appErrorMessage").textContent = `${title}: ${error.message}`;
+            element.classList.remove("hidden");
+            element.classList.add("flex");
+        }
+
+        async function loadApplicationData() {
+            await Promise.all([loadDashboardData(), loadDeXuatMuaHang(), loadDanhMucVatTu()]);
         }
 
         function updateRangeLabel(val) {
@@ -537,36 +694,101 @@
         // =================================================================
         // 1. TẢI VÀ HIỂN THỊ DỮ LIỆU DASHBOARD BÁN HÀNG (CHUẨN MẪU)
         // =================================================================
-        const SALES_LIMIT = 5000;
         const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const revOf = r => Number(r.doanh_thu_thuan || r.tien2 || 0);
         const sumBy = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
 
         async function loadDashboardData() {
-            const apiKey = getApiKey();
-            if (!apiKey) return openAuthModal();
+            const token = getSessionToken();
+            if (!token) {
+                openAuthModal();
+                return false;
+            }
 
             const fromDate = document.getElementById("fromDate").value;
             const toDate = document.getElementById("toDate").value;
 
             try {
-                const res = await fetch(`${WORKER_URL}/api/get-ban-hang?from=${fromDate}&to=${toDate}&limit=${SALES_LIMIT}`, {
-                    headers: { 'X-API-KEY': apiKey }
-                });
-                if (res.status === 401) return openAuthModal();
-                const result = await res.json();
+                const result = await api("getData", token, "ban_hang", fromDate, toDate);
 
                 if (result.status === 'success') {
                     rawSalesData = result.data || [];
                     fillSalesFilters();
                     applyDashboardFilters();
+                    return true;
                 }
+                throw new Error("Apps Script trả về dữ liệu bán hàng không hợp lệ.");
             } catch (err) {
-                console.error("Lỗi tải dữ liệu Dashboard:", err);
+                reportDataError("Lỗi tải dữ liệu Dashboard", err);
+                return false;
             }
         }
 
-        // Nhóm vật tư lấy từ danh mục vật tư (D1) theo mã vật tư
+        async function refreshSalesFromSql() {
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+
+            const button = document.getElementById("refreshSalesButton");
+            const originalLabel = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL...</span>';
+            try {
+                const result = await api("refreshSalesData", token);
+                if (!await loadDashboardData()) return;
+                const status = document.getElementById("appError");
+                document.getElementById("appErrorMessage").textContent = result.message;
+                status.classList.remove("hidden", "border-red-300", "bg-red-50", "text-red-800");
+                status.classList.add("flex", "border-emerald-300", "bg-emerald-50", "text-emerald-800");
+                setTimeout(() => {
+                    status.classList.add("hidden");
+                    status.classList.remove("flex", "border-emerald-300", "bg-emerald-50", "text-emerald-800");
+                }, 5000);
+            } catch (error) {
+                reportDataError("Lỗi cập nhật bán hàng từ SQL", error);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalLabel;
+            }
+        }
+
+        async function refreshReferenceTable(table) {
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+
+            const isPurchase = table === "de_xuat_mua_hang";
+            const button = document.getElementById(
+                isPurchase ? "refreshPurchaseButton" : "refreshMaterialsButton"
+            );
+            const originalLabel = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang tải...</span>';
+            try {
+                const result = await api("refreshReferenceData", token, table);
+                const loaded = isPurchase
+                    ? await loadDeXuatMuaHang()
+                    : await loadDanhMucVatTu();
+                if (!loaded) return;
+                showAppSuccess(result.message);
+            } catch (error) {
+                reportDataError("Lỗi đồng bộ dữ liệu từ SQL", error);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalLabel;
+            }
+        }
+
+        function showAppSuccess(message) {
+            const status = document.getElementById("appError");
+            document.getElementById("appErrorMessage").textContent = message;
+            status.classList.remove("hidden", "border-red-300", "bg-red-50", "text-red-800");
+            status.classList.add("flex", "border-emerald-300", "bg-emerald-50", "text-emerald-800");
+            setTimeout(() => {
+                status.classList.add("hidden");
+                status.classList.remove("flex", "border-emerald-300", "bg-emerald-50", "text-emerald-800");
+            }, 5000);
+        }
+
+        // Nhóm vật tư lấy từ danh mục vật tư đã đồng bộ trên Google Drive
         function categoryOf(r) {
             const m = materialMap[r.ma_vt];
             return (m && (m.ten_nhvt || m.ma_nhvt)) || "Chưa phân nhóm";
@@ -693,14 +915,11 @@
         // 2. TẢI VÀ HIỂN THỊ ĐỀ XUẤT MUA HÀNG (TRẠNG THÁI = 1 CHỜ DUYỆT)
         // =================================================================
         async function loadDeXuatMuaHang() {
-            const apiKey = getApiKey();
-            if (!apiKey) return;
+            const token = getSessionToken();
+            if (!token) return;
 
             try {
-                const response = await fetch(`${WORKER_URL}/api/get-de-xuat-mua-hang`, {
-                    headers: { 'X-API-KEY': apiKey }
-                });
-                const result = await response.json();
+                const result = await api("getData", token, "de_xuat_mua_hang");
 
                 if (result.status === 'success') {
                     allPurchaseData = result.data || [];
@@ -708,9 +927,12 @@
                     const pendingRows = allPurchaseData.filter(item => String(item.trang_thai).trim() === '1' && Number(item.so_luong) > 0);
                     renderPendingPurchaseTable(pendingRows);
                     renderFullPurchaseTable(allPurchaseData);
+                    return true;
                 }
+                throw new Error("Apps Script trả về dữ liệu đề xuất mua hàng không hợp lệ.");
             } catch (err) {
-                console.error("Lỗi tải Đề xuất mua hàng:", err);
+                reportDataError("Lỗi tải Đề xuất mua hàng", err);
+                return false;
             }
         }
 
@@ -869,23 +1091,23 @@
         // 3. TẢI VÀ HIỂN THỊ DANH MỤC VẬT TƯ
         // =================================================================
         async function loadDanhMucVatTu() {
-            const apiKey = getApiKey();
-            if (!apiKey) return;
+            const token = getSessionToken();
+            if (!token) return;
 
             try {
-                const response = await fetch(`${WORKER_URL}/api/get-danh-muc-vat-tu`, {
-                    headers: { 'X-API-KEY': apiKey }
-                });
-                const result = await response.json();
+                const result = await api("getData", token, "danh_muc_vat_tu");
 
                 if (result.status === 'success') {
                     allMaterialData = result.data || [];
                     materialMap = Object.fromEntries(allMaterialData.map(m => [m.ma_vt, m]));
                     renderMaterialTable(allMaterialData);
                     if (rawSalesData.length) { fillSalesFilters(); applyDashboardFilters(); }
+                    return true;
                 }
+                throw new Error("Apps Script trả về dữ liệu danh mục vật tư không hợp lệ.");
             } catch (err) {
-                console.error("Lỗi tải Danh mục vật tư:", err);
+                reportDataError("Lỗi tải Danh mục vật tư", err);
+                return false;
             }
         }
 
@@ -1030,7 +1252,7 @@
             const now = new Date();
             const y = now.getFullYear(), m = now.getMonth();
             const ranges = {
-                all: [new Date(2020, 0, 1), now],
+                all: [new Date(y, m - 4, 1), now],
                 month: [new Date(y, m, 1), now],
                 lastmonth: [new Date(y, m - 1, 1), new Date(y, m, 0)],
                 quarter: [new Date(y, Math.floor(m / 3) * 3, 1), now],
