@@ -789,18 +789,21 @@
 
         async function loadManagedUsers() {
             if (!isAdmin()) return;
+            const token = getSessionToken();
             try {
-                const token = getSessionToken();
-                const [users, departments] = await Promise.all([
-                    api("listUsers", token),
-                    api("getDepartments", token, false)
-                ]);
-                managedUsers = users;
-                managedDepartments = departments;
-                renderDepartmentOptions();
+                managedUsers = await api("listUsers", token);
                 renderManagedUsers();
             } catch (error) {
                 reportDataError("Lỗi tải danh sách user", error);
+                return;
+            }
+            try {
+                managedDepartments = await api("getDepartments", token, false);
+                renderDepartmentOptions();
+            } catch (error) {
+                managedDepartments = [];
+                renderDepartmentOptions();
+                reportDataError("Lỗi tải danh sách bộ phận từ SQL", error);
             }
         }
 
