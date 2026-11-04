@@ -578,6 +578,18 @@
             sessionStorage.removeItem("erpSessionToken");
         }
 
+        function findBridgeWindow() {
+            const frame = document.getElementById("appsScriptBridge");
+            let target = frame.contentWindow;
+            for (let depth = 0; depth < 5; depth++) {
+                const childCount = target.frames.length;
+                if (depth >= 2 && childCount === 0) return target;
+                if (childCount !== 1) return null;
+                target = target.frames[0];
+            }
+            throw new Error("Không tìm thấy iframe RPC của Apps Script.");
+        }
+
         async function callRpc(method, ...args) {
             if (!bridgeReady) {
                 await new Promise((resolve, reject) => {
@@ -588,6 +600,22 @@
                     });
                 });
             }
+            const bridgeWindow = await new Promise((resolve, reject) => {
+                const deadline = Date.now() + 10000;
+                const check = () => {
+                    try {
+                        const target = findBridgeWindow();
+                        if (target) return resolve(target);
+                    } catch (error) {
+                        return reject(error);
+                    }
+                    if (Date.now() >= deadline) {
+                        return reject(new Error("Không tìm thấy iframe RPC của Apps Script."));
+                    }
+                    setTimeout(check, 100);
+                };
+                check();
+            });
             const frame = document.getElementById("appsScriptBridge");
             const id = `rpc-${Date.now()}-${++rpcCounter}`;
             return new Promise((resolve, reject) => {
@@ -595,16 +623,15 @@
                     rpcRequests.delete(id);
                     reject(new Error("Apps Script không phản hồi. Vui lòng thử lại."));
                 }, RPC_TIMEOUT_MS);
-                rpcRequests.set(id, { resolve, reject, timeout });
-                frame.contentWindow.postMessage({ type: "erp-rpc", id, method, args }, "*");
+                rpcRequests.set(id, { resolve, reject, timeout, bridgeWindow });
+                bridgeWindow.postMessage({ type: "erp-rpc", id, method, args }, window.location.origin);
             });
         }
 
         function handleRpcResponse(event) {
-            const frame = document.getElementById("appsScriptBridge");
-            if (event.source !== frame.contentWindow || !event.data || event.data.type !== "erp-rpc-result") return;
+            if (!event.data || event.data.type !== "erp-rpc-result") return;
             const pending = rpcRequests.get(event.data.id);
-            if (!pending) return;
+            if (!pending || event.source !== pending.bridgeWindow) return;
             clearTimeout(pending.timeout);
             rpcRequests.delete(event.data.id);
             if (event.data.ok) pending.resolve(event.data.result);
