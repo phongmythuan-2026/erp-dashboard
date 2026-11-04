@@ -166,11 +166,19 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 text-xs">
                     <div>
                         <label class="block font-bold text-slate-600 mb-1">Từ ngày</label>
-                        <input type="text" id="fromDate" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" onchange="onDateInputChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <div class="relative">
+                            <div id="fromDateLabel" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
+                            <i class="fa-regular fa-calendar absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none"></i>
+                            <input type="date" id="fromDate" onclick="this.showPicker && this.showPicker()" onchange="onDateInputChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        </div>
                     </div>
                     <div>
                         <label class="block font-bold text-slate-600 mb-1">Đến ngày</label>
-                        <input type="text" id="toDate" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" onchange="onDateInputChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <div class="relative">
+                            <div id="toDateLabel" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
+                            <i class="fa-regular fa-calendar absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none"></i>
+                            <input type="date" id="toDate" onclick="this.showPicker && this.showPicker()" onchange="onDateInputChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        </div>
                     </div>
                     <div>
                         <label class="block font-bold text-slate-600 mb-1">Nhóm vật tư</label>
@@ -973,22 +981,26 @@
         // =================================================================
         const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-        // Ô ngày hiển thị dd/mm/yyyy; getDateInput trả về yyyy-mm-dd (rỗng nếu chưa hợp lệ).
+        // Date picker gốc (value yyyy-mm-dd) được phủ trong suốt; nhãn bên dưới luôn hiển thị dd/mm/yyyy.
+        function renderDateLabel(id) {
+            const iso = document.getElementById(id).value;
+            document.getElementById(id + "Label").textContent = iso
+                ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
+                : "dd/mm/yyyy";
+        }
+
         function setDateInput(id, date) {
-            const iso = toDateStr(date);
-            document.getElementById(id).value = `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+            document.getElementById(id).value = toDateStr(date);
+            renderDateLabel(id);
         }
 
         function getDateInput(id) {
-            const match = document.getElementById(id).value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-            if (!match) return "";
-            const [day, month, year] = [Number(match[1]), Number(match[2]), Number(match[3])];
-            const date = new Date(year, month - 1, day);
-            if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return "";
-            return toDateStr(date);
+            return document.getElementById(id).value;
         }
 
         function onDateInputChange() {
+            renderDateLabel("fromDate");
+            renderDateLabel("toDate");
             if (getDateInput("fromDate") && getDateInput("toDate")) loadDashboardData();
         }
         const revOf = r => Number(r.doanh_thu_thuan || r.tien2 || 0);
