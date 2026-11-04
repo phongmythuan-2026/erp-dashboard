@@ -540,6 +540,8 @@
         const rpcRequests = new Map();
         let rpcCounter = 0;
         let bridgeReady = false;
+        let readyBridgeWindow = null;
+        let bridgeHandshakePromise = null;
         let resolveBridgeReady;
         const bridgeReadyPromise = new Promise(resolve => { resolveBridgeReady = resolve; });
         
@@ -646,23 +648,7 @@
                     });
                 });
             }
-            const bridgeWindow = await new Promise((resolve, reject) => {
-                const deadline = Date.now() + 10000;
-                const check = () => {
-                    try {
-                        const target = findBridgeWindow();
-                        if (target) return resolve(target);
-                    } catch (error) {
-                        return reject(error);
-                    }
-                    if (Date.now() >= deadline) {
-                        return reject(new Error("Không tìm thấy iframe RPC của Apps Script."));
-                    }
-                    setTimeout(check, 100);
-                };
-                check();
-            });
-            const frame = document.getElementById("appsScriptBridge");
+            const bridgeWindow = await waitForBridgeWindowReady();
             const id = `rpc-${Date.now()}-${++rpcCounter}`;
             return new Promise((resolve, reject) => {
                 const timeout = setTimeout(() => {
@@ -672,6 +658,53 @@
                 rpcRequests.set(id, { resolve, reject, timeout, bridgeWindow });
                 bridgeWindow.postMessage({ type: "erp-rpc", id, method, args }, "*");
             });
+        }
+
+        function waitForBridgeWindowReady() {
+            if (readyBridgeWindow) return Promise.resolve(readyBridgeWindow);
+            if (bridgeHandshakePromise) return bridgeHandshakePromise;
+
+            bridgeHandshakePromise = new Promise((resolve, reject) => {
+                const id = `bridge-ready-${Date.now()}-${++rpcCounter}`;
+                const deadline = Date.now() + 15000;
+                const candidates = new Set();
+                let retryTimer;
+                const cleanup = () => {
+                    clearTimeout(retryTimer);
+                    window.removeEventListener("message", handleReady);
+                };
+                const handleReady = event => {
+                    if (!event.data || event.data.type !== "erp-rpc-ready" ||
+                        event.data.id !== id || !candidates.has(event.source)) return;
+                    cleanup();
+                    readyBridgeWindow = event.source;
+                    resolve(readyBridgeWindow);
+                };
+                const probe = () => {
+                    try {
+                        const target = findBridgeWindow();
+                        if (target) {
+                            candidates.add(target);
+                            target.postMessage({ type: "erp-rpc-ready-request", id }, "*");
+                        }
+                    } catch (error) {
+                        cleanup();
+                        return reject(error);
+                    }
+                    if (Date.now() >= deadline) {
+                        cleanup();
+                        return reject(new Error("Không tìm thấy iframe RPC của Apps Script."));
+                    }
+                    retryTimer = setTimeout(probe, 150);
+                };
+                window.addEventListener("message", handleReady);
+                probe();
+            });
+            bridgeHandshakePromise = bridgeHandshakePromise.catch(error => {
+                bridgeHandshakePromise = null;
+                throw error;
+            });
+            return bridgeHandshakePromise;
         }
 
         function handleRpcResponse(event) {
