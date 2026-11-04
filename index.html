@@ -29,7 +29,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <!-- Đăng nhập OTP -->
+    <!-- Đăng nhập -->
     <div id="authModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
             <div class="text-center mb-6">
@@ -37,22 +37,21 @@
                     <i class="fa-solid fa-shield-halved"></i>
                 </div>
                 <h3 class="text-xl font-bold text-slate-900">Đăng nhập PEROMA ERP</h3>
-                <p class="text-sm text-slate-500 mt-1">Mã xác thực sẽ được gửi đến email Gmail đã được cấp quyền</p>
+                <p class="text-sm text-slate-500 mt-1">Đăng nhập bằng tài khoản do quản trị viên cấp</p>
             </div>
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Email</label>
-                    <input type="email" id="otpEmail" value="phongmythuan@gmail.com" readonly autocomplete="email" onkeydown="if(event.key==='Enter')requestLoginOtp()" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                    <input type="email" id="loginEmail" autocomplete="username" onkeydown="if(event.key==='Enter')loginUser()" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
                 </div>
-                <div id="otpCodeGroup" class="hidden">
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Mã OTP</label>
-                    <input type="text" id="otpCode" inputmode="numeric" autocomplete="one-time-code" onkeydown="if(event.key==='Enter')verifyLoginOtp()" maxlength="6" placeholder="Nhập mã 6 chữ số" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm tracking-[0.3em]">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Mật khẩu</label>
+                    <input type="password" id="loginPassword" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginUser()" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
                 </div>
                 <p id="authMessage" role="status" class="hidden text-sm text-slate-600"></p>
-                <button id="otpActionButton" onclick="requestLoginOtp()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md">
-                    Gửi mã OTP
+                <button id="loginButton" onclick="loginUser()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md">
+                    Đăng nhập
                 </button>
-                <button id="otpVerifyButton" onclick="verifyLoginOtp()" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md">Xác thực và đăng nhập</button>
             </div>
         </div>
     </div>
@@ -91,6 +90,9 @@
                 </button>
                 <button onclick="switchTab('materials')" id="nav-materials" class="top-tab shrink-0 px-3 lg:px-4 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-boxes-packing"></i><span>Danh mục vật tư</span>
+                </button>
+                <button onclick="switchTab('users')" id="nav-users" class="top-tab hidden shrink-0 px-3 lg:px-4 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-users-gear"></i><span>Quản lý user</span>
                 </button>
             </div>
         </nav>
@@ -458,6 +460,39 @@
             </div>
         </div>
 
+        <div id="screen-users" class="space-y-6 hidden">
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <h2 class="font-bold text-slate-900 text-base">Quản lý người dùng</h2>
+                    <p class="text-xs text-slate-500 mt-1">Chỉ admin được tạo tài khoản, đổi vai trò hoặc đặt lại mật khẩu.</p>
+                </div>
+                <form id="userForm" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3" onsubmit="saveManagedUser(event)">
+                    <input id="userEmail" type="email" required autocomplete="off" placeholder="Email người dùng" class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                    <input id="userName" type="text" required maxlength="120" placeholder="Họ tên" class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                    <input id="userPassword" type="password" minlength="12" autocomplete="new-password" placeholder="Mật khẩu (tối thiểu 12 ký tự)" class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                    <select id="userRole" class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                        <option value="user">User - chỉ xem</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <div class="flex gap-2">
+                        <button id="saveUserButton" type="submit" class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold">Tạo user</button>
+                        <button id="cancelUserEditButton" type="button" onclick="resetUserForm()" class="hidden px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm">Hủy</button>
+                    </div>
+                </form>
+                <p class="text-xs text-slate-500">Khi sửa user, để trống mật khẩu nếu không muốn đổi. Mật khẩu được lưu dưới dạng băm.</p>
+            </section>
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="tbl-wrap rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-sm text-slate-700">
+                        <thead class="bg-slate-50 text-xs font-bold text-slate-500 border-b border-slate-200">
+                            <tr><th class="p-3">Email</th><th class="p-3">Họ tên</th><th class="p-3">Vai trò</th><th class="p-3 text-right">Thao tác</th></tr>
+                        </thead>
+                        <tbody id="usersTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
     </main>
 
     <!-- Modal chi tiết phiếu (master-child) -->
@@ -514,14 +549,15 @@
         let rawSalesData = [];
         let materialMap = {};
         let chartInstances = {};
+        let currentUser = null;
+        let managedUsers = [];
 
         document.addEventListener("DOMContentLoaded", () => {
             const now = new Date();
             document.getElementById("fromDate").value = toDateStr(new Date(now.getFullYear(), now.getMonth() - 4, 1));
             document.getElementById("toDate").value = toDateStr(now);
             if (!APPS_SCRIPT_URL || !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(APPS_SCRIPT_URL)) {
-                document.getElementById("otpActionButton").disabled = true;
-                document.getElementById("otpVerifyButton").disabled = true;
+                document.getElementById("loginButton").disabled = true;
                 showAuthMessage("Chưa cấu hình URL triển khai Apps Script trong erp-dashboard/config.js.", true);
                 openAuthModal();
                 return;
@@ -537,6 +573,8 @@
             if (!token) return openAuthModal();
             api("validateSession", token)
                 .then(session => {
+                    currentUser = session.user;
+                    applyPermissions();
                     saveSessionToken(token, session.expiresAt);
                     return loadApplicationData();
                 })
@@ -550,9 +588,11 @@
             document.getElementById("screen-dashboard").classList.add("hidden");
             document.getElementById("screen-purchase").classList.add("hidden");
             document.getElementById("screen-materials").classList.add("hidden");
+            document.getElementById("screen-users").classList.add("hidden");
 
             document.getElementById(`screen-${tabName}`).classList.remove("hidden");
             window.scrollTo({ top: 0 });
+            if (tabName === "users") loadManagedUsers();
         }
 
         function openAuthModal() { document.getElementById("authModal").classList.remove("hidden"); }
@@ -649,32 +689,28 @@
             element.classList.add(isError ? "text-red-600" : "text-slate-600");
         }
 
-        async function requestLoginOtp() {
-            const email = document.getElementById("otpEmail").value.trim();
-            if (!email) return showAuthMessage("Vui lòng nhập email.", true);
-            const button = document.getElementById("otpActionButton");
-            button.disabled = true;
-            try {
-                const result = await api("requestOtp", email);
-                showAuthMessage(result.message, false);
-                document.getElementById("otpCodeGroup").classList.remove("hidden");
-                document.getElementById("otpVerifyButton").classList.remove("hidden");
-                document.getElementById("otpCode").focus();
-            } catch (error) {
-                showAuthMessage(error.message, true);
-            } finally {
-                button.disabled = false;
-            }
+        function isAdmin() { return currentUser && currentUser.role === "admin"; }
+
+        function applyPermissions() {
+            document.getElementById("nav-users").classList.toggle("hidden", !isAdmin());
+            ["refreshSalesButton", "refreshPurchaseButton", "refreshMaterialsButton"].forEach(id => {
+                const button = document.getElementById(id);
+                if (button) button.classList.toggle("hidden", !isAdmin());
+            });
         }
 
-        async function verifyLoginOtp() {
-            const email = document.getElementById("otpEmail").value.trim();
-            const code = document.getElementById("otpCode").value.trim();
-            const button = document.getElementById("otpVerifyButton");
+        async function loginUser() {
+            const email = document.getElementById("loginEmail").value.trim();
+            const password = document.getElementById("loginPassword").value;
+            if (!email || !password) return showAuthMessage("Vui lòng nhập email và mật khẩu.", true);
+            const button = document.getElementById("loginButton");
             button.disabled = true;
             try {
-                const result = await api("verifyOtp", email, code);
+                const result = await api("login", email, password);
+                currentUser = result.user;
                 saveSessionToken(result.token, result.expiresAt);
+                document.getElementById("loginPassword").value = "";
+                applyPermissions();
                 closeAuthModal();
                 await loadApplicationData();
             } catch (error) {
@@ -687,6 +723,8 @@
         async function logout() {
             const token = getSessionToken();
             clearSessionToken();
+            currentUser = null;
+            applyPermissions();
             if (token) {
                 try { await api("logout", token); }
                 catch (error) { console.error("Lỗi kết thúc phiên:", error); }
@@ -697,8 +735,95 @@
         function handleSessionError(error) {
             console.error("Lỗi xác thực phiên:", error);
             if (/phiên đăng nhập/i.test(error.message)) clearSessionToken();
+            currentUser = null;
+            applyPermissions();
             openAuthModal();
             showAuthMessage(error.message, true);
+        }
+
+        async function loadManagedUsers() {
+            if (!isAdmin()) return;
+            try {
+                managedUsers = await api("listUsers", getSessionToken());
+                renderManagedUsers();
+            } catch (error) {
+                reportDataError("Lỗi tải danh sách user", error);
+            }
+        }
+
+        function renderManagedUsers() {
+            const body = document.getElementById("usersTableBody");
+            body.innerHTML = managedUsers.map(user => `
+                <tr>
+                    <td class="p-3">${esc(user.useremail)}</td>
+                    <td class="p-3">${esc(user.ho_ten)}</td>
+                    <td class="p-3">${user.role === "admin" ? "Admin" : "User - chỉ xem"}</td>
+                    <td class="p-3 text-right whitespace-nowrap">
+                        <button data-edit-user="${esc(user.useremail)}" class="px-2.5 py-1 text-blue-700 hover:bg-blue-50 rounded">Sửa</button>
+                        ${user.useremail === currentUser.useremail ? "" : `<button data-delete-user="${esc(user.useremail)}" class="px-2.5 py-1 text-red-600 hover:bg-red-50 rounded">Xóa</button>`}
+                    </td>
+                </tr>`).join("");
+            body.querySelectorAll("[data-edit-user]").forEach(button => {
+                button.addEventListener("click", () => editManagedUser(button.dataset.editUser));
+            });
+            body.querySelectorAll("[data-delete-user]").forEach(button => {
+                button.addEventListener("click", () => removeManagedUser(button.dataset.deleteUser));
+            });
+        }
+
+        function editManagedUser(email) {
+            const user = managedUsers.find(item => item.useremail === email);
+            if (!user) return;
+            document.getElementById("userEmail").value = user.useremail;
+            document.getElementById("userEmail").disabled = true;
+            document.getElementById("userName").value = user.ho_ten;
+            document.getElementById("userPassword").value = "";
+            document.getElementById("userPassword").required = false;
+            document.getElementById("userRole").value = user.role;
+            document.getElementById("saveUserButton").textContent = "Lưu thay đổi";
+            document.getElementById("cancelUserEditButton").classList.remove("hidden");
+            document.getElementById("userForm").dataset.editing = "true";
+        }
+
+        function resetUserForm() {
+            const form = document.getElementById("userForm");
+            form.reset();
+            delete form.dataset.editing;
+            document.getElementById("userEmail").disabled = false;
+            document.getElementById("userPassword").required = true;
+            document.getElementById("saveUserButton").textContent = "Tạo user";
+            document.getElementById("cancelUserEditButton").classList.add("hidden");
+        }
+
+        async function saveManagedUser(event) {
+            event.preventDefault();
+            if (!isAdmin()) return;
+            const email = document.getElementById("userEmail").value.trim();
+            const password = document.getElementById("userPassword").value;
+            try {
+                const result = await api("saveUser", getSessionToken(), email,
+                    document.getElementById("userName").value,
+                    password,
+                    document.getElementById("userRole").value);
+                managedUsers = result.users;
+                renderManagedUsers();
+                resetUserForm();
+                showAppSuccess(result.message);
+            } catch (error) {
+                reportDataError("Lỗi lưu user", error);
+            }
+        }
+
+        async function removeManagedUser(email) {
+            if (!isAdmin() || !confirm(`Xóa tài khoản ${email}?`)) return;
+            try {
+                const result = await api("deleteUser", getSessionToken(), email);
+                managedUsers = result.users;
+                renderManagedUsers();
+                showAppSuccess(result.message);
+            } catch (error) {
+                reportDataError("Lỗi xóa user", error);
+            }
         }
 
         function reportDataError(title, error) {
@@ -752,6 +877,7 @@
         }
 
         async function refreshSalesFromSql() {
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được đồng bộ dữ liệu."));
             const token = getSessionToken();
             if (!token) return openAuthModal();
 
@@ -779,6 +905,7 @@
         }
 
         async function refreshReferenceTable(table) {
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được đồng bộ dữ liệu."));
             const token = getSessionToken();
             if (!token) return openAuthModal();
 
@@ -1006,10 +1133,10 @@
                         <div class="text-slate-500 truncate">${esc(g.head.muc_dich || g.head.ghi_chu)}</div>
                         <div class="text-slate-500 mt-1">${g.lines.length} dòng vật tư</div>
                     </button>
-                    <div class="flex gap-2 pt-1">
+                    ${isAdmin() ? `<div class="flex gap-2 pt-1">
                         <button onclick="approveVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 rounded-lg"><i class="fa-solid fa-check mr-1"></i>Duyệt</button>
                         <button onclick="rejectVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')" class="flex-1 bg-white hover:bg-red-50 text-red-600 border border-red-300 font-semibold py-1.5 rounded-lg"><i class="fa-solid fa-xmark mr-1"></i>Từ chối</button>
-                    </div>
+                    </div>` : ""}
                 </div>`).join("");
         }
 
@@ -1086,7 +1213,7 @@
                 `<div class="col-span-full">${field("Mục đích", h.muc_dich)}</div>`;
             dtSet("voucher", lines.map((r, i) => ({ ...r, _i: i + 1 })));
             const q = soCt.replace(/'/g, "\\'");
-            document.getElementById("vmActions").innerHTML = String(h.trang_thai).trim() === '1'
+            document.getElementById("vmActions").innerHTML = String(h.trang_thai).trim() === '1' && isAdmin()
                 ? `<button onclick="rejectVoucher('${q}')" class="px-4 py-2 text-xs font-semibold text-red-600 border border-red-300 rounded-lg hover:bg-red-50">Từ chối</button>
                    <button onclick="approveVoucher('${q}')" class="px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Duyệt</button>`
                 : `<button onclick="closeVoucherModal()" class="px-4 py-2 text-xs font-semibold bg-slate-100 rounded-lg hover:bg-slate-200">Đóng</button>`;
@@ -1098,9 +1225,15 @@
 
         function closeVoucherModal() { document.getElementById("voucherModal").classList.add("hidden"); }
 
-        // TODO: gọi API cập nhật trạng thái lên ERP
-        function approveVoucher(soCt) { alert(`Duyệt phiếu ${soCt}: chức năng cập nhật ERP chưa được triển khai.`); }
-        function rejectVoucher(soCt) { alert(`Từ chối phiếu ${soCt}: chức năng cập nhật ERP chưa được triển khai.`); }
+        // ERP write integration is not configured in the current GAS project.
+        function approveVoucher(soCt) {
+            if (!isAdmin()) return;
+            alert(`Duyệt phiếu ${soCt}: chưa cấu hình API cập nhật trạng thái lên ERP.`);
+        }
+        function rejectVoucher(soCt) {
+            if (!isAdmin()) return;
+            alert(`Từ chối phiếu ${soCt}: chưa cấu hình API cập nhật trạng thái lên ERP.`);
+        }
 
         function filterPurchaseTable() {
             const st = document.getElementById("purchaseStatusFilter").value;
