@@ -552,7 +552,7 @@
         let currentUser = null;
         let managedUsers = [];
 
-        document.addEventListener("DOMContentLoaded", () => {
+        function initializeApplication() {
             const now = new Date();
             document.getElementById("fromDate").value = toDateStr(new Date(now.getFullYear(), now.getMonth() - 4, 1));
             document.getElementById("toDate").value = toDateStr(now);
@@ -579,7 +579,13 @@
                     return loadApplicationData();
                 })
                 .catch(handleSessionError);
-        });
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initializeApplication, { once: true });
+        } else {
+            initializeApplication();
+        }
 
         function switchTab(tabName) {
             document.querySelectorAll(".top-tab").forEach(btn => btn.classList.remove("active"));
