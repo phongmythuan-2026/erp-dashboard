@@ -88,6 +88,9 @@
                     <i class="fa-solid fa-cart-flatbed"></i><span>Đề xuất mua hàng</span>
                     <span id="pendingBadgeMenu" class="bg-amber-500 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
                 </button>
+                <button onclick="switchTab('production')" id="nav-production" class="top-tab shrink-0 px-3 lg:px-4 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-industry"></i><span>Lệnh sản xuất</span>
+                </button>
                 <button onclick="switchTab('materials')" id="nav-materials" class="top-tab shrink-0 px-3 lg:px-4 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-boxes-packing"></i><span>Danh mục vật tư</span>
                 </button>
@@ -409,6 +412,57 @@
         </div>
 
         <!-- ================================================================= -->
+        <!-- MÀN HÌNH: LỆNH SẢN XUẤT                                           -->
+        <!-- ================================================================= -->
+        <div id="screen-production" class="space-y-6 hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <div class="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 gap-3">
+                    <div>
+                        <h2 class="font-bold text-slate-900 text-base flex items-center space-x-2">
+                            <i class="fa-solid fa-industry text-blue-600"></i>
+                            <span>Danh Sách Lệnh Sản Xuất</span>
+                        </h2>
+                        <p class="text-xs text-slate-500">Hiển thị toàn bộ dòng vật tư - bấm vào một dòng để xem lệnh (master-child)</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <button id="refreshProductionButton" onclick="refreshProductionFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-rotate"></i><span>Đọc mới từ SQL</span>
+                        </button>
+                        <input id="searchProductionInput" oninput="filterProductionTable()" type="search" placeholder="Tìm số lệnh, mã VT, tên VT, mã lô..." class="px-3 py-1.5 w-64 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <label class="font-semibold text-slate-600">Trạng thái:</label>
+                        <select id="productionStatusFilter" onchange="filterProductionTable()" class="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="ALL">-- Tất cả trạng thái --</option>
+                            <option value="2">Chờ xuất nguyên liệu</option>
+                            <option value="3">Đã cấp phát vật tư</option>
+                            <option value="4">Đang sản xuất</option>
+                            <option value="5">Hoàn thành</option>
+                            <option value="6">Hủy</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="tbl-wrap rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="p-3">Số CT</th>
+                                <th class="p-3">Ngày CT</th>
+                                <th class="p-3">Mã VT</th>
+                                <th class="p-3">Tên Vật Tư</th>
+                                <th class="p-3">ĐVT</th>
+                                <th class="p-3 text-right">Số Lượng</th>
+                                <th class="p-3 text-right">SL Thực Tế</th>
+                                <th class="p-3">Mã Lô</th>
+                                <th class="p-3 text-center">Trạng Thái</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productionTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
         <!-- MÀN HÌNH 3: DANH MỤC VẬT TƯ                                       -->
         <!-- ================================================================= -->
         <div id="screen-materials" class="space-y-6 hidden">
@@ -533,6 +587,28 @@
         </div>
     </div>
 
+    <!-- Modal chi tiết lệnh sản xuất (master-child) -->
+    <div id="productionModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center sm:p-4" onclick="if(event.target===this)closeProductionModal()">
+        <div class="bg-white w-full sm:max-w-5xl max-h-[92vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
+            <div class="flex items-center justify-between px-4 py-2 border-b border-slate-200">
+                <h3 class="font-bold text-slate-900 flex items-center space-x-2"><i class="fa-solid fa-industry text-blue-600"></i><span id="pmTitle">Lệnh sản xuất</span></h3>
+                <button onclick="closeProductionModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="overflow-y-auto p-3 sm:p-4 space-y-3">
+                <div id="pmMaster" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5"></div>
+                <div class="tbl-wrap rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
+                            <tr><th class="px-2.5 py-1.5">#</th><th class="px-2.5 py-1.5">Mã VT</th><th class="px-2.5 py-1.5">Tên vật tư</th><th class="px-2.5 py-1.5">ĐVT</th><th class="px-2.5 py-1.5 text-right">Số lượng</th><th class="px-2.5 py-1.5 text-right">SL thực tế</th><th class="px-2.5 py-1.5">Mã lô</th></tr>
+                        </thead>
+                        <tbody id="pmLines" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="pmActions" class="px-4 py-2 border-t border-slate-200 flex justify-end gap-2"></div>
+        </div>
+    </div>
+
     <!-- Modal thông tin vật tư -->
     <div id="materialModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[60] hidden flex items-end sm:items-center justify-center sm:p-4" onclick="if(event.target===this)closeMaterialModal()">
         <div class="bg-white w-full sm:max-w-lg max-h-[92vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
@@ -563,6 +639,7 @@
         
         const DT = {};
         let allPurchaseData = [];
+        let allProductionData = [];
         let allMaterialData = [];
         let rawSalesData = [];
         let materialMap = {};
@@ -612,6 +689,7 @@
 
             document.getElementById("screen-dashboard").classList.add("hidden");
             document.getElementById("screen-purchase").classList.add("hidden");
+            document.getElementById("screen-production").classList.add("hidden");
             document.getElementById("screen-materials").classList.add("hidden");
             document.getElementById("screen-users").classList.add("hidden");
 
@@ -749,7 +827,7 @@
 
         function applyPermissions() {
             document.getElementById("nav-users").classList.toggle("hidden", !isAdmin());
-            ["refreshSalesButton", "refreshPurchaseButton", "refreshMaterialsButton"].forEach(id => {
+            ["refreshSalesButton", "refreshPurchaseButton", "refreshProductionButton", "refreshMaterialsButton"].forEach(id => {
                 const button = document.getElementById(id);
                 if (button) button.classList.toggle("hidden", !isAdmin());
             });
@@ -953,7 +1031,7 @@
         }
 
         async function loadApplicationData() {
-            await Promise.all([loadDashboardData(), loadDeXuatMuaHang(), loadDanhMucVatTu()]);
+            await Promise.all([loadDashboardData(), loadDeXuatMuaHang(), loadLenhSanXuat(), loadDanhMucVatTu()]);
         }
 
         function updateRangeLabel(val) {
@@ -1440,6 +1518,150 @@
 
         function approveVoucher(soCt) { return updateVoucherStatus(soCt, "approve"); }
         function unapproveVoucher(soCt) { return updateVoucherStatus(soCt, "unapprove"); }
+
+        // =================================================================
+        // LỆNH SẢN XUẤT
+        // =================================================================
+        function productionBadge(r) {
+            const st = String(r.trang_thai).trim();
+            const cls = { '2': 'bg-amber-100 text-amber-800', '3': 'bg-sky-100 text-sky-700', '4': 'bg-indigo-100 text-indigo-700', '5': 'bg-emerald-100 text-emerald-700', '6': 'bg-red-100 text-red-700' }[st] || 'bg-slate-100 text-slate-600';
+            return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${cls}">${esc(r.ten_trang_thai || 'Trạng thái ' + st)}</span>`;
+        }
+
+        async function loadLenhSanXuat() {
+            const token = getSessionToken();
+            if (!token) return;
+            try {
+                const result = await api("getData", token, "lenh_san_xuat");
+                if (result.status === 'success') {
+                    allProductionData = result.data || [];
+                    filterProductionTable();
+                    return true;
+                }
+                throw new Error("Apps Script trả về dữ liệu lệnh sản xuất không hợp lệ.");
+            } catch (err) {
+                reportDataError("Lỗi tải Lệnh sản xuất", err);
+                return false;
+            }
+        }
+
+        function filterProductionTable() {
+            const st = document.getElementById("productionStatusFilter").value;
+            const kw = document.getElementById("searchProductionInput").value.trim().toLowerCase();
+            const rows = allProductionData.filter(r => {
+                if (st !== 'ALL' && String(r.trang_thai).trim() !== st) return false;
+                if (!kw) return true;
+                return [r.so_ct, r.ma_vt, r.ten_vt, r.ma_lo, r.ten_trang_thai]
+                    .some(v => String(v ?? "").toLowerCase().includes(kw));
+            });
+            dtSet("production", rows);
+        }
+
+        dtInit("production", {
+            tbody: "productionTableBody",
+            cols: [r => r.so_ct, r => r.ngay_ct, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0),
+                   r => Number(r.sl_thuc_te || 0), r => r.ma_lo, r => Number(r.trang_thai)],
+            row: r => `
+                <tr class="hover:bg-blue-50 transition cursor-pointer" onclick="openProduction('${esc(r.so_ct).replace(/'/g, "\\'")}')">
+                    <td class="px-2.5 py-2 font-bold text-blue-700 whitespace-nowrap">${esc(r.so_ct)}</td>
+                    <td class="px-2.5 py-2 text-slate-500 whitespace-nowrap">${esc(r.ngay_ct)}</td>
+                    <td class="px-2.5 py-2 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt, true)}</td>
+                    <td class="px-2.5 py-2 text-slate-800">${esc(r.ten_vt)}</td>
+                    <td class="px-2.5 py-2 text-slate-500">${esc(r.dvt)}</td>
+                    <td class="px-2.5 py-2 text-right font-bold">${Number(r.so_luong || 0).toLocaleString('vi-VN')}</td>
+                    <td class="px-2.5 py-2 text-right">${Number(r.sl_thuc_te || 0).toLocaleString('vi-VN')}</td>
+                    <td class="px-2.5 py-2 text-slate-600 whitespace-nowrap">${esc(r.ma_lo)}</td>
+                    <td class="px-2.5 py-2 text-center">${productionBadge(r)}</td>
+                </tr>`
+        });
+        dtInit("productionLines", {
+            tbody: "pmLines",
+            cols: [r => r._i, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0), r => Number(r.sl_thuc_te || 0), r => r.ma_lo],
+            row: r => `
+                <tr>
+                    <td class="px-2.5 py-1.5 text-slate-400">${r._i}</td>
+                    <td class="px-2.5 py-1.5 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt, true)}</td>
+                    <td class="px-2.5 py-1.5 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
+                    <td class="px-2.5 py-1.5 text-slate-500">${esc(r.dvt)}</td>
+                    <td class="px-2.5 py-1.5 text-right font-bold">${Number(r.so_luong || 0).toLocaleString('vi-VN')}</td>
+                    <td class="px-2.5 py-1.5 text-right">${Number(r.sl_thuc_te || 0).toLocaleString('vi-VN')}</td>
+                    <td class="px-2.5 py-1.5 text-slate-600 whitespace-nowrap">${esc(r.ma_lo)}</td>
+                </tr>`
+        });
+
+        function openProduction(soCt) {
+            const lines = allProductionData.filter(r => (r.so_ct || '') === soCt)
+                .sort((a, b) => Number(a.stt_rec0) - Number(b.stt_rec0));
+            if (!lines.length) return;
+            const h = lines[0];
+            const field = (l, v) => `<div class="flex gap-1.5 min-w-0"><span class="text-slate-400 shrink-0">${l}:</span><span class="font-semibold text-slate-800 break-words min-w-0">${esc(v) || '-'}</span></div>`;
+            document.getElementById("pmTitle").innerHTML = `Lệnh ${esc(soCt)} <span class="ml-2 align-middle">${productionBadge(h)}</span>`;
+            document.getElementById("pmMaster").innerHTML =
+                field("Ngày", h.ngay_ct) + field("Số dòng", lines.length) +
+                field("Tổng SL", sumBy(lines, r => Number(r.so_luong || 0)).toLocaleString('vi-VN')) +
+                field("Tổng SL thực tế", sumBy(lines, r => Number(r.sl_thuc_te || 0)).toLocaleString('vi-VN'));
+            dtSet("productionLines", lines.map((r, i) => ({ ...r, _i: i + 1 })));
+
+            const q = soCt.replace(/'/g, "\\'");
+            const st = Number(h.trang_thai);
+            let actionButton = "";
+            if (isAdmin()) {
+                if (st === 5) {
+                    actionButton = `<button onclick="updateProductionStatus('${q}','uncomplete')" class="px-4 py-2 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg">Bỏ hoàn thành</button>`;
+                } else if (st !== 6) {
+                    actionButton = `<button onclick="updateProductionStatus('${q}','complete')" class="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">Hoàn thành</button>`;
+                }
+            }
+            document.getElementById("pmActions").innerHTML =
+                `${actionButton}<button onclick="closeProductionModal()" class="px-4 py-2 text-xs font-semibold bg-slate-100 rounded-lg hover:bg-slate-200">Đóng</button>`;
+            document.getElementById("productionModal").classList.remove("hidden");
+        }
+
+        function closeProductionModal() { document.getElementById("productionModal").classList.add("hidden"); }
+
+        async function updateProductionStatus(soCt, action) {
+            if (!isAdmin()) return;
+            const order = allProductionData.find(r => String(r.so_ct || '') === soCt);
+            if (!order || !order.stt_rec) {
+                return reportDataError("Lỗi cập nhật lệnh sản xuất", new Error("Không tìm thấy mã stt_rec của lệnh."));
+            }
+            const label = action === "complete" ? "hoàn thành" : "bỏ hoàn thành";
+            if (!confirm(`Xác nhận ${label} lệnh sản xuất ${soCt}?`)) return;
+            try {
+                const result = await api("setProductionOrderStatus", getSessionToken(), order.stt_rec, soCt, action);
+                if (!await loadLenhSanXuat()) return;
+                closeProductionModal();
+                showAppSuccess(result.message);
+            } catch (error) {
+                reportDataError("Lỗi cập nhật trạng thái lệnh sản xuất", error);
+            }
+        }
+
+        async function refreshProductionFromSql() {
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được đồng bộ dữ liệu."));
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            const button = document.getElementById("refreshProductionButton");
+            const originalLabel = button.innerHTML;
+            button.disabled = true;
+            try {
+                const [from, to] = getDashboardDateRange();
+                const chunks = splitDateRange(from, to, 15);
+                let rowCount = 0;
+                for (let i = 0; i < chunks.length; i++) {
+                    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL ${i + 1}/${chunks.length}...</span>`;
+                    const part = await api("refreshReferenceData", token, "lenh_san_xuat", chunks[i][0], chunks[i][1]);
+                    rowCount += part.rowCount || 0;
+                }
+                if (!await loadLenhSanXuat()) return;
+                showAppSuccess(`Lệnh sản xuất ${from} → ${to}: đã đọc ${rowCount} dòng từ SQL (${chunks.length} đợt).`);
+            } catch (error) {
+                reportDataError("Lỗi đồng bộ lệnh sản xuất từ SQL", error);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalLabel;
+            }
+        }
 
         function filterPurchaseTable() {
             const st = document.getElementById("purchaseStatusFilter").value;
