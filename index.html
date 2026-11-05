@@ -118,25 +118,9 @@
         <!-- ================================================================= -->
         <!-- MÀN HÌNH 1: DASHBOARD BÁN HÀNG                                    -->
         <!-- ================================================================= -->
-        <div id="screen-dashboard" class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-4">
+        <div id="screen-dashboard" class="space-y-4">
 
-            <!-- CỘT PHẢI: PHIẾU ĐỀ XUẤT MUA HÀNG CHỜ DUYỆT -->
-            <aside class="order-2 xl:col-start-2 xl:row-start-1 min-w-0 self-start">
-              <div class="bg-amber-50/70 rounded-2xl shadow-sm border border-amber-200 p-3 space-y-2">
-                <div class="flex items-center justify-between border-b border-amber-200/60 pb-2 gap-2">
-                    <div class="flex items-center space-x-2 min-w-0">
-                        <div class="w-7 h-7 bg-amber-500 text-white rounded-lg flex items-center justify-center text-xs shadow-sm shrink-0">
-                            <i class="fa-solid fa-clock-rotate-left"></i>
-                        </div>
-                        <h3 class="font-bold text-slate-900 text-sm truncate">Phiếu Chờ Duyệt</h3>
-                    </div>
-                    <span id="pendingCountBadge" class="bg-amber-500 text-white font-extrabold text-[11px] px-2.5 py-1 rounded-full shadow-sm shrink-0">0 phiếu</span>
-                </div>
-                <div id="pendingPurchaseBody" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
-              </div>
-            </aside>
-
-          <div class="order-1 xl:col-start-1 xl:row-start-1 min-w-0 space-y-6">
+          <div class="min-w-0 space-y-6">
 
             <!-- BỘ ĐIỀU KIỆN PHÂN TÍCH BÁO CÁO (CHUẨN MẪU HÌNH 1) -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
@@ -1241,7 +1225,7 @@
                     allPurchaseData = result.data || [];
                     
                     const pendingRows = allPurchaseData.filter(item => String(item.trang_thai).trim() === '1');
-                    renderPendingPurchaseTable(pendingRows);
+                    renderPendingPurchaseBadge(pendingRows);
                     renderFullPurchaseTable(allPurchaseData);
                     return true;
                 }
@@ -1250,16 +1234,6 @@
                 reportDataError("Lỗi tải Đề xuất mua hàng", err);
                 return false;
             }
-        }
-
-        function groupVouchers(rows) {
-            const map = new Map();
-            rows.forEach(r => {
-                const k = r.so_ct || '';
-                if (!map.has(k)) map.set(k, { so_ct: k, head: r, lines: [] });
-                map.get(k).lines.push(r);
-            });
-            return [...map.values()];
         }
 
         function statusBadge(st) {
@@ -1271,31 +1245,11 @@
             return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Trạng thái ${esc(st)}</span>`;
         }
 
-        function renderPendingPurchaseTable(rows) {
-            const box = document.getElementById("pendingPurchaseBody");
-            const groups = groupVouchers(rows);
+        function renderPendingPurchaseBadge(rows) {
+            const count = new Set(rows.map(row => row.so_ct || '')).size;
             const menuBadge = document.getElementById("pendingBadgeMenu");
-            document.getElementById("pendingCountBadge").innerText = `${groups.length} phiếu`;
-            menuBadge.innerText = groups.length;
-            menuBadge.classList.toggle("hidden", groups.length === 0);
-
-            if (groups.length === 0) {
-                box.innerHTML = `<p class="p-4 text-center text-xs text-slate-400 italic">Không có phiếu nào đang chờ duyệt</p>`;
-                return;
-            }
-
-            box.innerHTML = groups.map(g => `
-                <div class="bg-white rounded-lg border border-amber-200 px-2.5 py-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 text-xs">
-                    <button onclick="openVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')" class="min-w-0 text-left">
-                        <div class="flex items-center justify-between gap-2">
-                            <span class="font-bold text-blue-700 hover:underline">${esc(g.so_ct)}</span>
-                            <span class="text-slate-400 text-[10px] shrink-0">${esc(g.head.ngay_ct)}</span>
-                        </div>
-                        <div class="text-slate-600 truncate mt-0.5">${esc(g.head.ten_bp || g.head.ma_bp)} · ${esc(g.head.fullname)}</div>
-                        <div class="text-slate-400 text-[10px] mt-0.5">${g.lines.length} dòng vật tư</div>
-                    </button>
-                    ${isAdmin() ? `<button onclick="approveVoucher('${esc(g.so_ct).replace(/'/g, "\\'")}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-semibold px-2 py-1.5 rounded-lg whitespace-nowrap"><i class="fa-solid fa-check mr-1"></i>Duyệt</button>` : ""}
-                </div>`).join("");
+            menuBadge.innerText = count;
+            menuBadge.classList.toggle("hidden", count === 0);
         }
 
         function renderFullPurchaseTable(rows) {
