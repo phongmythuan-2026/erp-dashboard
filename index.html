@@ -1559,6 +1559,9 @@
 
         dtInit("production", {
             tbody: "productionTableBody",
+            defaultSort: (a, b) => String(b.ngay_ct || "").localeCompare(String(a.ngay_ct || ""))
+                || String(b.so_ct || "").localeCompare(String(a.so_ct || ""), "vi", { numeric: true })
+                || Number(a.stt_rec0 || 0) - Number(b.stt_rec0 || 0),
             cols: [r => r.so_ct, r => r.ngay_ct, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0),
                    r => Number(r.sl_thuc_te || 0), r => r.ma_lo, r => Number(r.trang_thai)],
             row: r => `
@@ -1646,7 +1649,7 @@
             button.disabled = true;
             try {
                 const [from, to] = getDashboardDateRange();
-                const chunks = splitDateRange(from, to, 15);
+                const chunks = splitDateRange(from, to, 5);
                 let rowCount = 0;
                 for (let i = 0; i < chunks.length; i++) {
                     button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL ${i + 1}/${chunks.length}...</span>`;
@@ -1764,6 +1767,9 @@
         function dtRender(id) {
             const s = DT[id];
             let rows = s.rows;
+            if (s.sortCol < 0 && s.cfg.defaultSort) {
+                rows = [...rows].sort(s.cfg.defaultSort);
+            }
             if (s.sortCol >= 0) {
                 const get = s.cfg.cols[s.sortCol];
                 rows = [...rows].sort((a, b) => {
