@@ -573,7 +573,7 @@
 
         function initializeApplication() {
             const now = new Date();
-            setDateInput("fromDate", new Date(now.getFullYear(), now.getMonth() - 4, 1));
+            setDateInput("fromDate", new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
             setDateInput("toDate", now);
             if (!APPS_SCRIPT_URL || !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(APPS_SCRIPT_URL)) {
                 document.getElementById("loginButton").disabled = true;
@@ -1619,6 +1619,7 @@
             const y = now.getFullYear(), m = now.getMonth();
             const ranges = {
                 all: [new Date(y, m - 4, 1), now],
+                last30: [new Date(y, m, now.getDate() - 30), now],
                 month: [new Date(y, m, 1), now],
                 lastmonth: [new Date(y, m - 1, 1), new Date(y, m, 0)],
                 quarter: [new Date(y, Math.floor(m / 3) * 3, 1), now],
@@ -1634,7 +1635,7 @@
             ["filterCategory", "filterStaff", "searchInput"].forEach(id => document.getElementById(id).value = "");
             document.getElementById("amountRange").value = 0;
             updateRangeLabel(0);
-            setQuickDate('year');
+            setQuickDate('last30');
         }
     </script>
 </body>
