@@ -523,7 +523,7 @@
                 <div class="tbl-wrap rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs text-slate-700">
                         <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
-                            <tr><th class="px-2.5 py-1.5">#</th><th class="px-2.5 py-1.5">Mã VT</th><th class="px-2.5 py-1.5">Tên vật tư</th><th class="px-2.5 py-1.5">ĐVT</th><th class="px-2.5 py-1.5 text-right">Số lượng</th><th class="px-2.5 py-1.5">Diễn giải</th><th class="px-2.5 py-1.5">Ghi chú</th></tr>
+                            <tr><th class="px-2.5 py-1.5">#</th><th class="px-2.5 py-1.5">Mã VT</th><th class="px-2.5 py-1.5">Tên vật tư</th><th class="px-2.5 py-1.5">ĐVT</th><th class="px-2.5 py-1.5 text-right">Số lượng</th><th class="px-2.5 py-1.5">Diễn giải</th>                            <th class="px-2.5 py-1.5">Ghi chú</th><th class="px-2.5 py-1.5"></th></tr>
                         </thead>
                         <tbody id="vmLines" class="divide-y divide-slate-100"></tbody>
                     </table>
@@ -1278,18 +1278,61 @@
         });
         dtInit("voucher", {
             tbody: "vmLines",
-            cols: [r => r._i, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0), r => r.dien_giai, r => r.ghi_chu],
-            row: r => `
+            cols: [r => r._i, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0), r => r.dien_giai, r => r.ghi_chu, r => ""],
+            row: r => {
+                const editing = editingLine === String(r.stt_rec0);
+                const inp = "w-full px-1.5 py-1 border border-slate-300 rounded text-xs";
+                const ctl = !canEditVoucher(r) ? "" : editing
+                    ? `<button onclick="saveVoucherLine('${esc(r.stt_rec0)}')" class="px-2 py-1 bg-emerald-600 text-white rounded text-[11px] font-semibold">Lưu</button> <button onclick="cancelVoucherLine()" class="px-2 py-1 bg-slate-100 rounded text-[11px] font-semibold">Hủy</button>`
+                    : `<button onclick="editVoucherLine('${esc(r.stt_rec0)}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold"><i class="fa-solid fa-pen"></i> Sửa</button>`;
+                return `
                 <tr data-stt-rec="${esc(r.stt_rec)}" data-stt-rec0="${esc(r.stt_rec0)}">
                     <td class="px-2.5 py-1.5 text-slate-400">${r._i}</td>
                     <td class="px-2.5 py-1.5 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt, true)}</td>
                     <td class="px-2.5 py-1.5 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
                     <td class="px-2.5 py-1.5 text-slate-500">${esc(r.dvt)}</td>
-                    <td class="px-2.5 py-1.5 text-right font-bold">${Number(r.so_luong || 0).toLocaleString('vi-VN')}</td>
-                    <td class="px-2.5 py-1.5 text-slate-600">${esc(r.dien_giai)}</td>
-                    <td class="px-2.5 py-1.5 text-slate-500">${esc(r.ghi_chu)}</td>
-                </tr>`
+                    <td class="px-2.5 py-1.5 text-right font-bold">${editing ? `<input id="vlQty" type="number" min="0" step="any" value="${esc(r.so_luong)}" class="${inp} w-24 text-right">` : Number(r.so_luong || 0).toLocaleString('vi-VN')}</td>
+                    <td class="px-2.5 py-1.5 text-slate-600">${editing ? `<input id="vlNote" maxlength="500" value="${esc(r.dien_giai)}" class="${inp}">` : esc(r.dien_giai)}</td>
+                    <td class="px-2.5 py-1.5 text-slate-500">${editing ? `<input id="vlRemark" maxlength="500" value="${esc(r.ghi_chu)}" class="${inp}">` : esc(r.ghi_chu)}</td>
+                    <td class="px-2.5 py-1.5 whitespace-nowrap">${ctl}</td>
+                </tr>`;
+            }
         });
+
+        let editingLine = null;
+        function canEditVoucher(r) {
+            const st = Number(r.trang_thai);
+            return isAdmin() && (st === 1 || st === 2);
+        }
+        function editVoucherLine(sttRec0) {
+            editingLine = String(sttRec0);
+            dtRender("voucher");
+        }
+        function cancelVoucherLine() {
+            editingLine = null;
+            dtRender("voucher");
+        }
+        async function saveVoucherLine(sttRec0) {
+            const line = allPurchaseData.find(r =>
+                (r.so_ct || '') === document.getElementById("voucherModal").dataset.soCt &&
+                String(r.stt_rec0) === String(sttRec0));
+            if (!line) return;
+            const qtyText = document.getElementById("vlQty").value.trim();
+            const qty = Number(qtyText);
+            if (qtyText === "" || !isFinite(qty) || qty < 0) return reportDataError("Lỗi cập nhật dòng vật tư", new Error("Số lượng không hợp lệ."));
+            const dienGiai = document.getElementById("vlNote").value;
+            const ghiChu = document.getElementById("vlRemark").value;
+            if (!confirm(`Xác nhận lưu dòng ${line.ma_vt} của phiếu ${line.so_ct}?`)) return;
+            try {
+                const result = await api("updatePurchaseLine", getSessionToken(), line.stt_rec, line.stt_rec0, line.so_ct, line.ma_vt, qty, ghiChu, dienGiai);
+                editingLine = null;
+                if (!await loadDeXuatMuaHang()) return;
+                openVoucher(line.so_ct);
+                showAppSuccess(result.message);
+            } catch (error) {
+                reportDataError("Lỗi cập nhật dòng vật tư", error);
+            }
+        }
 
         function matLink(ma, text, stop) {
             if (!ma) return esc(text);
@@ -1315,6 +1358,7 @@
             const lines = allPurchaseData.filter(r => (r.so_ct || '') === soCt)
                 .sort((a, b) => Number(a.stt_rec0) - Number(b.stt_rec0));
             if (!lines.length) return;
+            editingLine = null;
             const h = lines[0];
             const field = (l, v) => `<div class="flex gap-1.5 min-w-0"><span class="text-slate-400 shrink-0">${l}:</span><span class="font-semibold text-slate-800 break-words min-w-0">${esc(v) || '-'}</span></div>`;
             document.getElementById("vmTitle").innerHTML = `Phiếu ${esc(soCt)} <span class="ml-2 align-middle">${statusBadge(h.trang_thai)}</span>`;
