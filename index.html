@@ -370,7 +370,19 @@
                         <p class="text-xs text-slate-500">Hiển thị toàn bộ dòng vật tư - bấm vào một dòng để xem phiếu (master-child)</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 text-xs">
-                        <button id="refreshPurchaseButton" onclick="refreshReferenceTable('de_xuat_mua_hang')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold flex items-center gap-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-semibold text-slate-600">Từ</span>
+                            <div class="relative w-32">
+                                <div id="purFromDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
+                                <input type="date" id="purFromDate" onclick="this.showPicker && this.showPicker()" onchange="onPurchaseDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            </div>
+                            <span class="font-semibold text-slate-600">đến</span>
+                            <div class="relative w-32">
+                                <div id="purToDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
+                                <input type="date" id="purToDate" onclick="this.showPicker && this.showPicker()" onchange="onPurchaseDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            </div>
+                        </div>
+                        <button id="refreshPurchaseButton" onclick="refreshPurchaseFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold flex items-center gap-1.5">
                             <i class="fa-solid fa-arrows-rotate"></i><span>Tải mới từ SQL</span>
                         </button>
                         <input id="searchPurchaseInput" oninput="filterPurchaseTable()" type="search" placeholder="Tìm số phiếu, bộ phận, người đề xuất, vật tư..." class="px-3 py-1.5 w-64 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -425,6 +437,18 @@
                         <p class="text-xs text-slate-500">Hiển thị toàn bộ dòng vật tư - bấm vào một dòng để xem lệnh (master-child)</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-semibold text-slate-600">Từ</span>
+                            <div class="relative w-32">
+                                <div id="proFromDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
+                                <input type="date" id="proFromDate" onclick="this.showPicker && this.showPicker()" onchange="onProductionDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            </div>
+                            <span class="font-semibold text-slate-600">đến</span>
+                            <div class="relative w-32">
+                                <div id="proToDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
+                                <input type="date" id="proToDate" onclick="this.showPicker && this.showPicker()" onchange="onProductionDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            </div>
+                        </div>
                         <button id="refreshProductionButton" onclick="refreshProductionFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold flex items-center gap-1.5">
                             <i class="fa-solid fa-arrows-rotate"></i><span>Đọc mới từ SQL</span>
                         </button>
@@ -476,7 +500,7 @@
                         <p class="text-xs text-slate-500">Đã đồng bộ từ bảng danh_muc_vat_tu (indmvt & InDmNhVt)</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
-                        <button id="refreshMaterialsButton" onclick="refreshReferenceTable('danh_muc_vat_tu')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                        <button id="refreshMaterialsButton" onclick="refreshMaterialsFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
                             <i class="fa-solid fa-arrows-rotate"></i><span>Tải mới từ SQL</span>
                         </button>
                         <div class="relative w-full sm:w-72">
@@ -652,6 +676,10 @@
             const now = new Date();
             setDateInput("fromDate", new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
             setDateInput("toDate", now);
+            ["pur", "pro"].forEach(prefix => {
+                setDateInput(prefix + "FromDate", new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
+                setDateInput(prefix + "ToDate", now);
+            });
             if (!APPS_SCRIPT_URL || !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(APPS_SCRIPT_URL)) {
                 document.getElementById("loginButton").disabled = true;
                 showAuthMessage("Chưa cấu hình URL triển khai Apps Script trong erp-dashboard/config.js.", true);
@@ -858,6 +886,7 @@
             const token = getSessionToken();
             clearSessionToken();
             currentUser = null;
+            partCache.clear();
             applyPermissions();
             if (token) {
                 try { await api("logout", token); }
@@ -909,7 +938,7 @@
             const button = document.querySelector("#userForm button[title='Tải lại danh sách bộ phận']");
             button.disabled = true;
             try {
-                const departmentResult = await api("getDepartments", getSessionToken(), true, ...getDashboardDateRange());
+                const departmentResult = await api("getDepartments", getSessionToken(), true);
                 managedDepartments = departmentResult.rows;
                 renderDepartmentOptions();
                 showAppSuccess(departmentResult.message);
@@ -1068,6 +1097,148 @@
         const revOf = r => Number(r.doanh_thu_thuan || 0);
         const sumBy = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
 
+        // Cache IndexedDB theo tháng: so phiên bản manifest, chỉ tải tháng mới/đổi.
+        const partCache = {
+            db: null,
+            open() {
+                if (this.db) return this.db;
+                this.db = new Promise((resolve, reject) => {
+                    const req = indexedDB.open("erpPartitions", 1);
+                    req.onupgradeneeded = () => req.result.createObjectStore("m");
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+                return this.db;
+            },
+            async get(key) {
+                const db = await this.open();
+                return new Promise(resolve => {
+                    const r = db.transaction("m").objectStore("m").get(key);
+                    r.onsuccess = () => resolve(r.result);
+                    r.onerror = () => resolve(undefined);
+                });
+            },
+            async put(key, value) {
+                const db = await this.open();
+                return new Promise(resolve => {
+                    const tx = db.transaction("m", "readwrite");
+                    tx.objectStore("m").put(value, key);
+                    tx.oncomplete = tx.onerror = () => resolve();
+                });
+            },
+            async clear() {
+                try {
+                    const db = await this.open();
+                    db.transaction("m", "readwrite").objectStore("m").clear();
+                } catch (e) { /* bỏ qua */ }
+            }
+        };
+
+        async function loadPartitioned(table, from, to) {
+            const token = getSessionToken();
+            const user = (currentUser && currentUser.useremail) || "";
+            const wanted = [];
+            for (let y = +from.slice(0, 4), m = +from.slice(5, 7); y < +to.slice(0, 4) || (y === +to.slice(0, 4) && m <= +to.slice(5, 7));) {
+                wanted.push(`${y}-${String(m).padStart(2, "0")}`);
+                if (++m > 12) { m = 1; y++; }
+            }
+            const manifest = await api("getPartitionManifest", token, table);
+            const versions = (manifest && manifest.months) || {};
+            const byMonth = {};
+            const missing = [];
+            for (const month of wanted) {
+                if (!versions[month]) continue;
+                let cached;
+                try { cached = await partCache.get(`${user}|${table}|${month}`); } catch (e) { cached = undefined; }
+                if (cached && cached.v === versions[month].v) byMonth[month] = cached.rows;
+                else missing.push(month);
+            }
+            const batches = [];
+            for (let i = 0; i < missing.length; i += 4) batches.push(missing.slice(i, i + 4));
+            await Promise.all(batches.map(async batch => {
+                const res = await api("getPartitionMonths", token, table, batch);
+                for (const month of batch) {
+                    const part = res.months && res.months[month];
+                    if (!part) continue;
+                    byMonth[month] = part.rows || [];
+                    try { await partCache.put(`${user}|${table}|${month}`, { v: part.v, rows: part.rows || [] }); } catch (e) { /* bỏ qua */ }
+                }
+            }));
+            const rows = [];
+            for (const month of wanted) {
+                for (const r of byMonth[month] || []) {
+                    const d = String(r.ngay_ct || "").slice(0, 10);
+                    if (d >= from && d <= to) rows.push(r);
+                }
+            }
+            return rows.sort((a, b) => String(b.ngay_ct).localeCompare(String(a.ngay_ct)) || String(b.so_ct || "").localeCompare(String(a.so_ct || "")));
+        }
+
+        function onPurchaseDateChange() { renderDateLabel("purFromDate"); renderDateLabel("purToDate"); loadDeXuatMuaHang(); }
+        function onProductionDateChange() { renderDateLabel("proFromDate"); renderDateLabel("proToDate"); loadLenhSanXuat(); }
+
+        function getScreenRange(prefix) {
+            const range = [getDateInput(prefix + "FromDate"), getDateInput(prefix + "ToDate")];
+            if (!range[0] || !range[1]) throw new Error("Từ ngày/Đến ngày phải có định dạng dd/mm/yyyy.");
+            return range;
+        }
+
+        async function refreshPurchaseFromSql() {
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được đồng bộ dữ liệu."));
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            const button = document.getElementById("refreshPurchaseButton");
+            const originalLabel = button.innerHTML;
+            button.disabled = true;
+            try {
+                const [from, to] = getScreenRange("pur");
+                const chunks = splitDateRange(from, to, 5);
+                let rowCount = 0;
+                for (let i = 0; i < chunks.length; i++) {
+                    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL ${i + 1}/${chunks.length}...</span>`;
+                    const part = await api("refreshReferenceData", token, "de_xuat_mua_hang", chunks[i][0], chunks[i][1]);
+                    rowCount += part.rowCount || 0;
+                }
+                if (!await loadDeXuatMuaHang()) return;
+                showAppSuccess(`Đề xuất mua hàng ${from} → ${to}: đã đọc ${rowCount} dòng từ SQL (${chunks.length} đợt).`);
+            } catch (error) {
+                reportDataError("Lỗi đồng bộ đề xuất mua hàng từ SQL", error);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalLabel;
+            }
+        }
+
+        async function refreshMaterialsFromSql() {
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được đồng bộ dữ liệu."));
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            const button = document.getElementById("refreshMaterialsButton");
+            const originalLabel = button.innerHTML;
+            button.disabled = true;
+            try {
+                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL...</span>';
+                let res = await api("refreshMaterials", token, "delta", 0);
+                let total = res.rowCount || 0;
+                if (res.needFull) {
+                    let offset = 0;
+                    do {
+                        res = await api("refreshMaterials", token, "full", offset);
+                        total += res.rowCount || 0;
+                        offset = res.nextOffset || 0;
+                        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đã đọc ${total} dòng...</span>`;
+                    } while (!res.done);
+                }
+                if (!await loadDanhMucVatTu()) return;
+                showAppSuccess(`Danh mục vật tư: đã cập nhật ${total} dòng từ SQL.`);
+            } catch (error) {
+                reportDataError("Lỗi đồng bộ danh mục vật tư từ SQL", error);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalLabel;
+            }
+        }
+
         async function loadDashboardData() {
             const token = getSessionToken();
             if (!token) {
@@ -1079,15 +1250,17 @@
             const toDate = getDateInput("toDate");
 
             try {
-                const result = await api("getData", token, "ban_hang", fromDate, toDate);
-
-                if (result.status === 'success') {
+                try {
+                    rawSalesData = await loadPartitioned("ban_hang", fromDate, toDate);
+                } catch (cacheError) {
+                    console.warn("Cache lỗi, tải trực tiếp:", cacheError);
+                    const result = await api("getData", token, "ban_hang", fromDate, toDate);
+                    if (result.status !== 'success') throw new Error("Apps Script trả về dữ liệu bán hàng không hợp lệ.");
                     rawSalesData = result.data || [];
-                    fillSalesFilters();
-                    applyDashboardFilters();
-                    return true;
                 }
-                throw new Error("Apps Script trả về dữ liệu bán hàng không hợp lệ.");
+                fillSalesFilters();
+                applyDashboardFilters();
+                return true;
             } catch (err) {
                 reportDataError("Lỗi tải dữ liệu Dashboard", err);
                 return false;
@@ -1315,17 +1488,15 @@
             if (!token) return;
 
             try {
-                const result = await api("getData", token, "de_xuat_mua_hang");
-
-                if (result.status === 'success') {
-                    allPurchaseData = result.data || [];
+                const [from, to] = getScreenRange("pur");
+                allPurchaseData = await loadPartitioned("de_xuat_mua_hang", from, to);
+                {
                     
                     const pendingRows = allPurchaseData.filter(item => String(item.trang_thai).trim() === '1');
                     renderPendingPurchaseBadge(pendingRows);
                     renderFullPurchaseTable(allPurchaseData);
                     return true;
                 }
-                throw new Error("Apps Script trả về dữ liệu đề xuất mua hàng không hợp lệ.");
             } catch (err) {
                 reportDataError("Lỗi tải Đề xuất mua hàng", err);
                 return false;
@@ -1532,13 +1703,10 @@
             const token = getSessionToken();
             if (!token) return;
             try {
-                const result = await api("getData", token, "lenh_san_xuat");
-                if (result.status === 'success') {
-                    allProductionData = result.data || [];
-                    filterProductionTable();
-                    return true;
-                }
-                throw new Error("Apps Script trả về dữ liệu lệnh sản xuất không hợp lệ.");
+                const [from, to] = getScreenRange("pro");
+                allProductionData = await loadPartitioned("lenh_san_xuat", from, to);
+                filterProductionTable();
+                return true;
             } catch (err) {
                 reportDataError("Lỗi tải Lệnh sản xuất", err);
                 return false;
@@ -1648,7 +1816,7 @@
             const originalLabel = button.innerHTML;
             button.disabled = true;
             try {
-                const [from, to] = getDashboardDateRange();
+                const [from, to] = getScreenRange("pro");
                 const chunks = splitDateRange(from, to, 5);
                 let rowCount = 0;
                 for (let i = 0; i < chunks.length; i++) {
