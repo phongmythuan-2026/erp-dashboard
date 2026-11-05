@@ -987,7 +987,7 @@
             renderDateLabel("toDate");
             if (getDateInput("fromDate") && getDateInput("toDate")) loadDashboardData();
         }
-        const revOf = r => Number(r.doanh_thu_thuan || r.tien2 || 0);
+        const revOf = r => Number(r.doanh_thu_thuan || 0);
         const sumBy = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
 
         async function loadDashboardData() {
@@ -1301,8 +1301,7 @@
 
         let editingLine = null;
         function canEditVoucher(r) {
-            const st = Number(r.trang_thai);
-            return isAdmin() && (st === 1 || st === 2);
+            return isAdmin();
         }
         function editVoucherLine(sttRec0) {
             editingLine = String(sttRec0);
