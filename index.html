@@ -1022,6 +1022,16 @@
             return range;
         }
 
+        function splitDateRange(from, to, days) {
+            const chunks = [];
+            const day = 86400000;
+            for (let t = Date.parse(from); t <= Date.parse(to); t += days * day) {
+                const end = Math.min(t + (days - 1) * day, Date.parse(to));
+                chunks.push([new Date(t).toISOString().slice(0, 10), new Date(end).toISOString().slice(0, 10)]);
+            }
+            return chunks;
+        }
+
         async function refreshSalesFromSql() {
             if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được đồng bộ dữ liệu."));
             const token = getSessionToken();
@@ -1032,7 +1042,15 @@
             button.disabled = true;
             button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL...</span>';
             try {
-                const result = await api("refreshSalesData", token, ...getDashboardDateRange());
+                const [from, to] = getDashboardDateRange();
+                const chunks = splitDateRange(from, to, 3);
+                let rowCount = 0;
+                for (let i = 0; i < chunks.length; i++) {
+                    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL ${i + 1}/${chunks.length}...</span>`;
+                    const part = await api("refreshSalesData", token, chunks[i][0], chunks[i][1]);
+                    rowCount += part.rowCount || 0;
+                }
+                const result = { message: `Bán hàng ${from} → ${to}: đã đọc ${rowCount} dòng từ SQL (${chunks.length} đợt).` };
                 if (!await loadDashboardData()) return;
                 const status = document.getElementById("appError");
                 document.getElementById("appErrorMessage").textContent = result.message;
