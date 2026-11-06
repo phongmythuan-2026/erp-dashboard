@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS: xuất báo cáo / import Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css">
     <style>
@@ -105,7 +107,7 @@
                     <i class="fa-solid fa-right-from-bracket"></i>
                     <span class="hidden sm:inline">Đăng xuất</span>
                 </button>
-                <button onclick="window.print()" class="px-3 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition flex items-center space-x-1.5">
+                <button onclick="exportCurrentScreen()" class="px-3 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition flex items-center space-x-1.5">
                     <i class="fa-solid fa-file-export"></i>
                     <span class="hidden sm:inline">Xuất Báo Cáo</span>
                 </button>
@@ -500,6 +502,13 @@
                         <p class="text-xs text-slate-500">Đã đồng bộ từ bảng danh_muc_vat_tu (indmvt & InDmNhVt)</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
+                        <input type="file" id="materialImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importMaterialsFromFile(this)">
+                        <button id="downloadMaterialTemplateButton" onclick="downloadMaterialTemplate()" class="hidden px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-arrow-down"></i><span>Tải template</span>
+                        </button>
+                        <button id="importMaterialsButton" onclick="document.getElementById('materialImportFile').click()" class="hidden px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-import"></i><span>Import Excel</span>
+                        </button>
                         <button id="refreshMaterialsButton" onclick="refreshMaterialsFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
                             <i class="fa-solid fa-arrows-rotate"></i><span>Tải mới từ SQL</span>
                         </button>
@@ -520,6 +529,7 @@
                                 <th class="p-3">Nhóm Vật Tư chính</th>
                                 <th class="p-3">Nhóm Vật Tư 1</th>
                                 <th class="p-3">Mã & Tên Nhóm MSP</th>
+                                <th class="p-3">Cập nhật (ldate)</th>
                             </tr>
                         </thead>
                         <tbody id="materialTableBody" class="divide-y divide-slate-100">
@@ -855,7 +865,8 @@
 
         function applyPermissions() {
             document.getElementById("nav-users").classList.toggle("hidden", !isAdmin());
-            ["refreshSalesButton", "refreshPurchaseButton", "refreshProductionButton", "refreshMaterialsButton"].forEach(id => {
+            ["refreshSalesButton", "refreshPurchaseButton", "refreshProductionButton", "refreshMaterialsButton",
+             "importMaterialsButton", "downloadMaterialTemplateButton"].forEach(id => {
                 const button = document.getElementById(id);
                 if (button) button.classList.toggle("hidden", !isAdmin());
             });
@@ -1527,6 +1538,8 @@
             tbody: "fullPurchaseTableBody",
             cols: [r => r.so_ct, r => r.ngay_ct, r => r.ten_bp || r.ma_bp, r => r.fullname || r.ma_kh, r => r.muc_dich,
                    r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0), r => r.dien_giai, r => r.ghi_chu, r => Number(r.trang_thai)],
+            exportCols: [r => r.so_ct, r => r.ngay_ct, r => r.ten_bp || r.ma_bp, r => r.fullname || r.ma_kh, r => r.muc_dich,
+                   r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0), r => r.dien_giai, r => r.ghi_chu, r => purchaseStatusText(r.trang_thai)],
             row: r => `
                 <tr class="hover:bg-blue-50 transition cursor-pointer" onclick="openVoucher('${esc(r.so_ct).replace(/'/g, "\\'")}')">
                     <td class="px-2.5 py-2 font-bold text-blue-700 whitespace-nowrap">${esc(r.so_ct)}</td>
@@ -1732,6 +1745,8 @@
                 || Number(a.stt_rec0 || 0) - Number(b.stt_rec0 || 0),
             cols: [r => r.so_ct, r => r.ngay_ct, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0),
                    r => Number(r.sl_thuc_te || 0), r => r.ma_lo, r => Number(r.trang_thai)],
+            exportCols: [r => r.so_ct, r => r.ngay_ct, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0),
+                   r => Number(r.sl_thuc_te || 0), r => r.ma_lo, r => r.ten_trang_thai || `Trạng thái ${r.trang_thai}`],
             row: r => `
                 <tr class="hover:bg-blue-50 transition cursor-pointer" onclick="openProduction('${esc(r.so_ct).replace(/'/g, "\\'")}')">
                     <td class="px-2.5 py-2 font-bold text-blue-700 whitespace-nowrap">${esc(r.so_ct)}</td>
@@ -1876,7 +1891,9 @@
 
         dtInit("materials", {
             tbody: "materialTableBody",
-            cols: [r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => r.ten_nhvt || r.ma_nhvt, r => r.ten_nhvt1 || r.ma_nhvt1, r => r.ten_msp || r.ma_msp],
+            defaultSort: (a, b) => String(b.ldate || "").localeCompare(String(a.ldate || ""))
+                || String(a.ma_vt || "").localeCompare(String(b.ma_vt || ""), "vi", { numeric: true }),
+            cols: [r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => r.ten_nhvt || r.ma_nhvt, r => r.ten_nhvt1 || r.ma_nhvt1, r => r.ten_msp || r.ma_msp, r => r.ldate || ""],
             row: r => `<tr class="hover:bg-blue-50 transition cursor-pointer" onclick="openMaterial('${esc(r.ma_vt).replace(/'/g, "\\'")}')">
                     <td class="p-3 font-bold text-blue-600">${esc(r.ma_vt)}</td>
                     <td class="p-3 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
@@ -1884,8 +1901,181 @@
                     <td class="p-3 text-slate-600">${esc(r.ten_nhvt || r.ma_nhvt)}</td>
                     <td class="p-3 text-slate-600">${esc(r.ten_nhvt1 || r.ma_nhvt1)}</td>
                     <td class="p-3 text-slate-500">${esc(r.ten_msp || r.ma_msp)}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ldate)}</td>
                 </tr>`
         });
+
+        // =================================================================
+        // IMPORT DANH MỤC VẬT TƯ TỪ EXCEL (CÓ TEMPLATE)
+        // =================================================================
+        const MATERIAL_IMPORT_COLUMNS = ["ma_vt", "ten_vt", "dvt", "ma_nhvt", "ten_nhvt", "ma_nhvt1", "ten_nhvt1", "ma_msp", "ten_msp"];
+        const MATERIAL_IMPORT_CHUNK = 3000;
+
+        function requireXlsx() {
+            if (typeof XLSX === "undefined") throw new Error("Chưa tải được thư viện Excel. Vui lòng kiểm tra kết nối mạng và tải lại trang.");
+        }
+
+        function downloadMaterialTemplate() {
+            try {
+                requireXlsx();
+                const wb = XLSX.utils.book_new();
+                const data = XLSX.utils.aoa_to_sheet([MATERIAL_IMPORT_COLUMNS]);
+                data["!cols"] = MATERIAL_IMPORT_COLUMNS.map(() => ({ wch: 22 }));
+                XLSX.utils.book_append_sheet(wb, data, "danh_muc_vat_tu");
+                const guide = XLSX.utils.aoa_to_sheet([
+                    ["Cột", "Ý nghĩa", "Bắt buộc", "Ví dụ"],
+                    ["ma_vt", "Mã vật tư (khóa; trùng mã sẽ được cập nhật)", "Có", "CP-2608500"],
+                    ["ten_vt", "Tên vật tư", "Có", "BỘT CỐT TẮC CP-2608500"],
+                    ["dvt", "Đơn vị tính", "Không", "kg"],
+                    ["ma_nhvt", "Mã nhóm vật tư chính", "Không", "TP"],
+                    ["ten_nhvt", "Tên nhóm vật tư chính", "Không", "THỰC PHẨM"],
+                    ["ma_nhvt1", "Mã nhóm vật tư 1", "Không", "TP-BD-CP"],
+                    ["ten_nhvt1", "Tên nhóm vật tư 1", "Không", "Bột cốt thực vật"],
+                    ["ma_msp", "Mã nhóm MSP", "Không", "TP-BD"],
+                    ["ten_msp", "Tên nhóm MSP", "Không", "Dịch cốt, bột cốt thực vật"],
+                    [],
+                    ["Lưu ý", "Nhập dữ liệu ở sheet danh_muc_vat_tu, giữ nguyên dòng tiêu đề. Mã mới được thêm, mã đã có được ghi đè các cột trên; cột ldate được cập nhật thành thời điểm import."]
+                ]);
+                guide["!cols"] = [{ wch: 14 }, { wch: 60 }, { wch: 10 }, { wch: 32 }];
+                XLSX.utils.book_append_sheet(wb, guide, "Huong_dan");
+                XLSX.writeFile(wb, "template_import_danh_muc_vat_tu.xlsx");
+            } catch (error) {
+                reportDataError("Lỗi tạo template", error);
+            }
+        }
+
+        async function readMaterialImportRows(file) {
+            requireXlsx();
+            const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+            const sheetName = wb.SheetNames.includes("danh_muc_vat_tu") ? "danh_muc_vat_tu" : wb.SheetNames[0];
+            if (!sheetName) throw new Error("File không có sheet dữ liệu.");
+            const table = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: "", raw: false });
+            const headers = (table[0] || []).map(h => String(h).trim().toLowerCase());
+            const index = Object.fromEntries(MATERIAL_IMPORT_COLUMNS.map(c => [c, headers.indexOf(c)]));
+            if (index.ma_vt < 0 || index.ten_vt < 0) {
+                throw new Error("File thiếu cột bắt buộc ma_vt/ten_vt ở dòng tiêu đề. Hãy dùng template.");
+            }
+            const rows = [];
+            const seen = new Map();
+            table.slice(1).forEach((cells, i) => {
+                if (!cells.some(c => String(c).trim() !== "")) return;
+                const line = i + 2;
+                const row = {};
+                MATERIAL_IMPORT_COLUMNS.forEach(c => { row[c] = index[c] < 0 ? "" : String(cells[index[c]] ?? "").trim(); });
+                if (!row.ma_vt) throw new Error(`Dòng ${line}: thiếu mã vật tư.`);
+                if (!row.ten_vt) throw new Error(`Dòng ${line}: thiếu tên vật tư (${row.ma_vt}).`);
+                const key = row.ma_vt.toLowerCase();
+                if (seen.has(key)) throw new Error(`Dòng ${line}: mã ${row.ma_vt} trùng với dòng ${seen.get(key)}.`);
+                seen.set(key, line);
+                rows.push(row);
+            });
+            if (!rows.length) throw new Error("File không có dòng dữ liệu nào.");
+            return rows;
+        }
+
+        async function importMaterialsFromFile(input) {
+            const file = input.files && input.files[0];
+            input.value = "";
+            if (!file) return;
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được import dữ liệu."));
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            const button = document.getElementById("importMaterialsButton");
+            const originalLabel = button.innerHTML;
+            button.disabled = true;
+            try {
+                const rows = await readMaterialImportRows(file);
+                const exists = rows.filter(r => materialMap[r.ma_vt]).length;
+                if (!confirm(`Import ${rows.length} vật tư từ "${file.name}"?\n- Cập nhật: ${exists} mã đã có\n- Thêm mới: ${rows.length - exists} mã`)) return;
+                let inserted = 0, updated = 0;
+                for (let i = 0; i < rows.length; i += MATERIAL_IMPORT_CHUNK) {
+                    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang import ${Math.min(i + MATERIAL_IMPORT_CHUNK, rows.length)}/${rows.length}...</span>`;
+                    const res = await api("importMaterials", token, rows.slice(i, i + MATERIAL_IMPORT_CHUNK));
+                    inserted += res.inserted || 0;
+                    updated += res.updated || 0;
+                }
+                if (!await loadDanhMucVatTu()) return;
+                showAppSuccess(`Import ${rows.length} vật tư thành công (thêm ${inserted}, cập nhật ${updated}).`);
+            } catch (error) {
+                reportDataError("Lỗi import danh mục vật tư", error);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalLabel;
+            }
+        }
+
+        // =================================================================
+        // XUẤT BÁO CÁO THEO DỮ LIỆU ĐANG HIỂN THỊ TRÊN FRONTEND
+        // =================================================================
+        const purchaseStatusText = st => ({ "1": "Chờ duyệt", "2": "Đã duyệt", "3": "Thực hiện", "4": "Hoàn thành" }[String(st).trim()] || `Trạng thái ${st}`);
+
+        function dtExportTable(id) {
+            const s = DT[id];
+            const headers = [...s.tbody.closest("table").tHead.querySelectorAll("th")].map(th => th.textContent.trim());
+            const getters = s.cfg.exportCols || s.cfg.cols;
+            return { headers, rows: dtSortedRows(id).map(r => getters.map(get => get(r) ?? "")) };
+        }
+
+        function exportCurrentScreen() {
+            try {
+                requireXlsx();
+                const screen = ["dashboard", "purchase", "production", "materials", "users"]
+                    .find(name => !document.getElementById(`screen-${name}`).classList.contains("hidden")) || "dashboard";
+                const range = prefix => `${getDateInput(prefix + "FromDate")} → ${getDateInput(prefix + "ToDate")}`;
+                let title, tableId, info = [];
+                let table;
+                if (screen === "dashboard") {
+                    title = "Bán hàng"; tableId = "sales";
+                    info.push(["Khoảng ngày", `${getDateInput("fromDate")} → ${getDateInput("toDate")}`]);
+                    const labelOf = id => { const sel = document.getElementById(id); return sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : ""; };
+                    info.push(["Nhóm vật tư", labelOf("filterCategory")], ["Nhân viên kinh doanh", labelOf("filterStaff")],
+                        ["Từ khóa", document.getElementById("searchInput").value.trim()],
+                        ["Dòng từ (doanh thu)", Number(document.getElementById("amountRange").value)]);
+                    table = dtExportTable(tableId);
+                    const sum = i => table.rows.reduce((t, r) => t + (Number(r[i]) || 0), 0);
+                    table.rows.push(["TỔNG CỘNG", "", "", "", "", sum(5), sum(6), sum(7), sum(8)]);
+                } else if (screen === "purchase") {
+                    title = "Đề xuất mua hàng"; tableId = "purchase";
+                    info.push(["Khoảng ngày", range("pur")], ["Trạng thái", document.getElementById("purchaseStatusFilter").selectedOptions[0].textContent],
+                        ["Từ khóa", document.getElementById("searchPurchaseInput").value.trim()]);
+                    table = dtExportTable(tableId);
+                } else if (screen === "production") {
+                    title = "Lệnh sản xuất"; tableId = "production";
+                    info.push(["Khoảng ngày", range("pro")], ["Trạng thái", document.getElementById("productionStatusFilter").selectedOptions[0].textContent],
+                        ["Từ khóa", document.getElementById("searchProductionInput").value.trim()]);
+                    table = dtExportTable(tableId);
+                } else if (screen === "materials") {
+                    title = "Danh mục vật tư"; tableId = "materials";
+                    info.push(["Từ khóa", document.getElementById("searchMaterialInput").value.trim()]);
+                    table = dtExportTable(tableId);
+                } else {
+                    title = "Người dùng";
+                    table = {
+                        headers: ["Email", "Họ tên", "Bộ phận", "Vai trò"],
+                        rows: managedUsers.map(u => [u.useremail, u.ho_ten, u.ma_bp || "", u.role === "admin" ? "Admin" : "User - chỉ xem"])
+                    };
+                }
+                const exported = table.rows.length - (screen === "dashboard" && table.rows.length ? 1 : 0);
+                const wb = XLSX.utils.book_new();
+                const sheet = XLSX.utils.aoa_to_sheet([table.headers, ...table.rows]);
+                sheet["!cols"] = table.headers.map((h, i) => ({
+                    wch: Math.min(60, Math.max(String(h).length, ...table.rows.slice(0, 200).map(r => String(r[i] ?? "").length)) + 2)
+                }));
+                XLSX.utils.book_append_sheet(wb, sheet, title.slice(0, 31));
+                const now = new Date();
+                const stamp = `${toDateStr(now).replace(/-/g, "")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
+                const infoSheet = XLSX.utils.aoa_to_sheet([
+                    ["Báo cáo", title], ...info.filter(([, v]) => v !== "" && v != null),
+                    ["Số dòng xuất", exported], ["Người xuất", (currentUser && currentUser.useremail) || ""],
+                    ["Thời điểm xuất", now.toLocaleString("vi-VN")]
+                ]);
+                infoSheet["!cols"] = [{ wch: 24 }, { wch: 50 }];
+                XLSX.utils.book_append_sheet(wb, infoSheet, "Thong_tin");
+                XLSX.writeFile(wb, `PEROMA_${title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d").replace(/\s+/g, "_")}_${stamp}.xlsx`);
+            } catch (error) {
+                reportDataError("Lỗi xuất báo cáo", error);
+            }
+        }
 
         function filterMaterialTable() {
             const kw = document.getElementById("searchMaterialInput").value.toLowerCase();
@@ -1932,7 +2122,7 @@
         function dtGo(id, page) { DT[id].page = page; dtRender(id); }
         function dtSize(id, size) { DT[id].size = Number(size); DT[id].page = 1; dtRender(id); }
 
-        function dtRender(id) {
+        function dtSortedRows(id) {
             const s = DT[id];
             let rows = s.rows;
             if (s.sortCol < 0 && s.cfg.defaultSort) {
@@ -1947,6 +2137,12 @@
                     return String(x ?? "").localeCompare(String(y ?? ""), "vi", { numeric: true }) * s.dir;
                 });
             }
+            return rows;
+        }
+
+        function dtRender(id) {
+            const s = DT[id];
+            const rows = dtSortedRows(id);
 
             s.tbody.closest("table").tHead.querySelectorAll("th").forEach((th, i) => {
                 const ico = th.querySelector(".sort-ico");
@@ -2010,18 +2206,34 @@
             return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num || 0);
         }
 
-        function setQuickDate(type) {
+        async function setQuickDate(type) {
             const now = new Date();
             const y = now.getFullYear(), m = now.getMonth();
+            if (type === "all") {
+                try {
+                    const manifest = await api("getPartitionManifest", getSessionToken(), "ban_hang");
+                    if (!manifest || manifest.status !== "success") {
+                        throw new Error("Không tải được danh sách tháng bán hàng.");
+                    }
+                    const months = Object.keys(manifest.months || {}).sort();
+                    if (!months.length) throw new Error("Chưa có dữ liệu bán hàng theo tháng.");
+                    const [year, month] = months[0].split("-").map(Number);
+                    setDateInput("fromDate", new Date(year, month - 1, 1));
+                    setDateInput("toDate", now);
+                    await loadDashboardData();
+                } catch (error) {
+                    reportDataError("Lỗi tải toàn bộ dữ liệu bán hàng", error);
+                }
+                return;
+            }
             const ranges = {
-                all: [new Date(y, m - 4, 1), now],
                 last30: [new Date(y, m, now.getDate() - 30), now],
                 month: [new Date(y, m, 1), now],
                 lastmonth: [new Date(y, m - 1, 1), new Date(y, m, 0)],
                 quarter: [new Date(y, Math.floor(m / 3) * 3, 1), now],
                 year: [new Date(y, 0, 1), now]
             };
-            const [from, to] = ranges[type] || ranges.all;
+            const [from, to] = ranges[type] || [new Date(y, m - 4, 1), now];
             setDateInput("fromDate", from);
             setDateInput("toDate", to);
             loadDashboardData();
