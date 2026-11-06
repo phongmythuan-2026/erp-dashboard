@@ -128,71 +128,79 @@
           <div class="min-w-0 space-y-6">
 
             <!-- BỘ ĐIỀU KIỆN PHÂN TÍCH BÁO CÁO (CHUẨN MẪU HÌNH 1) -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-                <div class="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 gap-3">
-                    <div class="flex items-center space-x-2">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2 min-w-0">
                         <i class="fa-solid fa-sliders text-blue-600"></i>
                         <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Bộ Điều Kiện Phân Tích Báo Cáo</h2>
                         <span id="recordCountBadge" class="text-xs font-semibold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200">Hiển thị 0 / 0 giao dịch</span>
                     </div>
-
-                    <div class="flex items-center space-x-2 text-xs">
-                        <span class="text-slate-400 font-medium">Chọn nhanh:</span>
-                        <button onclick="setQuickDate('all')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition font-medium">Tất cả</button>
-                        <button onclick="setQuickDate('month')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition font-medium">Tháng này</button>
-                        <button onclick="setQuickDate('lastmonth')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition font-medium">Tháng trước</button>
-                        <button onclick="setQuickDate('quarter')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition font-medium">Quý này</button>
-                        <button onclick="setQuickDate('year')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition font-medium">Năm nay</button>
-                        <button onclick="resetFilters()" class="px-2.5 py-1 text-red-600 hover:bg-red-50 rounded-md transition font-medium flex items-center space-x-1">
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <button onclick="resetFilters()" class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition font-medium inline-flex items-center gap-1.5">
                             <i class="fa-solid fa-rotate-left"></i> <span>Đặt lại</span>
                         </button>
-                        <button id="refreshSalesButton" onclick="refreshSalesFromSql()" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md transition font-semibold flex items-center gap-1.5">
+                        <button id="refreshSalesButton" onclick="refreshSalesFromSql()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold inline-flex items-center gap-1.5">
                             <i class="fa-solid fa-arrows-rotate"></i><span>Đọc mới từ SQL</span>
                         </button>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 text-xs">
-                    <div>
-                        <label class="block font-bold text-slate-600 mb-1">Từ ngày</label>
+                <div class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4 text-xs">
+                    <span class="text-slate-500 font-semibold mr-1">Chọn nhanh:</span>
+                    <button onclick="setQuickDate('all')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition font-medium">Tất cả</button>
+                    <button onclick="setQuickDate('month')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition font-medium">Tháng này</button>
+                    <button onclick="setQuickDate('lastmonth')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition font-medium">Tháng trước</button>
+                    <button onclick="setQuickDate('quarter')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition font-medium">Quý này</button>
+                    <button onclick="setQuickDate('year')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition font-medium">Năm nay</button>
+                </div>
+
+                <div class="tbl-wrap" role="region" aria-label="Điều kiện lọc theo ngày, nhóm vật tư và nhân viên kinh doanh" tabindex="0">
+                  <div class="grid grid-cols-4 min-w-[640px] gap-3 text-xs">
+                    <div class="min-w-0">
+                        <label for="fromDate" class="block font-bold text-slate-600 mb-1.5">Từ ngày</label>
                         <div class="relative">
                             <div id="fromDateLabel" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
                             <i class="fa-regular fa-calendar absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none"></i>
                             <input type="date" id="fromDate" onclick="this.showPicker && this.showPicker()" onchange="onDateInputChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                         </div>
                     </div>
-                    <div>
-                        <label class="block font-bold text-slate-600 mb-1">Đến ngày</label>
+                    <div class="min-w-0">
+                        <label for="toDate" class="block font-bold text-slate-600 mb-1.5">Đến ngày</label>
                         <div class="relative">
                             <div id="toDateLabel" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
                             <i class="fa-regular fa-calendar absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none"></i>
                             <input type="date" id="toDate" onclick="this.showPicker && this.showPicker()" onchange="onDateInputChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                         </div>
                     </div>
-                    <div>
-                        <label class="block font-bold text-slate-600 mb-1">Nhóm vật tư</label>
+                    <div class="min-w-0">
+                        <label for="filterCategory" class="block font-bold text-slate-600 mb-1.5">Nhóm vật tư</label>
                         <select id="filterCategory" onchange="applyDashboardFilters()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             <option value="">-- Tất cả nhóm vật tư --</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block font-bold text-slate-600 mb-1">Nhân viên kinh doanh</label>
+                    <div class="min-w-0">
+                        <label for="filterStaff" class="block font-bold text-slate-600 mb-1.5">Nhân viên kinh doanh</label>
                         <select id="filterStaff" onchange="applyDashboardFilters()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             <option value="">-- Tất cả --</option>
                         </select>
                     </div>
+                  </div>
                 </div>
 
-                <div class="flex flex-wrap items-center justify-between pt-2 gap-4">
-                    <div class="flex items-center space-x-3 w-full sm:w-1/2">
-                        <label class="text-xs font-bold text-slate-600 whitespace-nowrap">Dòng từ:</label>
-                        <input type="range" id="amountRange" min="0" max="100000000" step="1000000" value="0" oninput="updateRangeLabel(this.value)" onchange="applyDashboardFilters()" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
-                        <span id="rangeLabel" class="text-xs font-bold text-blue-600 min-w-[80px]">0 ₫</span>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="min-w-0">
+                        <div class="flex items-center justify-between gap-3 mb-2">
+                            <label for="amountRange" class="font-bold text-slate-600">Dòng từ</label>
+                            <span id="rangeLabel" class="font-bold text-blue-600 whitespace-nowrap">0 ₫</span>
+                        </div>
+                        <input type="range" id="amountRange" min="0" max="100000000" step="1000000" value="0" oninput="updateRangeLabel(this.value)" onchange="applyDashboardFilters()" class="block w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
                     </div>
-
-                    <div class="relative w-full sm:w-80">
-                        <input type="text" id="searchInput" onkeyup="applyDashboardFilters()" placeholder="Tìm theo mã đơn, khách hàng, vật tư..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                    <div class="min-w-0">
+                        <label for="searchInput" class="block font-bold text-slate-600 mb-1.5">Tìm kiếm</label>
+                        <div class="relative">
+                            <input type="text" id="searchInput" onkeyup="applyDashboardFilters()" placeholder="Tìm theo mã đơn, khách hàng, vật tư..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -540,30 +548,10 @@
             </div>
         </div>
 
-        <div id="screen-users" class="space-y-6 hidden">
-            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-                <div class="flex items-center justify-between gap-3">
-                    <div>
-                    <h2 class="font-bold text-slate-900 text-base">Quản lý người dùng</h2>
-                        <p class="text-xs text-slate-500 mt-1">Chỉ admin được tạo tài khoản, đổi vai trò hoặc đặt lại mật khẩu.</p>
-                    </div>
-                    <button type="button" onclick="openUserForm()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold whitespace-nowrap">
-                        <i class="fa-solid fa-plus mr-1"></i>Tạo mới user
-                    </button>
-                </div>
-            </section>
-            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-                <div class="tbl-wrap rounded-xl border border-slate-200">
-                    <table class="w-full text-left text-sm text-slate-700">
-                        <thead class="bg-slate-50 text-xs font-bold text-slate-500 border-b border-slate-200">
-                            <tr><th class="p-3">Email</th><th class="p-3">Họ tên</th><th class="p-3">Mã bộ phận</th><th class="p-3">Vai trò</th><th class="p-3 text-right">Thao tác</th></tr>
-                        </thead>
-                        <tbody id="usersTableBody" class="divide-y divide-slate-100"></tbody>
-                    </table>
-                </div>
-            </section>
+        <div id="screen-users" class="hidden">
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
             <section id="syncSettingsSection" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-                <div class="flex items-start justify-between gap-3">
+                <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <h2 class="font-bold text-slate-900 text-base">Đồng bộ SQL Server → JSON (chạy nền GitHub)</h2>
                         <p class="text-xs text-slate-500 mt-1">Công tắc chỉ điều khiển các lượt đồng bộ GitHub mới, không dừng lượt đang chạy hoặc lịch và thao tác tải SQL của Apps Script. GitHub cần được thiết lập riêng. Lịch được kiểm tra mỗi 30 phút và có thể chạy trễ (giờ Việt Nam).</p>
@@ -598,6 +586,30 @@
                     <button id="saveSyncButton" type="button" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold whitespace-nowrap">Lưu cài đặt</button>
                 </div>
             </section>
+            <div class="min-w-0 space-y-6">
+                <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 class="font-bold text-slate-900 text-base">Quản lý người dùng</h2>
+                            <p class="text-xs text-slate-500 mt-1">Chỉ admin được tạo tài khoản, đổi vai trò hoặc đặt lại mật khẩu.</p>
+                        </div>
+                        <button type="button" onclick="openUserForm()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold whitespace-nowrap">
+                            <i class="fa-solid fa-plus mr-1"></i>Tạo mới user
+                        </button>
+                    </div>
+                </section>
+                <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <div class="tbl-wrap rounded-xl border border-slate-200">
+                        <table class="w-full text-left text-sm text-slate-700">
+                            <thead class="bg-slate-50 text-xs font-bold text-slate-500 border-b border-slate-200">
+                                <tr><th class="p-3">Email</th><th class="p-3">Họ tên</th><th class="p-3">Mã bộ phận</th><th class="p-3">Vai trò</th><th class="p-3 text-right">Thao tác</th></tr>
+                            </thead>
+                            <tbody id="usersTableBody" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+          </div>
         </div>
 
     </main>
