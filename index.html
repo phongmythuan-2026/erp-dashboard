@@ -562,6 +562,42 @@
                     </table>
                 </div>
             </section>
+            <section id="syncSettingsSection" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h2 class="font-bold text-slate-900 text-base">Đồng bộ SQL Server → JSON (chạy nền GitHub)</h2>
+                        <p class="text-xs text-slate-500 mt-1">Công tắc chỉ điều khiển các lượt đồng bộ GitHub mới, không dừng lượt đang chạy hoặc lịch và thao tác tải SQL của Apps Script. GitHub cần được thiết lập riêng. Lịch được kiểm tra mỗi 30 phút và có thể chạy trễ (giờ Việt Nam).</p>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 whitespace-nowrap cursor-pointer">
+                        <input id="syncEnabled" type="checkbox" class="w-5 h-5 accent-blue-600">
+                        <span id="syncEnabledLabel">Đang tắt</span>
+                    </label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-xs font-bold text-slate-500 mb-1.5">Giờ chạy mỗi ngày (tối đa 6)</div>
+                        <div id="syncTimes" class="flex flex-wrap gap-2"></div>
+                        <button type="button" id="syncAddTime" class="mt-2 px-3 py-1.5 text-xs text-blue-700 border border-blue-200 hover:bg-blue-50 rounded-lg"><i class="fa-solid fa-plus mr-1"></i>Thêm mốc giờ</button>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-500 mb-1.5">Dữ liệu được đồng bộ</div>
+                        <div id="syncTables" class="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-slate-700">
+                            <label><input type="checkbox" value="sales" class="mr-1">Bán hàng</label>
+                            <label><input type="checkbox" value="purchase" class="mr-1">Đề xuất mua hàng</label>
+                            <label><input type="checkbox" value="production" class="mr-1">Lệnh sản xuất</label>
+                            <label><input type="checkbox" value="materials" class="mr-1">Danh mục vật tư</label>
+                            <label><input type="checkbox" value="departments" class="mr-1">Bộ phận</label>
+                        </div>
+                        <label class="block mt-2 text-xs text-slate-600">Bán hàng đọc lại
+                            <input id="syncSalesDays" type="number" min="1" max="60" value="7" class="w-16 mx-1 px-2 py-1 border border-slate-300 rounded text-sm"> ngày gần nhất mỗi lần chạy
+                        </label>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                    <div id="syncStatus" class="text-xs text-slate-500"></div>
+                    <button id="saveSyncButton" type="button" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold whitespace-nowrap">Lưu cài đặt</button>
+                </div>
+            </section>
         </div>
 
     </main>
@@ -733,7 +769,7 @@
 
             document.getElementById(`screen-${tabName}`).classList.remove("hidden");
             window.scrollTo({ top: 0 });
-            if (tabName === "users") loadManagedUsers();
+            if (tabName === "users") { loadManagedUsers(); loadSyncSettings(); }
         }
 
         function openAuthModal() { document.getElementById("authModal").classList.remove("hidden"); }
@@ -979,6 +1015,85 @@
             body.querySelectorAll("[data-delete-user]").forEach(button => {
                 button.addEventListener("click", () => removeManagedUser(button.dataset.deleteUser));
             });
+        }
+
+        let syncUiReady = false;
+
+        function syncTimeInput(value) {
+            const wrap = document.createElement("span");
+            wrap.className = "inline-flex items-center border border-slate-300 rounded-lg overflow-hidden";
+            wrap.innerHTML = `<input type="time" required value="${esc(value)}" class="px-2 py-1 text-sm outline-none">` +
+                `<button type="button" title="Xóa mốc giờ" class="px-2 text-slate-400 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>`;
+            wrap.querySelector("button").addEventListener("click", () => wrap.remove());
+            return wrap;
+        }
+
+        function updateSyncEnabledLabel() {
+            const on = document.getElementById("syncEnabled").checked;
+            const label = document.getElementById("syncEnabledLabel");
+            label.textContent = on ? "Đang bật" : "Đang tắt";
+            label.className = on ? "text-green-700" : "text-slate-500";
+        }
+
+        function renderSyncSettings(settings) {
+            document.getElementById("syncEnabled").checked = settings.enabled;
+            updateSyncEnabledLabel();
+            const times = document.getElementById("syncTimes");
+            times.innerHTML = "";
+            settings.times.forEach(time => times.appendChild(syncTimeInput(time)));
+            document.querySelectorAll("#syncTables input").forEach(box => { box.checked = settings.tables.includes(box.value); });
+            document.getElementById("syncSalesDays").value = settings.salesDays;
+            const when = value => value
+                ? new Date(value).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "";
+            const status = settings.status;
+            const parts = [];
+            if (status.lastRunAt) {
+                parts.push(`Lần chạy gần nhất: ${esc(when(status.lastRunAt))} - ${status.lastResult === "success" ? "thành công" : "<span class='text-red-600 font-semibold'>lỗi</span>"} (${Number(status.durationSec || 0)}s)`);
+                if (status.lastResult !== "success") parts.push(esc(status.lastMessage));
+            } else {
+                parts.push("Chưa có lần chạy nào.");
+            }
+            if (status.consecutiveFailures >= 3) parts.push("<span class='text-red-600 font-semibold'>Đã tự khóa do lỗi liên tiếp - lưu lại cài đặt để mở.</span>");
+            if (settings.updatedAt) parts.push(`Cài đặt lưu lúc ${esc(when(settings.updatedAt))} bởi ${esc(settings.updatedBy)}`);
+            document.getElementById("syncStatus").innerHTML = parts.join("<br>");
+        }
+
+        async function loadSyncSettings() {
+            if (!isAdmin()) return;
+            if (!syncUiReady) {
+                syncUiReady = true;
+                document.getElementById("syncEnabled").addEventListener("change", updateSyncEnabledLabel);
+                document.getElementById("syncAddTime").addEventListener("click", () => {
+                    const times = document.getElementById("syncTimes");
+                    if (times.children.length >= 6) return reportDataError("Giờ chạy", new Error("Tối đa 6 mốc giờ chạy mỗi ngày."));
+                    times.appendChild(syncTimeInput("12:00"));
+                });
+                document.getElementById("saveSyncButton").addEventListener("click", saveSyncSettings);
+            }
+            try {
+                renderSyncSettings(await api("getSyncSettings", getSessionToken()));
+            } catch (error) {
+                reportDataError("Lỗi tải cài đặt đồng bộ", error);
+            }
+        }
+
+        async function saveSyncSettings() {
+            const button = document.getElementById("saveSyncButton");
+            const settings = {
+                enabled: document.getElementById("syncEnabled").checked,
+                times: [...document.querySelectorAll("#syncTimes input")].map(input => input.value).filter(Boolean),
+                tables: [...document.querySelectorAll("#syncTables input:checked")].map(box => box.value),
+                salesDays: Number(document.getElementById("syncSalesDays").value)
+            };
+            button.disabled = true;
+            try {
+                renderSyncSettings(await api("saveSyncSettings", getSessionToken(), settings));
+                showAppSuccess(settings.enabled ? "Đã bật lịch đồng bộ GitHub trong cài đặt." : "Đã tắt các lượt đồng bộ GitHub mới trong cài đặt.");
+            } catch (error) {
+                reportDataError("Lỗi lưu cài đặt đồng bộ", error);
+            } finally {
+                button.disabled = false;
+            }
         }
 
         function editManagedUser(email) {
