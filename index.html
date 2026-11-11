@@ -277,9 +277,9 @@
             </div>
 
             <!-- Biểu đồ báo cáo -->
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <!-- Biểu đồ 1: Xu hướng Doanh thu & Lợi nhuận -->
-                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                     <div class="mb-4">
                         <h3 class="font-bold text-slate-900 text-sm">Xu Hướng Doanh Thu & Trả Lại Theo Ngày</h3>
                         <p class="text-xs text-slate-400">Tự động biến đổi theo bộ lọc khoảng thời gian chọn</p>
@@ -290,7 +290,7 @@
                 </div>
 
                 <!-- Biểu đồ 2: Cơ cấu Doanh thu -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                     <div class="mb-4">
                         <h3 class="font-bold text-slate-900 text-sm">Cơ Cấu Doanh Thu Theo Nhóm Vật Tư</h3>
                         <p class="text-xs text-slate-400">Tỷ trọng đóng góp dòng sản phẩm</p>
@@ -301,7 +301,7 @@
                 </div>
 
                 <!-- Biểu đồ 3: Top nhân viên kinh doanh -->
-                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                     <div class="mb-4">
                         <h3 class="font-bold text-slate-900 text-sm">Top Nhân Viên Kinh Doanh Đóng Góp Doanh Số Cao Nhất</h3>
                         <p class="text-xs text-slate-400">Xếp hạng doanh thu theo nhân viên kinh doanh</p>
@@ -314,16 +314,16 @@
                 <!-- Biểu đồ 4: Top khách hàng đóng góp -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                     <div class="mb-4">
-                        <h3 class="font-bold text-slate-900 text-sm">Top Khách Hàng Đóng Góp Doanh Số Cao Nhất</h3>
-                        <p class="text-xs text-slate-400">Phân tích giá trị tích lũy theo đối tác/khách hàng</p>
+                        <h3 class="font-bold text-slate-900 text-sm">Top 20 Khách Hàng Đóng Góp Doanh Số Cao Nhất</h3>
+                        <p class="text-xs text-slate-400">Xếp hạng doanh thu theo khách hàng</p>
                     </div>
-                    <div class="relative h-72">
+                    <div id="customerBarChartContainer" class="relative h-72">
                         <canvas id="customerBarChart"></canvas>
                     </div>
                 </div>
 
                 <!-- Báo cáo doanh thu theo tháng, cho phép so sánh nhiều năm -->
-                <div class="xl:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
                         <div>
                             <h3 class="font-bold text-slate-900 text-sm">Doanh Thu Theo Tháng</h3>
@@ -1710,9 +1710,10 @@
                 datasets: [{ label: 'Doanh số', data: staff.map(s => s[1]), backgroundColor: '#6366f1', borderRadius: 6 }]
             }, { indexAxis: 'y' });
 
-            const cust = groupSum(rows, r => r.ten_kh || r.ma_kh).slice(0, 5);
+            const cust = groupSum(rows, r => r.ten_kh || r.ma_kh).slice(0, 20);
+            document.getElementById("customerBarChartContainer").style.height = `${Math.max(288, cust.length * 36)}px`;
             createChart('customerBarChart', 'bar', {
-                labels: cust.map(c => c[0].length > 22 ? c[0].slice(0, 21) + "…" : c[0]),
+                labels: cust.map(c => c[0]),
                 datasets: [{ label: 'Doanh số', data: cust.map(c => c[1]), backgroundColor: '#0ea5e9', borderRadius: 6 }]
             }, { indexAxis: 'y' });
         }
