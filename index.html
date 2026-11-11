@@ -306,7 +306,7 @@
                         <h3 class="font-bold text-slate-900 text-sm">Top Nhân Viên Kinh Doanh Đóng Góp Doanh Số Cao Nhất</h3>
                         <p class="text-xs text-slate-400">Xếp hạng doanh thu theo nhân viên kinh doanh</p>
                     </div>
-                    <div class="relative h-72">
+                    <div id="channelChartContainer" class="relative h-72">
                         <canvas id="channelChart"></canvas>
                     </div>
                 </div>
@@ -1703,9 +1703,10 @@
                 datasets: [{ data: cats.map(c => c[1]), backgroundColor: palette }]
             });
 
-            const staff = groupSum(rows, r => r.ten_nvkd || r.ma_nhomkd).slice(0, 5);
+            const staff = groupSum(rows, r => r.ten_nvkd || r.ma_nhomkd);
+            document.getElementById("channelChartContainer").style.height = `${Math.max(288, staff.length * 40)}px`;
             createChart('channelChart', 'bar', {
-                labels: staff.map(s => s[0].length > 22 ? s[0].slice(0, 21) + "…" : s[0]),
+                labels: staff.map(s => s[0]),
                 datasets: [{ label: 'Doanh số', data: staff.map(s => s[1]), backgroundColor: '#6366f1', borderRadius: 6 }]
             }, { indexAxis: 'y' });
 
