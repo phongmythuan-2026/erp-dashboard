@@ -1678,6 +1678,7 @@
         }
 
         function fillSalesFilters() {
+            closeSalesSearch();
             const fill = (id, values) => {
                 const sel = document.getElementById(id);
                 const cur = sel.value;
@@ -1706,6 +1707,162 @@
             product.innerHTML = product.options[0].outerHTML + products.map(code =>
                 `<option value="${esc(JSON.stringify(code))}">${esc(ptnLabel(code))}</option>`).join("");
             product.value = selectedProduct;
+            syncSearchableSalesFilters();
+        }
+
+        const searchableSalesFilterIds = ["filterBusinessGroup", "filterStaff", "filterCategory", "filterCategory1", "filterPtn"];
+        const salesSearchControls = new Map();
+        let openSalesSearch = null;
+
+        function searchableText(text) {
+            return text.toLocaleLowerCase("vi").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+        }
+
+        function syncSearchableSalesFilters() {
+            salesSearchControls.forEach(({ select, input }) => {
+                input.value = select.value ? select.selectedOptions[0].textContent : "";
+            });
+        }
+
+        function closeSalesSearch(restore = true) {
+            if (!openSalesSearch) return;
+            const control = openSalesSearch;
+            control.menu.hidden = true;
+            control.input.setAttribute("aria-expanded", "false");
+            control.input.removeAttribute("aria-activedescendant");
+            if (restore) control.input.value = control.select.value ? control.select.selectedOptions[0].textContent : "";
+            openSalesSearch = null;
+        }
+
+        function renderSalesSearch(control, query) {
+            const { select, input, menu } = control;
+            const rect = input.getBoundingClientRect();
+            const width = Math.min(Math.max(rect.width, 320), window.innerWidth - 16);
+            menu.style.width = `${width}px`;
+            menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))}px`;
+            menu.style.top = `${Math.min(rect.bottom + 4, window.innerHeight - 80)}px`;
+            menu.style.maxHeight = `${Math.max(60, Math.min(280, window.innerHeight - Math.min(rect.bottom + 4, window.innerHeight - 80) - 8))}px`;
+            const term = searchableText(query.trim());
+            const matches = [...select.options].slice(1).filter(option => searchableText(option.textContent).includes(term));
+            const displayed = matches.slice(0, 100);
+            menu.innerHTML = displayed.map((option, index) =>
+                `<div id="${esc(menu.id)}-${index}" role="option" aria-selected="${option.value === select.value}" data-index="${index}" class="px-3 py-2 cursor-pointer hover:bg-blue-50 text-slate-700 break-words">${esc(option.textContent)}</div>`).join("")
+                || '<div class="px-3 py-2 text-slate-500">Không tìm thấy kết quả.</div>';
+            if (matches.length > displayed.length) {
+                menu.insertAdjacentHTML("beforeend", `<div class="px-3 py-2 text-slate-500">Hiển thị 100 / ${matches.length} kết quả. Nhập thêm để tìm.</div>`);
+            }
+            control.matches = displayed;
+            control.active = -1;
+            input.removeAttribute("aria-activedescendant");
+            menu.hidden = false;
+            input.setAttribute("aria-expanded", "true");
+        }
+
+        function selectSalesSearchOption(control, option) {
+            control.select.value = option.value;
+            closeSalesSearch();
+            applyDashboardFilters();
+        }
+
+        function initializeSearchableSalesFilters() {
+            searchableSalesFilterIds.forEach(id => {
+                const select = document.getElementById(id);
+                const label = document.querySelector(`label[for="${id}"]`);
+                const wrapper = document.createElement("div");
+                wrapper.className = "relative";
+                const input = document.createElement("input");
+                input.id = `${id}Search`;
+                input.type = "text";
+                input.autocomplete = "off";
+                input.placeholder = "Tìm hoặc chọn...";
+                input.className = "w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none";
+                input.setAttribute("role", "combobox");
+                input.setAttribute("aria-autocomplete", "list");
+                input.setAttribute("aria-expanded", "false");
+                const menu = document.createElement("div");
+                menu.id = `${id}Results`;
+                menu.className = "fixed z-50 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg text-xs";
+                menu.setAttribute("role", "listbox");
+                menu.hidden = true;
+                input.setAttribute("aria-controls", menu.id);
+                const clear = document.createElement("button");
+                clear.type = "button";
+                clear.className = "absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900";
+                clear.setAttribute("aria-label", `Xóa lọc ${label.textContent.trim()}`);
+                clear.textContent = "×";
+                select.classList.add("hidden");
+                label.htmlFor = input.id;
+                select.after(wrapper);
+                wrapper.append(input, clear);
+                document.body.appendChild(menu);
+                const control = { select, input, menu, matches: [], active: -1 };
+                salesSearchControls.set(id, control);
+                input.addEventListener("focus", () => {
+                    closeSalesSearch();
+                    openSalesSearch = control;
+                    input.select();
+                    renderSalesSearch(control, "");
+                });
+                input.addEventListener("click", () => {
+                    if (openSalesSearch !== control) {
+                        closeSalesSearch();
+                        openSalesSearch = control;
+                        input.select();
+                        renderSalesSearch(control, "");
+                    }
+                });
+                input.addEventListener("input", () => {
+                    if (select.value) {
+                        select.value = "";
+                        applyDashboardFilters();
+                    }
+                    if (openSalesSearch !== control) { closeSalesSearch(); openSalesSearch = control; }
+                    renderSalesSearch(control, input.value);
+                });
+                input.addEventListener("keydown", event => {
+                    if (event.key === "Escape") { closeSalesSearch(); return; }
+                    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                        event.preventDefault();
+                        if (openSalesSearch !== control) { closeSalesSearch(); openSalesSearch = control; renderSalesSearch(control, ""); }
+                        if (!control.matches.length) return;
+                        control.active = event.key === "ArrowDown"
+                            ? Math.min(control.active + 1, control.matches.length - 1)
+                            : Math.max(control.active - 1, 0);
+                        const active = menu.querySelector(`[data-index="${control.active}"]`);
+                        menu.querySelectorAll("[data-index]").forEach(item => item.classList.remove("bg-blue-100"));
+                        active.classList.add("bg-blue-100");
+                        active.scrollIntoView({ block: "nearest" });
+                        input.setAttribute("aria-activedescendant", active.id);
+                    } else if (event.key === "Enter" && openSalesSearch === control && control.active >= 0) {
+                        event.preventDefault();
+                        selectSalesSearchOption(control, control.matches[control.active]);
+                    }
+                });
+                menu.addEventListener("mousedown", event => event.preventDefault());
+                menu.addEventListener("click", event => {
+                    const item = event.target.closest("[data-index]");
+                    if (item) selectSalesSearchOption(control, control.matches[Number(item.dataset.index)]);
+                });
+                clear.addEventListener("click", () => {
+                    select.value = "";
+                    closeSalesSearch();
+                    input.value = "";
+                    applyDashboardFilters();
+                    input.focus();
+                });
+            });
+            document.addEventListener("click", event => {
+                if (openSalesSearch && !openSalesSearch.menu.contains(event.target) &&
+                    !openSalesSearch.input.parentElement.contains(event.target)) closeSalesSearch();
+            });
+            document.addEventListener("focusin", event => {
+                if (openSalesSearch && !openSalesSearch.input.parentElement.contains(event.target) &&
+                    !openSalesSearch.menu.contains(event.target)) closeSalesSearch();
+            });
+            document.addEventListener("scroll", event => {
+                if (openSalesSearch && !openSalesSearch.menu.contains(event.target)) closeSalesSearch();
+            }, true);
+            window.addEventListener("resize", () => closeSalesSearch());
         }
 
         function applyDashboardFilters() {
@@ -2811,8 +2968,11 @@
 
         function resetFilters() {
             ["filterCategory", "filterCategory1", "filterBusinessGroup", "filterStaff", "filterPtn", "searchInput"].forEach(id => document.getElementById(id).value = "");
+            closeSalesSearch();
+            syncSearchableSalesFilters();
             setQuickDate('last30');
         }
+        initializeSearchableSalesFilters();
     </script>
 </body>
 </html>
