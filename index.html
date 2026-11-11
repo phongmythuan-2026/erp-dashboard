@@ -154,8 +154,8 @@
                     <button onclick="setQuickDate('year')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition font-medium">Năm nay</button>
                 </div>
 
-                <div class="tbl-wrap" role="region" aria-label="Điều kiện lọc theo ngày, nhóm vật tư và nhân viên kinh doanh" tabindex="0">
-                  <div class="grid grid-cols-4 min-w-[640px] gap-3 text-xs">
+                <div role="region" aria-label="Điều kiện lọc báo cáo bán hàng">
+                  <div class="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-3 text-xs">
                     <div class="min-w-0">
                         <label for="fromDate" class="block font-bold text-slate-600 mb-1.5">Từ ngày</label>
                         <div class="relative">
@@ -176,6 +176,18 @@
                         <label for="filterCategory" class="block font-bold text-slate-600 mb-1.5">Nhóm vật tư</label>
                         <select id="filterCategory" onchange="applyDashboardFilters()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             <option value="">-- Tất cả nhóm vật tư --</option>
+                        </select>
+                    </div>
+                    <div class="min-w-0">
+                        <label for="filterCategory1" class="block font-bold text-slate-600 mb-1.5">Tên nhóm vật tư 1</label>
+                        <select id="filterCategory1" onchange="applyDashboardFilters()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">-- Tất cả nhóm vật tư 1 --</option>
+                        </select>
+                    </div>
+                    <div class="min-w-0">
+                        <label for="filterBusinessGroup" class="block font-bold text-slate-600 mb-1.5">Nhóm kinh doanh</label>
+                        <select id="filterBusinessGroup" onchange="applyDashboardFilters()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">-- Tất cả nhóm kinh doanh --</option>
                         </select>
                     </div>
                     <div class="min-w-0">
@@ -351,6 +363,19 @@
                     <div class="relative h-80 overflow-x-auto overflow-y-hidden">
                         <div id="category1RevenueChartContainer" class="relative h-full">
                             <canvas id="category1RevenueChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="xl:col-span-3 min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <div class="mb-2">
+                        <h3 class="font-bold text-slate-900 text-sm">Doanh Thu Theo Nhóm Kinh Doanh</h3>
+                        <p class="text-xs text-slate-400">Cột chồng theo tháng/năm (tỷ đồng); dùng chung bộ chọn năm ở trên, độc lập bộ lọc Dashboard</p>
+                    </div>
+                    <p id="businessGroupRevenueStatus" class="text-xs text-slate-400 mb-3">Đang tải dữ liệu...</p>
+                    <div class="relative h-80 overflow-x-auto overflow-y-hidden">
+                        <div id="businessGroupRevenueChartContainer" class="relative h-full">
+                            <canvas id="businessGroupRevenueChart"></canvas>
                         </div>
                     </div>
                 </section>
@@ -1575,6 +1600,18 @@
             return (m && (m.ten_nhvt1 || m.ma_nhvt1)) || "Chưa phân nhóm";
         }
 
+        const businessGroupNames = {
+            GCO01: "Gia công",
+            HCM01: "Sales HCM",
+            HNO01: "Sales HN",
+            ROO01: "Sales Rooto"
+        };
+        const businessGroupOf = r => String(r.ma_nhomkd || "").trim();
+        function businessGroupLabel(code) {
+            if (!code) return "Chưa có nhóm kinh doanh";
+            return Object.hasOwn(businessGroupNames, code) ? `${code} - ${businessGroupNames[code]}` : code;
+        }
+
         function ptnOf(r) {
             const code = String(r.ma_vt || "");
             const index = code.indexOf("-CB-");
@@ -1591,16 +1628,28 @@
                 sel.value = cur;
             };
             fill("filterCategory", rawSalesData.map(categoryOf));
+            fill("filterCategory1", rawSalesData.map(category1Of));
             fill("filterStaff", rawSalesData.map(r => r.ten_nvkd || r.ma_nhomkd));
+            const sel = document.getElementById("filterBusinessGroup");
+            const current = sel.value;
+            const codes = [...new Set([...Object.keys(businessGroupNames), ...rawSalesData.map(businessGroupOf)])]
+                .sort((a, b) => businessGroupLabel(a).localeCompare(businessGroupLabel(b), "vi"));
+            sel.innerHTML = sel.options[0].outerHTML + codes.map(code =>
+                `<option value="${esc(JSON.stringify(code))}">${esc(businessGroupLabel(code))}</option>`).join("");
+            sel.value = codes.some(code => JSON.stringify(code) === current) ? current : "";
         }
 
         function applyDashboardFilters() {
             const cat = document.getElementById("filterCategory").value;
+            const cat1 = document.getElementById("filterCategory1").value;
+            const businessGroup = document.getElementById("filterBusinessGroup").value;
             const staff = document.getElementById("filterStaff").value;
             const kw = document.getElementById("searchInput").value.trim().toLowerCase();
 
             const rows = rawSalesData.filter(r =>
                 (!cat || categoryOf(r) === cat) &&
+                (!cat1 || category1Of(r) === cat1) &&
+                (!businessGroup || JSON.stringify(businessGroupOf(r)) === businessGroup) &&
                 (!staff || (r.ten_nvkd || r.ma_nhomkd) === staff) &&
                 (!kw || [r.so_ct, r.ten_kh, r.ma_kh, r.ten_vt, r.ma_vt, ptnOf(r)].some(v => String(v ?? '').toLowerCase().includes(kw))));
 
@@ -1699,10 +1748,10 @@
             ].filter(Boolean).join(" ");
         }
 
-        function renderCategoryMonthly(yearRows, chartId, statusId, categoryFn) {
+        function renderCategoryMonthly(yearRows, chartId, statusId, categoryFn, options = {}) {
             const status = document.getElementById(statusId);
             const container = document.getElementById(`${chartId}Container`);
-            if (!materialsLoaded) {
+            if (options.requiresMaterials !== false && !materialsLoaded) {
                 container.style.width = "100%";
                 createChart(chartId, "bar", { labels: [], datasets: [] });
                 status.textContent = "Chưa tải được danh mục vật tư; không thể phân tích theo nhóm.";
@@ -1729,13 +1778,15 @@
                     totals[yearIndex * 12 + month - 1] += revOf(row);
                 });
             });
-            const top = [...totalsByCategory.entries()]
-                .sort((a, b) => sumBy(b[1], value => value) - sumBy(a[1], value => value)).slice(0, 6);
+            const sorted = [...totalsByCategory.entries()]
+                .sort((a, b) => sumBy(b[1], value => value) - sumBy(a[1], value => value));
+            const top = options.showAll ? sorted : sorted.slice(0, 6);
             const names = new Set(top.map(([name]) => name));
             const palette = ["#3b82f6", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#14b8a6"];
             const dataFor = values => values.map((value, i) => salesAvailableMonths.has(keys[i]) ? value / 1e9 : null);
             const datasets = top.map(([name, values], index) => ({
-                label: name, data: dataFor(values), backgroundColor: palette[index], borderRadius: 2
+                label: options.labelOf ? options.labelOf(name) : name,
+                data: dataFor(values), backgroundColor: palette[index % palette.length], borderRadius: 2
             }));
             if (totalsByCategory.size > top.length) {
                 const other = Array(keys.length).fill(0);
@@ -1750,13 +1801,17 @@
                 scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: "Tỷ đồng" } } }
             });
             status.textContent = totalsByCategory.size
-                ? `Đã phân tích ${yearRows.length} năm, hiển thị tối đa ${top.length} nhóm lớn nhất${totalsByCategory.size > top.length ? " và gộp nhóm còn lại vào “Khác”" : ""}.`
-                : `Đã phân tích ${yearRows.length} năm; chưa có dữ liệu nhóm vật tư.`;
+                ? options.showAll
+                    ? `Đã phân tích ${yearRows.length} năm; hiển thị tất cả ${top.length} nhóm kinh doanh.`
+                    : `Đã phân tích ${yearRows.length} năm, hiển thị tối đa ${top.length} nhóm lớn nhất${totalsByCategory.size > top.length ? " và gộp nhóm còn lại vào “Khác”" : ""}.`
+                : `Đã phân tích ${yearRows.length} năm; chưa có dữ liệu nhóm.`;
         }
 
         function renderMonthlyCategories(yearRows) {
             renderCategoryMonthly(yearRows, "categoryRevenueChart", "categoryRevenueStatus", categoryOf);
             renderCategoryMonthly(yearRows, "category1RevenueChart", "category1RevenueStatus", category1Of);
+            renderCategoryMonthly(yearRows, "businessGroupRevenueChart", "businessGroupRevenueStatus", businessGroupOf,
+                { requiresMaterials: false, showAll: true, labelOf: businessGroupLabel });
         }
 
         function updateMonthlyYearFilters(months) {
@@ -1794,6 +1849,8 @@
             const status = document.getElementById("monthlyRevenueStatus");
             const categoryStatus = document.getElementById("categoryRevenueStatus");
             const category1Status = document.getElementById("category1RevenueStatus");
+            const businessGroupStatus = document.getElementById("businessGroupRevenueStatus");
+            const groupCharts = ["categoryRevenueChart", "category1RevenueChart", "businessGroupRevenueChart"];
             const monthLabels = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
             monthlyYearRows = null;
 
@@ -1801,8 +1858,9 @@
                 status.textContent = "Chọn ít nhất một năm để xem báo cáo.";
                 categoryStatus.textContent = "Chọn ít nhất một năm để xem báo cáo.";
                 category1Status.textContent = "Chọn ít nhất một năm để xem báo cáo.";
+                businessGroupStatus.textContent = "Chọn ít nhất một năm để xem báo cáo.";
                 createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: [] });
-                ["categoryRevenueChart", "category1RevenueChart"].forEach(id => {
+                groupCharts.forEach(id => {
                     document.getElementById(`${id}Container`).style.width = "100%";
                     createChart(id, "bar", { labels: [], datasets: [] });
                 });
@@ -1812,8 +1870,9 @@
             status.textContent = "Đang tải dữ liệu doanh thu theo tháng...";
             categoryStatus.textContent = "Đang tải dữ liệu phân tích theo nhóm vật tư...";
             category1Status.textContent = "Đang tải dữ liệu phân tích theo nhóm vật tư 1...";
+            businessGroupStatus.textContent = "Đang tải dữ liệu phân tích theo nhóm kinh doanh...";
             createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: [] });
-            ["categoryRevenueChart", "category1RevenueChart"].forEach(id =>
+            groupCharts.forEach(id =>
                 createChart(id, "bar", { labels: [], datasets: [] }));
             const colors = ["#2563eb", "#f97316", "#15803d", "#8b5cf6", "#db2777", "#0891b2"];
             const monthlyDatasets = [];
@@ -1854,8 +1913,9 @@
                 status.textContent = "Không tải được dữ liệu doanh thu theo tháng.";
                 categoryStatus.textContent = "Không tải được dữ liệu phân tích theo nhóm vật tư.";
                 category1Status.textContent = "Không tải được dữ liệu phân tích theo nhóm vật tư 1.";
+                businessGroupStatus.textContent = "Không tải được dữ liệu phân tích theo nhóm kinh doanh.";
                 createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: [] });
-                ["categoryRevenueChart", "category1RevenueChart"].forEach(id =>
+                groupCharts.forEach(id =>
                     createChart(id, "bar", { labels: [], datasets: [] }));
                 reportDataError("Lỗi tải báo cáo doanh thu theo tháng", error);
             }
@@ -2438,7 +2498,8 @@
                     title = "Bán hàng"; tableId = "sales";
                     info.push(["Khoảng ngày", `${getDateInput("fromDate")} → ${getDateInput("toDate")}`]);
                     const labelOf = id => { const sel = document.getElementById(id); return sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : ""; };
-                    info.push(["Nhóm vật tư", labelOf("filterCategory")], ["Nhân viên kinh doanh", labelOf("filterStaff")],
+                    info.push(["Nhóm vật tư", labelOf("filterCategory")], ["Tên nhóm vật tư 1", labelOf("filterCategory1")],
+                        ["Nhóm kinh doanh", labelOf("filterBusinessGroup")], ["Nhân viên kinh doanh", labelOf("filterStaff")],
                         ["Từ khóa", document.getElementById("searchInput").value.trim()]);
                     table = dtExportTable(tableId);
                     const sum = i => table.rows.reduce((t, r) => t + (Number(r[i]) || 0), 0);
@@ -2649,7 +2710,7 @@
         }
 
         function resetFilters() {
-            ["filterCategory", "filterStaff", "searchInput"].forEach(id => document.getElementById(id).value = "");
+            ["filterCategory", "filterCategory1", "filterBusinessGroup", "filterStaff", "searchInput"].forEach(id => document.getElementById(id).value = "");
             setQuickDate('last30');
         }
     </script>
