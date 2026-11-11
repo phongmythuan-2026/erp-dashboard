@@ -187,22 +187,6 @@
                   </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div class="min-w-0">
-                        <div class="flex items-center justify-between gap-3 mb-2">
-                            <label for="amountRange" class="font-bold text-slate-600">Dòng từ</label>
-                            <span id="rangeLabel" class="font-bold text-blue-600 whitespace-nowrap">0 ₫</span>
-                        </div>
-                        <input type="range" id="amountRange" min="0" max="100000000" step="1000000" value="0" oninput="updateRangeLabel(this.value)" onchange="applyDashboardFilters()" class="block w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
-                    </div>
-                    <div class="min-w-0">
-                        <label for="searchInput" class="block font-bold text-slate-600 mb-1.5">Tìm kiếm</label>
-                        <div class="relative">
-                            <input type="text" id="searchInput" onkeyup="applyDashboardFilters()" placeholder="Tìm theo mã đơn, khách hàng, vật tư..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- 4 THẺ KPI CHI TIẾT (CHUẨN MẪU HÌNH 1) -->
@@ -346,10 +330,17 @@
 
             <!-- BẢNG CHI TIẾT GIAO DỊCH (CHUẨN MẪU HÌNH 4) -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
                     <div>
                         <h3 class="font-bold text-slate-900 text-sm">Chi Tiết Giao Dịch Bán Hàng</h3>
                         <p class="text-xs text-slate-400">Danh sách kết quả đáp ứng trọn vẹn bộ điều kiện lọc</p>
+                    </div>
+                    <div class="w-full sm:w-80 text-xs">
+                        <label for="searchInput" class="sr-only">Tìm kiếm giao dịch bán hàng</label>
+                        <div class="relative">
+                            <input type="text" id="searchInput" oninput="applyDashboardFilters()" placeholder="Tìm theo mã đơn, khách hàng, vật tư..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                        </div>
                     </div>
                 </div>
 
@@ -1225,10 +1216,6 @@
             await Promise.all([loadDashboardData(), loadDeXuatMuaHang(), loadLenhSanXuat(), loadDanhMucVatTu()]);
         }
 
-        function updateRangeLabel(val) {
-            document.getElementById("rangeLabel").innerText = formatVND(val);
-        }
-
         // =================================================================
         // 1. TẢI VÀ HIỂN THỊ DỮ LIỆU DASHBOARD BÁN HÀNG (CHUẨN MẪU)
         // =================================================================
@@ -1543,13 +1530,11 @@
         function applyDashboardFilters() {
             const cat = document.getElementById("filterCategory").value;
             const staff = document.getElementById("filterStaff").value;
-            const minAmt = Number(document.getElementById("amountRange").value);
             const kw = document.getElementById("searchInput").value.trim().toLowerCase();
 
             const rows = rawSalesData.filter(r =>
                 (!cat || categoryOf(r) === cat) &&
                 (!staff || (r.ten_nvkd || r.ma_nhomkd) === staff) &&
-                revOf(r) >= minAmt &&
                 (!kw || [r.so_ct, r.ten_kh, r.ma_kh, r.ten_vt, r.ma_vt].some(v => String(v ?? '').toLowerCase().includes(kw))));
 
             renderKPIs(rows);
@@ -2261,8 +2246,7 @@
                     info.push(["Khoảng ngày", `${getDateInput("fromDate")} → ${getDateInput("toDate")}`]);
                     const labelOf = id => { const sel = document.getElementById(id); return sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : ""; };
                     info.push(["Nhóm vật tư", labelOf("filterCategory")], ["Nhân viên kinh doanh", labelOf("filterStaff")],
-                        ["Từ khóa", document.getElementById("searchInput").value.trim()],
-                        ["Dòng từ (doanh thu)", Number(document.getElementById("amountRange").value)]);
+                        ["Từ khóa", document.getElementById("searchInput").value.trim()]);
                     table = dtExportTable(tableId);
                     const sum = i => table.rows.reduce((t, r) => t + (Number(r[i]) || 0), 0);
                     table.rows.push(["TỔNG CỘNG", "", "", "", "", sum(5), sum(6), sum(7), sum(8)]);
@@ -2473,8 +2457,6 @@
 
         function resetFilters() {
             ["filterCategory", "filterStaff", "searchInput"].forEach(id => document.getElementById(id).value = "");
-            document.getElementById("amountRange").value = 0;
-            updateRangeLabel(0);
             setQuickDate('last30');
         }
     </script>
