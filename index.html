@@ -299,9 +299,16 @@
                 <!-- Biểu đồ 3: Top nhân viên kinh doanh -->
                 <div class="xl:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                     <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-                        <div class="mb-4">
-                            <h3 class="font-bold text-slate-900 text-sm">Top Nhân Viên Kinh Doanh Đóng Góp Doanh Số Cao Nhất</h3>
-                            <p class="text-xs text-slate-400">Xếp hạng doanh thu theo nhân viên kinh doanh</p>
+                        <div class="flex flex-wrap justify-between gap-2 mb-4">
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-sm">Top Nhân Viên Kinh Doanh Đóng Góp Doanh Số Cao Nhất</h3>
+                                <p class="text-xs text-slate-400">Xếp hạng doanh thu theo nhân viên kinh doanh</p>
+                            </div>
+                            <label class="text-xs text-slate-500">Hiển thị
+                                <select id="staffTopLimit" onchange="applyDashboardFilters()" class="ml-1 border border-slate-300 rounded-lg px-2 py-1">
+                                    <option value="5">Top 5</option><option value="10">Top 10</option><option value="20" selected>Top 20</option><option value="all">Tất cả</option>
+                                </select>
+                            </label>
                         </div>
                         <div class="h-[360px] overflow-y-auto overflow-x-hidden pr-1">
                             <div id="channelChartContainer" class="relative h-72">
@@ -311,9 +318,16 @@
                     </section>
 
                     <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-                        <div class="mb-4">
-                            <h3 class="font-bold text-slate-900 text-sm">Top 20 Khách Hàng Đóng Góp Doanh Số Cao Nhất</h3>
-                            <p class="text-xs text-slate-400">Xếp hạng doanh thu theo khách hàng</p>
+                        <div class="flex flex-wrap justify-between gap-2 mb-4">
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-sm">Top Khách Hàng Đóng Góp Doanh Số Cao Nhất</h3>
+                                <p class="text-xs text-slate-400">Xếp hạng doanh thu theo khách hàng</p>
+                            </div>
+                            <label class="text-xs text-slate-500">Hiển thị
+                                <select id="customerTopLimit" onchange="applyDashboardFilters()" class="ml-1 border border-slate-300 rounded-lg px-2 py-1">
+                                    <option value="5">Top 5</option><option value="10">Top 10</option><option value="20" selected>Top 20</option><option value="all">Tất cả</option>
+                                </select>
+                            </label>
                         </div>
                         <div class="h-[360px] overflow-y-auto overflow-x-hidden pr-1">
                             <div id="customerBarChartContainer" class="relative h-72">
@@ -382,25 +396,37 @@
 
                 <div class="xl:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                     <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-                        <h3 class="font-bold text-slate-900 text-sm">Top 20 Mã PTN Theo Doanh Thu</h3>
-                        <p class="text-xs text-slate-400 mb-3">Doanh thu thuần; theo bộ lọc Dashboard. Tên tra từ danh mục vật tư.</p>
+                        <div class="flex flex-wrap justify-between gap-2">
+                            <h3 class="font-bold text-slate-900 text-sm">Top Mã PTN Theo Doanh Thu</h3>
+                            <label class="text-xs text-slate-500">Hiển thị
+                                <select id="ptnRevenueTopLimit" onchange="applyDashboardFilters()" class="ml-1 border border-slate-300 rounded-lg px-2 py-1">
+                                    <option value="5">Top 5</option><option value="10">Top 10</option><option value="20" selected>Top 20</option><option value="all">Tất cả</option>
+                                </select>
+                            </label>
+                        </div>
+                        <p class="text-xs text-slate-400 mb-3">Doanh thu thuần; theo bộ lọc Dashboard. Di chuột hoặc chạm vào thanh để xem tên đầy đủ và giá trị.</p>
                         <p id="ptnRevenueStatus" class="text-xs text-slate-500 mb-2"></p>
                         <div class="h-[360px] overflow-auto">
-                            <table class="w-full text-left text-xs">
-                                <thead class="sticky top-0 bg-slate-50 text-slate-500"><tr><th class="p-2">Mã PTN / Tên</th><th class="p-2 text-right">Doanh thu</th></tr></thead>
-                                <tbody id="ptnRevenueBody" class="divide-y divide-slate-100"></tbody>
-                            </table>
+                            <div id="ptnRevenueChartContainer" class="relative min-w-[520px] h-[360px]">
+                                <canvas id="ptnRevenueChart" role="img" aria-label="Biểu đồ xếp hạng mã PTN theo doanh thu"></canvas>
+                            </div>
                         </div>
                     </section>
                     <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-                        <h3 class="font-bold text-slate-900 text-sm">Top 20 Mã PTN Theo Sản Lượng</h3>
-                        <p class="text-xs text-slate-400 mb-3">Số lượng sau trả lại; tách theo mã PTN và đơn vị, xếp chung các đơn vị theo giá trị số.</p>
+                        <div class="flex flex-wrap justify-between gap-2">
+                            <h3 class="font-bold text-slate-900 text-sm">Top Mã PTN Theo Sản Lượng</h3>
+                            <label class="text-xs text-slate-500">Hiển thị
+                                <select id="ptnQuantityTopLimit" onchange="applyDashboardFilters()" class="ml-1 border border-slate-300 rounded-lg px-2 py-1">
+                                    <option value="5">Top 5</option><option value="10">Top 10</option><option value="20" selected>Top 20</option><option value="all">Tất cả</option>
+                                </select>
+                            </label>
+                        </div>
+                        <p class="text-xs text-slate-400 mb-3">Số lượng sau trả lại; tách theo mã PTN và đơn vị, xếp chung theo giá trị số. Chạm hoặc di chuột để xem chi tiết.</p>
                         <p id="ptnQuantityStatus" class="text-xs text-slate-500 mb-2"></p>
                         <div class="h-[360px] overflow-auto">
-                            <table class="w-full text-left text-xs">
-                                <thead class="sticky top-0 bg-slate-50 text-slate-500"><tr><th class="p-2">Mã PTN / Tên</th><th class="p-2 text-right">Sản lượng / ĐVT</th></tr></thead>
-                                <tbody id="ptnQuantityBody" class="divide-y divide-slate-100"></tbody>
-                            </table>
+                            <div id="ptnQuantityChartContainer" class="relative min-w-[520px] h-[360px]">
+                                <canvas id="ptnQuantityChart" role="img" aria-label="Biểu đồ xếp hạng mã PTN theo sản lượng"></canvas>
+                            </div>
                         </div>
                     </section>
                 </div>
@@ -1711,6 +1737,36 @@
             return [...m.entries()].sort((a, b) => b[1] - a[1]);
         }
 
+        function limitTop(entries, selectId) {
+            const value = document.getElementById(selectId).value;
+            return value === "all" ? entries : entries.slice(0, Number(value));
+        }
+
+        function renderRankedCharts(id, entries, rowHeight, chartData, chartOptions, ariaLabel) {
+            const container = document.getElementById(`${id}Container`);
+            Object.keys(chartInstances).filter(key => key === id || key.startsWith(`${id}Part`)).forEach(key => {
+                chartInstances[key].destroy();
+                delete chartInstances[key];
+            });
+            container.innerHTML = "";
+            container.style.height = "auto";
+            const parts = Math.max(1, Math.ceil(entries.length / 100));
+            for (let i = 0; i < parts; i++) {
+                const part = entries.slice(i * 100, (i + 1) * 100);
+                const chartId = i ? `${id}Part${i}` : id;
+                const wrap = document.createElement("div");
+                wrap.className = "relative";
+                wrap.style.height = `${Math.max(parts === 1 ? 360 : 150, part.length * rowHeight)}px`;
+                const canvas = document.createElement("canvas");
+                canvas.id = chartId;
+                canvas.setAttribute("role", "img");
+                canvas.setAttribute("aria-label", ariaLabel);
+                wrap.appendChild(canvas);
+                container.appendChild(wrap);
+                createChart(chartId, "bar", chartData(part), chartOptions(part));
+            }
+        }
+
         function renderPtnReports(rows) {
             const revenue = new Map();
             const quantity = new Map();
@@ -1732,19 +1788,43 @@
             const name = code => materialsLoaded
                 ? (materialMap[code] && materialMap[code].ten_vt) || "Không tìm thấy tên trong danh mục"
                 : "Chưa tải được danh mục vật tư";
-            const label = code => `<span class="font-semibold text-slate-800">${esc(code)}</span><br><span class="text-slate-500">${esc(name(code))}</span>`;
-            const topRevenue = [...revenue.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
-            const topQuantity = [...quantity.values()].sort((a, b) => b.value - a.value).slice(0, 20);
-            document.getElementById("ptnRevenueBody").innerHTML = topRevenue.map(([code, value]) =>
-                `<tr><td class="p-2">${label(code)}</td><td class="p-2 text-right whitespace-nowrap">${formatVND(value)}</td></tr>`).join("")
-                || '<tr><td colspan="2" class="p-2 text-slate-400">Không có dữ liệu</td></tr>';
-            document.getElementById("ptnQuantityBody").innerHTML = topQuantity.map(({ code, unit, value }) =>
-                `<tr><td class="p-2">${label(code)}</td><td class="p-2 text-right whitespace-nowrap">${value.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} ${esc(unit)}</td></tr>`).join("")
-                || '<tr><td colspan="2" class="p-2 text-slate-400">Không có dữ liệu</td></tr>';
-            document.getElementById("ptnRevenueStatus").textContent = materialsLoaded ? "" : "Chưa tải được danh mục vật tư; không thể tra tên PTN.";
+            const topRevenue = limitTop([...revenue.entries()].sort((a, b) => b[1] - a[1]), "ptnRevenueTopLimit");
+            const topQuantity = limitTop([...quantity.values()].sort((a, b) => b.value - a.value), "ptnQuantityTopLimit");
+            const renderPtnChart = (id, entries, datasetLabel, color, valueLabel) => {
+                const shortName = code => {
+                    const text = String(name(code));
+                    return text.length > 32 ? `${text.slice(0, 31)}…` : text;
+                };
+                renderRankedCharts(id, entries, 52, part => ({
+                    labels: part.map(entry => [entry.unit ? `${entry.code} (${entry.unit})` : entry.code, shortName(entry.code)]),
+                    datasets: [{ label: datasetLabel, data: part.map(entry => entry.value), backgroundColor: color, borderRadius: 6 }]
+                }), part => ({
+                    indexAxis: "y",
+                    scales: { y: { ticks: { autoSkip: false } } },
+                    plugins: {
+                        legend: { position: "top" },
+                        tooltip: { callbacks: {
+                            title: items => {
+                                const entry = part[items[0].dataIndex];
+                                return [entry.unit ? `${entry.code} (${entry.unit})` : entry.code, name(entry.code)];
+                            },
+                            label: item => `${datasetLabel}: ${valueLabel(part[item.dataIndex])}`
+                        } }
+                    }
+                }), `Biểu đồ xếp hạng mã PTN theo ${datasetLabel.toLowerCase()}`);
+            };
+            renderPtnChart("ptnRevenueChart", topRevenue.map(([code, value]) => ({ code, value })),
+                "Doanh thu", "#0ea5e9", entry => formatVND(entry.value));
+            renderPtnChart("ptnQuantityChart", topQuantity, "Sản lượng", "#6366f1",
+                entry => `${entry.value.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} ${entry.unit}`);
+            document.getElementById("ptnRevenueStatus").textContent = [
+                materialsLoaded ? "" : "Chưa tải được danh mục vật tư; không thể tra tên PTN.",
+                topRevenue.length ? "" : "Không có dữ liệu."
+            ].filter(Boolean).join(" ");
             document.getElementById("ptnQuantityStatus").textContent = [
                 materialsLoaded ? "" : "Chưa tải được danh mục vật tư; không thể tra tên PTN.",
-                invalidQuantity ? `Không xếp hạng ${invalidQuantity} dòng thiếu hoặc sai số lượng sau trả lại.` : ""
+                invalidQuantity ? `Không xếp hạng ${invalidQuantity} dòng thiếu hoặc sai số lượng sau trả lại.` : "",
+                topQuantity.length ? "" : "Không có dữ liệu."
             ].filter(Boolean).join(" ");
         }
 
@@ -1944,19 +2024,17 @@
                 datasets: [{ data: cats.map(c => c[1]), backgroundColor: palette }]
             });
 
-            const staff = groupSum(rows, r => r.ten_nvkd || r.ma_nhomkd);
-            document.getElementById("channelChartContainer").style.height = `${Math.max(360, staff.length * 36)}px`;
-            createChart('channelChart', 'bar', {
-                labels: staff.map(s => s[0]),
-                datasets: [{ label: 'Doanh số', data: staff.map(s => s[1]), backgroundColor: '#6366f1', borderRadius: 6 }]
-            }, { indexAxis: 'y' });
+            const staff = limitTop(groupSum(rows, r => r.ten_nvkd || r.ma_nhomkd), "staffTopLimit");
+            renderRankedCharts("channelChart", staff, 36, part => ({
+                labels: part.map(s => s[0]),
+                datasets: [{ label: 'Doanh số', data: part.map(s => s[1]), backgroundColor: '#6366f1', borderRadius: 6 }]
+            }), () => ({ indexAxis: 'y', scales: { y: { ticks: { autoSkip: false } } } }), "Xếp hạng doanh thu theo nhân viên kinh doanh");
 
-            const cust = groupSum(rows, r => r.ten_kh || r.ma_kh).slice(0, 20);
-            document.getElementById("customerBarChartContainer").style.height = `${Math.max(360, cust.length * 36)}px`;
-            createChart('customerBarChart', 'bar', {
-                labels: cust.map(c => c[0]),
-                datasets: [{ label: 'Doanh số', data: cust.map(c => c[1]), backgroundColor: '#0ea5e9', borderRadius: 6 }]
-            }, { indexAxis: 'y' });
+            const cust = limitTop(groupSum(rows, r => r.ten_kh || r.ma_kh), "customerTopLimit");
+            renderRankedCharts("customerBarChart", cust, 36, part => ({
+                labels: part.map(c => c[0]),
+                datasets: [{ label: 'Doanh số', data: part.map(c => c[1]), backgroundColor: '#0ea5e9', borderRadius: 6 }]
+            }), () => ({ indexAxis: 'y', scales: { y: { ticks: { autoSkip: false } } } }), "Xếp hạng doanh thu theo khách hàng");
         }
 
         // =================================================================
