@@ -154,6 +154,12 @@
                     <button onclick="setQuickDate('year')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition font-medium">Năm nay</button>
                 </div>
 
+                <div class="text-xs">
+                    <span class="block font-bold text-slate-600 mb-1.5">Năm phân tích</span>
+                    <div id="monthlyYears" role="group" aria-label="Chọn năm phân tích"></div>
+                    <p class="text-slate-400 mt-1">Không chọn năm: tất cả năm. Chọn năm sẽ điều chỉnh khoảng ngày; chọn nhanh sẽ bỏ chọn năm.</p>
+                </div>
+
                 <div role="region" aria-label="Điều kiện lọc báo cáo bán hàng">
                   <div class="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-3 text-xs">
                     <div class="min-w-0">
@@ -337,7 +343,7 @@
                     </section>
                 </div>
 
-                <!-- Báo cáo doanh thu theo tháng và theo nhóm vật tư dùng chung bộ lọc năm -->
+                <!-- Báo cáo doanh thu theo tháng và nhóm kinh doanh -->
                 <div class="xl:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                     <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
@@ -345,8 +351,6 @@
                                 <h3 class="font-bold text-slate-900 text-sm">Doanh Thu Theo Tháng</h3>
                                 <p class="text-xs text-slate-400">So sánh doanh thu từng tháng giữa các năm (tỷ đồng)</p>
                             </div>
-                            <div id="monthlyYears" role="group" aria-label="Chọn năm xem doanh thu"
-                                 class="flex flex-wrap gap-2 text-xs"></div>
                         </div>
                         <p id="monthlyRevenueStatus" class="text-xs text-slate-400 mb-3">Đang tải danh sách năm...</p>
                         <div class="relative h-80">
@@ -356,43 +360,44 @@
 
                     <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                         <div class="mb-2">
+                            <h3 class="font-bold text-slate-900 text-sm">Doanh Thu Theo Nhóm Kinh Doanh</h3>
+                            <p class="text-xs text-slate-400">Cột chồng theo tháng/năm (tỷ đồng); theo bộ lọc Dashboard</p>
+                        </div>
+                        <p id="businessGroupRevenueStatus" class="text-xs text-slate-400 mb-3">Đang tải dữ liệu...</p>
+                        <div class="relative h-80 overflow-x-auto overflow-y-hidden">
+                            <div id="businessGroupRevenueChartContainer" class="relative h-full">
+                                <canvas id="businessGroupRevenueChart"></canvas>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="xl:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                        <div class="mb-2">
                             <h3 class="font-bold text-slate-900 text-sm">Phân Tích Doanh Thu Theo Nhóm Vật Tư</h3>
                             <p class="text-xs text-slate-400">Tối đa 6 nhóm lớn nhất + nhóm Khác, theo tháng/năm (tỷ đồng)</p>
                         </div>
-                        <p id="categoryRevenueStatus" class="text-xs text-slate-400 mb-3">Dùng chung năm đã chọn ở báo cáo bên cạnh.</p>
+                        <p id="categoryRevenueStatus" class="text-xs text-slate-400 mb-3">Đang tải dữ liệu...</p>
                         <div class="relative h-80 overflow-x-auto overflow-y-hidden">
                             <div id="categoryRevenueChartContainer" class="relative h-full">
                                 <canvas id="categoryRevenueChart"></canvas>
                             </div>
                         </div>
                     </section>
+                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                        <div class="mb-2">
+                            <h3 class="font-bold text-slate-900 text-sm">Phân Tích Doanh Thu Theo Nhóm Vật Tư 1</h3>
+                            <p class="text-xs text-slate-400">Tối đa 6 nhóm lớn nhất + nhóm Khác, theo tháng/năm (tỷ đồng); theo bộ lọc Dashboard</p>
+                        </div>
+                        <p id="category1RevenueStatus" class="text-xs text-slate-400 mb-3">Đang tải dữ liệu...</p>
+                        <div class="relative h-80 overflow-x-auto overflow-y-hidden">
+                            <div id="category1RevenueChartContainer" class="relative h-full">
+                                <canvas id="category1RevenueChart"></canvas>
+                            </div>
+                        </div>
+                    </section>
                 </div>
-
-                <section class="xl:col-span-3 min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-                    <div class="mb-2">
-                        <h3 class="font-bold text-slate-900 text-sm">Phân Tích Doanh Thu Theo Nhóm Vật Tư 1</h3>
-                        <p class="text-xs text-slate-400">Tối đa 6 nhóm lớn nhất + nhóm Khác, theo tháng/năm (tỷ đồng); dùng chung bộ chọn năm ở trên</p>
-                    </div>
-                    <p id="category1RevenueStatus" class="text-xs text-slate-400 mb-3">Đang tải dữ liệu...</p>
-                    <div class="relative h-80 overflow-x-auto overflow-y-hidden">
-                        <div id="category1RevenueChartContainer" class="relative h-full">
-                            <canvas id="category1RevenueChart"></canvas>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="xl:col-span-3 min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-                    <div class="mb-2">
-                        <h3 class="font-bold text-slate-900 text-sm">Doanh Thu Theo Nhóm Kinh Doanh</h3>
-                        <p class="text-xs text-slate-400">Cột chồng theo tháng/năm (tỷ đồng); dùng chung bộ chọn năm ở trên, độc lập bộ lọc Dashboard</p>
-                    </div>
-                    <p id="businessGroupRevenueStatus" class="text-xs text-slate-400 mb-3">Đang tải dữ liệu...</p>
-                    <div class="relative h-80 overflow-x-auto overflow-y-hidden">
-                        <div id="businessGroupRevenueChartContainer" class="relative h-full">
-                            <canvas id="businessGroupRevenueChart"></canvas>
-                        </div>
-                    </div>
-                </section>
 
                 <div class="xl:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                     <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
@@ -843,10 +848,10 @@
         let rawSalesData = [];
         let salesAvailableYears = [];
         let salesAvailableMonths = new Set();
-        let monthlyRevenueRequestId = 0;
+        let dashboardRequestId = 0;
+        let selectedSalesYears = new Set();
         let materialMap = {};
         let materialsLoaded = false;
-        let monthlyYearRows = null;
         let chartInstances = {};
         let currentUser = null;
         let managedUsers = [];
@@ -1321,7 +1326,6 @@
 
         async function loadApplicationData() {
             await Promise.all([loadDashboardData(), loadDeXuatMuaHang(), loadLenhSanXuat(), loadDanhMucVatTu()]);
-            await loadMonthlyRevenue();
         }
 
         // =================================================================
@@ -1349,7 +1353,7 @@
         function onDateInputChange() {
             renderDateLabel("fromDate");
             renderDateLabel("toDate");
-            if (getDateInput("fromDate") && getDateInput("toDate")) loadDashboardData();
+            loadDashboardData();
         }
         const revOf = r => Number(r.doanh_thu_thuan || 0);
         const sumBy = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
@@ -1498,6 +1502,7 @@
         }
 
         async function loadDashboardData() {
+            const requestId = ++dashboardRequestId;
             const token = getSessionToken();
             if (!token) {
                 openAuthModal();
@@ -1508,18 +1513,34 @@
             const toDate = getDateInput("toDate");
 
             try {
+                if (!fromDate || !toDate || fromDate > toDate) throw new Error("Khoảng ngày không hợp lệ.");
+                rawSalesData = [];
+                applyDashboardFilters();
+                document.getElementById("recordCountBadge").innerText = "Đang tải dữ liệu...";
+                ["monthlyRevenueStatus", "categoryRevenueStatus", "category1RevenueStatus", "businessGroupRevenueStatus"]
+                    .forEach(id => { document.getElementById(id).textContent = "Đang tải dữ liệu Dashboard..."; });
+                let loadedRows;
                 try {
-                    rawSalesData = await loadPartitioned("ban_hang", fromDate, toDate);
+                    loadedRows = await loadPartitioned("ban_hang", fromDate, toDate);
                 } catch (cacheError) {
+                    if (requestId !== dashboardRequestId) return false;
                     console.warn("Cache lỗi, tải trực tiếp:", cacheError);
                     const result = await api("getData", token, "ban_hang", fromDate, toDate);
                     if (result.status !== 'success') throw new Error("Apps Script trả về dữ liệu bán hàng không hợp lệ.");
-                    rawSalesData = result.data || [];
+                    loadedRows = result.data || [];
                 }
+                if (requestId !== dashboardRequestId) return false;
+                rawSalesData = loadedRows;
                 fillSalesFilters();
                 applyDashboardFilters();
                 return true;
             } catch (err) {
+                if (requestId !== dashboardRequestId) return false;
+                rawSalesData = [];
+                applyDashboardFilters();
+                document.getElementById("recordCountBadge").innerText = "Không tải được dữ liệu";
+                ["monthlyRevenueStatus", "categoryRevenueStatus", "category1RevenueStatus", "businessGroupRevenueStatus"]
+                    .forEach(id => { document.getElementById(id).textContent = "Không tải được dữ liệu Dashboard."; });
                 reportDataError("Lỗi tải dữ liệu Dashboard", err);
                 return false;
             }
@@ -1649,7 +1670,7 @@
                 const sel = document.getElementById(id);
                 const cur = sel.value;
                 const first = sel.options[0].outerHTML;
-                sel.innerHTML = first + [...new Set(values)].filter(Boolean).sort((a, b) => a.localeCompare(b, "vi"))
+                sel.innerHTML = first + [...new Set([...values, cur])].filter(Boolean).sort((a, b) => a.localeCompare(b, "vi"))
                     .map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
                 sel.value = cur;
             };
@@ -1658,7 +1679,9 @@
             fill("filterStaff", rawSalesData.map(r => r.ten_nvkd || r.ma_nhomkd));
             const sel = document.getElementById("filterBusinessGroup");
             const current = sel.value;
-            const codes = [...new Set([...Object.keys(businessGroupNames), ...rawSalesData.map(businessGroupOf)])]
+            const currentCode = current ? JSON.parse(current) : null;
+            const codes = [...new Set([...Object.keys(businessGroupNames), ...rawSalesData.map(businessGroupOf),
+                ...(currentCode === null ? [] : [currentCode])])]
                 .sort((a, b) => businessGroupLabel(a).localeCompare(businessGroupLabel(b), "vi"));
             sel.innerHTML = sel.options[0].outerHTML + codes.map(code =>
                 `<option value="${esc(JSON.stringify(code))}">${esc(businessGroupLabel(code))}</option>`).join("");
@@ -1673,6 +1696,7 @@
             const kw = document.getElementById("searchInput").value.trim().toLowerCase();
 
             const rows = rawSalesData.filter(r =>
+                (!selectedSalesYears.size || selectedSalesYears.has(Number(String(r.ngay_ct || "").slice(0, 4)))) &&
                 (!cat || categoryOf(r) === cat) &&
                 (!cat1 || category1Of(r) === cat1) &&
                 (!businessGroup || JSON.stringify(businessGroupOf(r)) === businessGroup) &&
@@ -1683,6 +1707,7 @@
             renderSalesTable(rows);
             renderCharts(rows);
             renderPtnReports(rows);
+            renderMonthlyRevenue(rows);
         }
 
         function renderKPIs(rows) {
@@ -1863,7 +1888,7 @@
             const top = options.showAll ? sorted : sorted.slice(0, 6);
             const names = new Set(top.map(([name]) => name));
             const palette = ["#3b82f6", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#14b8a6"];
-            const dataFor = values => values.map((value, i) => salesAvailableMonths.has(keys[i]) ? value / 1e9 : null);
+            const dataFor = values => values.map((value, i) => isDashboardMonthVisible(keys[i]) ? value / 1e9 : null);
             const datasets = top.map(([name, values], index) => ({
                 label: options.labelOf ? options.labelOf(name) : name,
                 data: dataFor(values), backgroundColor: palette[index % palette.length], borderRadius: 2
@@ -1901,104 +1926,74 @@
                 .sort((a, b) => b - a);
             salesAvailableMonths = new Set(availableMonths);
             if (JSON.stringify(years) === JSON.stringify(salesAvailableYears)) return;
-
-            const selected = new Set(
-                [...document.querySelectorAll("#monthlyYears input:checked")]
-                    .map(input => Number(input.value))
-                    .filter(year => years.includes(year))
-            );
-            if (!selected.size && years.length) {
-                const currentYear = new Date().getFullYear();
-                selected.add(years.includes(currentYear) ? currentYear : years[0]);
-            }
+            selectedSalesYears = new Set([...selectedSalesYears].filter(year => years.includes(year)));
             salesAvailableYears = years;
-            document.getElementById("monthlyYears").innerHTML = years.map(year => `
-                <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 cursor-pointer hover:bg-slate-50">
-                    <input type="checkbox" value="${year}" ${selected.has(year) ? "checked" : ""}
-                           onchange="loadMonthlyRevenue()" class="accent-blue-600">
-                    <span>${year}</span>
-                </label>`).join("");
+            renderYearFilter();
         }
 
-        async function loadMonthlyRevenue() {
-            const requestId = ++monthlyRevenueRequestId;
-            const years = [...document.querySelectorAll("#monthlyYears input:checked")]
-                .map(input => Number(input.value))
-                .filter(year => salesAvailableYears.includes(year))
-                .sort((a, b) => a - b);
-            const status = document.getElementById("monthlyRevenueStatus");
-            const categoryStatus = document.getElementById("categoryRevenueStatus");
-            const category1Status = document.getElementById("category1RevenueStatus");
-            const businessGroupStatus = document.getElementById("businessGroupRevenueStatus");
-            const groupCharts = ["categoryRevenueChart", "category1RevenueChart", "businessGroupRevenueChart"];
+        function renderYearFilter() {
+            const options = salesAvailableYears.map(year => `
+                <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" value="${year}" ${selectedSalesYears.has(year) ? "checked" : ""}
+                           onchange="onSalesYearChange()" class="accent-blue-600">
+                    <span>${year}</span>
+                </label>`).join("");
+            const years = document.getElementById("monthlyYears");
+            if (!salesAvailableYears.length) {
+                years.textContent = "Chưa có danh sách năm.";
+            } else if (salesAvailableYears.length <= 3) {
+                years.innerHTML = `<div class="flex flex-wrap gap-2">${options}</div>`;
+            } else {
+                const summary = selectedSalesYears.size ? `Đã chọn ${selectedSalesYears.size} năm` : "Tất cả năm";
+                years.innerHTML = `<details class="relative inline-block">
+                    <summary class="cursor-pointer rounded-lg border border-slate-300 px-3 py-2 text-slate-600">${summary}</summary>
+                    <div class="absolute z-30 mt-1 flex max-h-56 min-w-[180px] flex-col gap-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg">${options}</div>
+                </details>`;
+            }
+        }
+
+        function onSalesYearChange() {
+            selectedSalesYears = new Set([...document.querySelectorAll("#monthlyYears input:checked")]
+                .map(input => Number(input.value)));
+            const summary = document.querySelector("#monthlyYears summary");
+            if (summary) summary.textContent = selectedSalesYears.size ? `Đã chọn ${selectedSalesYears.size} năm` : "Tất cả năm";
+            const years = selectedSalesYears.size ? [...selectedSalesYears] : salesAvailableYears;
+            if (!years.length) return;
+            setDateInput("fromDate", new Date(Math.min(...years), 0, 1));
+            setDateInput("toDate", new Date(Math.max(...years), 11, 31));
+            loadDashboardData();
+        }
+
+        function isDashboardMonthVisible(month) {
+            return salesAvailableMonths.has(month) &&
+                month >= getDateInput("fromDate").slice(0, 7) && month <= getDateInput("toDate").slice(0, 7);
+        }
+
+        function renderMonthlyRevenue(rows) {
+            const from = getDateInput("fromDate").slice(0, 4);
+            const to = getDateInput("toDate").slice(0, 4);
+            const years = salesAvailableYears.filter(year =>
+                (!selectedSalesYears.size || selectedSalesYears.has(year)) && String(year) >= from && String(year) <= to
+            ).sort((a, b) => a - b);
             const monthLabels = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
-            monthlyYearRows = null;
-
-            if (!years.length) {
-                status.textContent = "Chọn ít nhất một năm để xem báo cáo.";
-                categoryStatus.textContent = "Chọn ít nhất một năm để xem báo cáo.";
-                category1Status.textContent = "Chọn ít nhất một năm để xem báo cáo.";
-                businessGroupStatus.textContent = "Chọn ít nhất một năm để xem báo cáo.";
-                createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: [] });
-                groupCharts.forEach(id => {
-                    document.getElementById(`${id}Container`).style.width = "100%";
-                    createChart(id, "bar", { labels: [], datasets: [] });
-                });
-                return;
-            }
-
-            status.textContent = "Đang tải dữ liệu doanh thu theo tháng...";
-            categoryStatus.textContent = "Đang tải dữ liệu phân tích theo nhóm vật tư...";
-            category1Status.textContent = "Đang tải dữ liệu phân tích theo nhóm vật tư 1...";
-            businessGroupStatus.textContent = "Đang tải dữ liệu phân tích theo nhóm kinh doanh...";
-            createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: [] });
-            groupCharts.forEach(id =>
-                createChart(id, "bar", { labels: [], datasets: [] }));
             const colors = ["#2563eb", "#f97316", "#15803d", "#8b5cf6", "#db2777", "#0891b2"];
-            const monthlyDatasets = [];
-            const yearRows = [];
-            try {
-                for (let index = 0; index < years.length; index++) {
-                    const year = years[index];
-                    status.textContent = `Đang tải dữ liệu ${year} (${index + 1}/${years.length})...`;
-                    const rows = await loadPartitioned("ban_hang", `${year}-01-01`, `${year}-12-31`);
-                    if (requestId !== monthlyRevenueRequestId) return;
-                    yearRows.push({ year, rows });
-
-                    const totals = Array(12).fill(0);
-                    rows.forEach(row => {
-                        const month = Number(String(row.ngay_ct || "").slice(5, 7));
-                        if (month >= 1 && month <= 12) totals[month - 1] += revOf(row);
-                    });
-                    monthlyDatasets.push({
-                        label: String(year),
-                        data: totals.map((value, monthIndex) => {
-                            const month = `${year}-${monthLabels[monthIndex]}`;
-                            return salesAvailableMonths.has(month) ? value / 1e9 : null;
-                        }),
-                        borderColor: colors[index % colors.length],
-                        backgroundColor: colors[index % colors.length],
-                        tension: 0.25,
-                        pointRadius: 3
-                    });
-                }
-                if (requestId !== monthlyRevenueRequestId) return;
-                createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: monthlyDatasets });
-
-                monthlyYearRows = yearRows;
-                renderMonthlyCategories(yearRows);
-                status.textContent = `Đã tải dữ liệu ${years.length} năm; báo cáo độc lập với bộ lọc ngày.`;
-            } catch (error) {
-                if (requestId !== monthlyRevenueRequestId) return;
-                status.textContent = "Không tải được dữ liệu doanh thu theo tháng.";
-                categoryStatus.textContent = "Không tải được dữ liệu phân tích theo nhóm vật tư.";
-                category1Status.textContent = "Không tải được dữ liệu phân tích theo nhóm vật tư 1.";
-                businessGroupStatus.textContent = "Không tải được dữ liệu phân tích theo nhóm kinh doanh.";
-                createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: [] });
-                groupCharts.forEach(id =>
-                    createChart(id, "bar", { labels: [], datasets: [] }));
-                reportDataError("Lỗi tải báo cáo doanh thu theo tháng", error);
-            }
+            const yearRows = years.map(year => ({ year, rows: rows.filter(row => Number(String(row.ngay_ct || "").slice(0, 4)) === year) }));
+            const monthlyDatasets = yearRows.map(({ year, rows: yearData }, index) => {
+                const totals = Array(12).fill(0);
+                yearData.forEach(row => {
+                    const month = Number(String(row.ngay_ct || "").slice(5, 7));
+                    if (month >= 1 && month <= 12) totals[month - 1] += revOf(row);
+                });
+                return {
+                    label: String(year),
+                    data: totals.map((value, i) => isDashboardMonthVisible(`${year}-${monthLabels[i]}`) ? value / 1e9 : null),
+                    borderColor: colors[index % colors.length],
+                    backgroundColor: colors[index % colors.length], tension: 0.25, pointRadius: 3
+                };
+            });
+            createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: monthlyDatasets });
+            renderMonthlyCategories(yearRows);
+            document.getElementById("monthlyRevenueStatus").textContent = `Theo bộ lọc Dashboard; dữ liệu ${years.length} năm trong khoảng ngày.`;
         }
 
         function renderCharts(rows) {
@@ -2423,7 +2418,6 @@
                     materialsLoaded = true;
                     renderMaterialTable(allMaterialData);
                     if (rawSalesData.length) { fillSalesFilters(); applyDashboardFilters(); }
-                    if (monthlyYearRows) renderMonthlyCategories(monthlyYearRows);
                     return true;
                 }
                 throw new Error("Apps Script trả về dữ liệu danh mục vật tư không hợp lệ.");
@@ -2578,6 +2572,7 @@
                     const labelOf = id => { const sel = document.getElementById(id); return sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : ""; };
                     info.push(["Nhóm vật tư", labelOf("filterCategory")], ["Tên nhóm vật tư 1", labelOf("filterCategory1")],
                         ["Nhóm kinh doanh", labelOf("filterBusinessGroup")], ["Nhân viên kinh doanh", labelOf("filterStaff")],
+                        ["Năm phân tích", selectedSalesYears.size ? [...selectedSalesYears].sort((a, b) => a - b).join(", ") : "Tất cả năm"],
                         ["Từ khóa", document.getElementById("searchInput").value.trim()]);
                     table = dtExportTable(tableId);
                     const sum = i => table.rows.reduce((t, r) => t + (Number(r[i]) || 0), 0);
@@ -2755,6 +2750,8 @@
         }
 
         async function setQuickDate(type) {
+            selectedSalesYears.clear();
+            renderYearFilter();
             const now = new Date();
             const y = now.getFullYear(), m = now.getMonth();
             if (type === "all") {
