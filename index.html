@@ -19,6 +19,9 @@
         .top-tab { color: #64748b; border-bottom: 3px solid transparent; }
         .top-tab:hover { color: #1e293b; background-color: #f1f5f9; }
         .top-tab.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 700; background-color: #eff6ff; }
+        .nav-item.active { color: #2563eb; font-weight: 700; background-color: #eff6ff; }
+        #navMoreSummary.active { color: #2563eb; font-weight: 700; background-color: #eff6ff; }
+        #navMoreSummary::-webkit-details-marker { display: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { scrollbar-width: none; }
         .tbl-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -81,24 +84,33 @@
                 </div>
             </div>
 
-            <nav class="order-last w-full md:order-none md:w-auto md:flex-1 md:self-stretch border-t md:border-t-0 border-slate-200 -mx-3 sm:-mx-6 md:mx-0 px-0">
-            <div class="px-2 md:px-0 h-full flex items-stretch gap-1 overflow-x-auto no-scrollbar md:justify-center">
+            <nav aria-label="Điều hướng chính" class="order-last w-full md:order-none md:w-auto md:flex-1 md:self-stretch border-t md:border-t-0 border-slate-200 -mx-3 sm:-mx-6 md:mx-0 px-0">
+            <div class="px-2 md:px-0 h-full flex items-stretch gap-1 md:justify-center">
                 <button onclick="switchTab('dashboard')" id="nav-dashboard" class="top-tab active shrink-0 px-3 lg:px-4 py-2.5 md:py-0 text-sm transition flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
                 </button>
-                <button onclick="switchTab('purchase')" id="nav-purchase" class="top-tab shrink-0 px-3 lg:px-4 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
+                <details id="navMore" class="relative">
+                  <summary id="navMoreSummary" class="list-none cursor-pointer h-full px-3 py-2.5 md:py-0 text-sm font-medium text-slate-500 hover:bg-slate-100 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-layer-group"></i><span>Nghiệp vụ</span>
+                    <span id="pendingBadgeNav" class="bg-amber-500 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
+                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                  </summary>
+                  <div class="absolute left-0 top-full z-50 mt-1 w-56 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+                <button onclick="switchTab('purchase')" id="nav-purchase" class="nav-item w-full rounded-lg px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100 text-left flex items-center gap-2">
                     <i class="fa-solid fa-cart-flatbed"></i><span>Đề xuất mua hàng</span>
-                    <span id="pendingBadgeMenu" class="bg-amber-500 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
+                    <span id="pendingBadgeMenu" class="ml-auto bg-amber-500 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
                 </button>
-                <button onclick="switchTab('production')" id="nav-production" class="top-tab shrink-0 px-3 lg:px-4 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
+                <button onclick="switchTab('production')" id="nav-production" class="nav-item w-full rounded-lg px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100 text-left flex items-center gap-2">
                     <i class="fa-solid fa-industry"></i><span>Lệnh sản xuất</span>
                 </button>
-                <button onclick="switchTab('materials')" id="nav-materials" class="top-tab shrink-0 px-3 lg:px-4 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
+                <button onclick="switchTab('materials')" id="nav-materials" class="nav-item w-full rounded-lg px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100 text-left flex items-center gap-2">
                     <i class="fa-solid fa-boxes-packing"></i><span>Danh mục vật tư</span>
                 </button>
-                <button onclick="switchTab('users')" id="nav-users" class="top-tab hidden shrink-0 px-3 lg:px-4 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
+                <button onclick="switchTab('users')" id="nav-users" class="nav-item hidden w-full rounded-lg px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100 text-left items-center gap-2">
                     <i class="fa-solid fa-users-gear"></i><span>Quản lý user</span>
                 </button>
+                  </div>
+                </details>
             </div>
         </nav>
 
@@ -897,8 +909,11 @@
         }
 
         function switchTab(tabName) {
-            document.querySelectorAll(".top-tab").forEach(btn => btn.classList.remove("active"));
+            document.querySelectorAll(".top-tab, .nav-item").forEach(btn => btn.classList.remove("active"));
             document.getElementById(`nav-${tabName}`).classList.add("active");
+            document.getElementById("navMoreSummary").classList.toggle("active",
+                document.getElementById("navMore").contains(document.getElementById(`nav-${tabName}`)));
+            document.getElementById("navMore").open = false;
 
             document.getElementById("screen-dashboard").classList.add("hidden");
             document.getElementById("screen-purchase").classList.add("hidden");
@@ -910,6 +925,18 @@
             window.scrollTo({ top: 0 });
             if (tabName === "users") { loadManagedUsers(); loadSyncSettings(); }
         }
+
+        document.addEventListener("click", event => {
+            const menu = document.getElementById("navMore");
+            if (!menu.contains(event.target)) menu.open = false;
+        });
+        document.addEventListener("keydown", event => {
+            const menu = document.getElementById("navMore");
+            if (event.key === "Escape" && menu.open) {
+                menu.open = false;
+                document.getElementById("navMoreSummary").focus();
+            }
+        });
 
         function openAuthModal() { document.getElementById("authModal").classList.remove("hidden"); }
         function closeAuthModal() { document.getElementById("authModal").classList.add("hidden"); }
@@ -1039,7 +1066,9 @@
         function isAdmin() { return currentUser && currentUser.role === "admin"; }
 
         function applyPermissions() {
-            document.getElementById("nav-users").classList.toggle("hidden", !isAdmin());
+            const userNav = document.getElementById("nav-users");
+            userNav.classList.toggle("hidden", !isAdmin());
+            userNav.classList.toggle("flex", isAdmin());
             ["refreshSalesButton", "refreshPurchaseButton", "refreshProductionButton", "refreshMaterialsButton",
              "importMaterialsButton", "downloadMaterialTemplateButton"].forEach(id => {
                 const button = document.getElementById(id);
@@ -2066,9 +2095,11 @@
 
         function renderPendingPurchaseBadge(rows) {
             const count = new Set(rows.map(row => row.so_ct || '')).size;
-            const menuBadge = document.getElementById("pendingBadgeMenu");
-            menuBadge.innerText = count;
-            menuBadge.classList.toggle("hidden", count === 0);
+            ["pendingBadgeMenu", "pendingBadgeNav"].forEach(id => {
+                const badge = document.getElementById(id);
+                badge.innerText = count;
+                badge.classList.toggle("hidden", count === 0);
+            });
         }
 
         function renderFullPurchaseTable(rows) {
