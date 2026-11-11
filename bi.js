@@ -3,6 +3,7 @@ const biDimensions = {
     business: "Nhóm kinh doanh", category: "Nhóm vật tư", category1: "Nhóm vật tư 1", ptn: "Sản phẩm PTN"
 };
 const biMeasures = { revenue: "Doanh thu thuần", quantity: "Sản lượng sau trả lại", orders: "Số đơn hàng" };
+const biTimeGrains = { day: "Ngày", month: "Tháng", quarter: "Quý", year: "Năm" };
 let biBoard = null;
 let biRows = [];
 let biMaterials = {};
@@ -164,6 +165,16 @@ function biDimension(row, dimension) {
     }
 }
 
+function biPeriod(row, grain) {
+    const date = String(row.ngay_ct || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+    if (grain === "day") return date;
+    if (grain === "month") return date.slice(0, 7);
+    if (grain === "year") return date.slice(0, 4);
+    if (grain === "quarter") return `${date.slice(0, 4)}-Q${Math.ceil(Number(date.slice(5, 7)) / 3)}`;
+    throw new Error("Chiều thời gian không hợp lệ.");
+}
+
 function biAggregate(rows, widget) {
     const groups = new Map();
     let invalid = 0;
@@ -176,9 +187,11 @@ function biAggregate(rows, widget) {
             invalid++;
             return;
         }
+        const period = widget.timeGrain ? biPeriod(row, widget.timeGrain) : "";
+        if (widget.timeGrain && !period) { invalid++; return; }
         let group = groups.get(key);
         if (!group) {
-            group = { key, label, value: 0, orders: new Set() };
+            group = { key, label, value: 0, orders: new Set(), periods: new Map() };
             groups.set(key, group);
         }
         if (widget.measure === "orders") {
@@ -186,9 +199,17 @@ function biAggregate(rows, widget) {
         } else {
             group.value += Number(value);
         }
+        if (period) {
+            if (!group.periods.has(period)) group.periods.set(period, { value: 0, orders: new Set() });
+            const cell = group.periods.get(period);
+            if (widget.measure === "orders") cell.orders.add(order); else cell.value += Number(value);
+        }
     });
     let result = [...groups.values()];
-    if (widget.measure === "orders") result.forEach(group => { group.value = group.orders.size; });
+    if (widget.measure === "orders") result.forEach(group => {
+        group.value = group.orders.size;
+        group.periods.forEach(cell => { cell.value = cell.orders.size; });
+    });
     result.sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "vi"));
     if (widget.limit) result = result.slice(0, widget.limit);
     if (widget.dimension === "month") result.sort((a, b) => a.key.localeCompare(b.key));
@@ -197,6 +218,59 @@ function biAggregate(rows, widget) {
         group.unit = material && String(material.dvt || "").trim() || "Chưa có ĐVT PTN";
     });
     return { result, invalid };
+}
+
+function biRenderTime(content, result, widget) {
+    const periods = [...new Set(result.flatMap(group => [...group.periods.keys()]))].sort();
+    if (widget.chart === "table") {
+        const table = document.createElement("table");
+        table.className = "w-full text-xs text-left";
+        const head = document.createElement("thead");
+        head.innerHTML = "<tr><th class=\"p-2\">Thời gian</th><th class=\"p-2\">Chiều phân tích</th><th class=\"p-2 text-right\">Giá trị</th></tr>";
+        table.appendChild(head);
+        const body = document.createElement("tbody");
+        for (const period of periods) for (const group of result) {
+            const cell = group.periods.get(period);
+            if (!cell) continue;
+            const row = document.createElement("tr");
+            row.className = "border-t";
+            row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue({ value: cell.value, unit: group.unit }, widget.measure))}</td>`;
+            body.appendChild(row);
+        }
+        table.appendChild(body);
+        content.appendChild(table);
+        return;
+    }
+    const colors = ["#2563eb", "#dc2626", "#059669", "#9333ea", "#d97706", "#0891b2", "#db2777", "#4d7c0f"];
+    for (let groupOffset = 0; groupOffset < result.length; groupOffset += 30) {
+        const groups = result.slice(groupOffset, groupOffset + 30);
+        for (let offset = 0; offset < periods.length; offset += 60) {
+            const part = periods.slice(offset, offset + 60);
+            const wrap = document.createElement("div");
+            wrap.className = "relative";
+            wrap.style.width = `${Math.max(450, part.length * 55)}px`;
+            wrap.style.height = "350px";
+            const canvas = document.createElement("canvas");
+            canvas.setAttribute("role", "img");
+            canvas.setAttribute("aria-label", widget.title);
+            wrap.appendChild(canvas);
+            content.appendChild(wrap);
+            biCharts.push(new Chart(canvas.getContext("2d"), {
+                type: widget.chart,
+                data: { labels: part, datasets: groups.map((group, i) => ({
+                    label: widget.measure === "quantity" ? `${group.label} (${group.unit})` : group.label,
+                    data: part.map(period => group.periods.has(period) ? group.periods.get(period).value : null),
+                    backgroundColor: colors[i % colors.length], borderColor: colors[i % colors.length], borderRadius: 4
+                })) },
+                options: { responsive: true, maintainAspectRatio: false, spanGaps: false,
+                    scales: { x: { title: { display: true, text: biTimeGrains[widget.timeGrain] } } },
+                    plugins: { tooltip: { callbacks: { label: item => {
+                        const group = groups[item.datasetIndex];
+                        return `${group.label}: ${biValue({ value: item.raw, unit: group.unit }, widget.measure)}`;
+                    } } } } }
+            }));
+        }
+    }
 }
 
 function biValue(group, measure) {
@@ -218,13 +292,14 @@ function biRender() {
         card.innerHTML = `<div class="flex flex-wrap justify-between gap-2"><h3 class="font-bold text-sm">${esc(widget.title)}</h3>
             <div class="flex gap-2 text-xs"><button data-bi-action="edit" data-index="${index}" class="text-blue-600">Sửa</button>
             <button data-bi-action="delete" data-index="${index}" class="text-red-600">Xóa</button></div></div>
-            <p class="text-xs text-slate-500 mt-1">${esc(biMeasures[widget.measure])}${widget.measure === "revenue" ? " (VND)" : ""} · ${esc(biDimensions[widget.dimension])}${widget.filter ? ` · Lọc: ${esc(widget.filter)}` : ""}</p>
+            <p class="text-xs text-slate-500 mt-1">${esc(biMeasures[widget.measure])}${widget.measure === "revenue" ? " (VND)" : ""} · ${esc(biDimensions[widget.dimension])}${widget.timeGrain ? ` · Theo ${esc(biTimeGrains[widget.timeGrain].toLowerCase())}` : ""}${widget.filter ? ` · Lọc: ${esc(widget.filter)}` : ""}</p>
             ${widget.measure === "quantity" ? '<p class="text-xs text-amber-700 mt-1">Cộng trực tiếp, không quy đổi; ĐVT theo từng mã PTN, xem ở bảng hoặc chú giải khi rê chuột.</p>' : ""}
             <p class="text-xs text-amber-700 mt-1">${invalid ? `Bỏ qua ${invalid} dòng thiếu hoặc sai chỉ tiêu.` : ""}</p>
             <div class="bi-content mt-3 overflow-auto max-h-[360px]"></div>`;
         container.appendChild(card);
         const content = card.querySelector(".bi-content");
         if (!result.length) { content.textContent = "Không có dữ liệu phù hợp."; return; }
+        if (widget.timeGrain) { biRenderTime(content, result, widget); return; }
         if (widget.chart === "table") {
             content.innerHTML = `<table class="w-full text-xs text-left"><thead><tr><th class="p-2">Chiều phân tích</th><th class="p-2 text-right">Giá trị</th></tr></thead><tbody>${result.map(group =>
                 `<tr class="border-t"><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue(group, widget.measure))}</td></tr>`).join("")}</tbody></table>`;
@@ -261,6 +336,7 @@ function biOpenEditor(index) {
     document.getElementById("biChart").value = widget.chart;
     document.getElementById("biFilter").value = widget.filter;
     document.getElementById("biLimit").value = String(widget.limit);
+    document.getElementById("biTimeGrain").value = widget.timeGrain || "";
     biUpdateDimension();
     document.getElementById("biEditor").classList.remove("hidden");
     document.getElementById("biTitle").focus();
@@ -271,9 +347,13 @@ function biUpdateDimension() {
     const dimension = document.getElementById("biDimension");
     [...dimension.options].forEach(option => { option.disabled = quantity && option.value !== "ptn"; });
     if (quantity) dimension.value = "ptn";
+    const time = document.getElementById("biTimeGrain");
+    time.disabled = dimension.value === "month";
+    if (time.disabled) time.value = "";
 }
 
 document.getElementById("biMeasure").addEventListener("change", biUpdateDimension);
+document.getElementById("biDimension").addEventListener("change", biUpdateDimension);
 document.getElementById("biAdd").addEventListener("click", () => biOpenEditor(null));
 document.getElementById("biCancel").addEventListener("click", () => document.getElementById("biEditor").classList.add("hidden"));
 document.getElementById("biReload").addEventListener("click", biLoadBoard);
@@ -287,7 +367,8 @@ document.getElementById("biEditorForm").addEventListener("submit", event => {
     const widget = {
         id: biEditing === null ? crypto.randomUUID() : biBoard.widgets[biEditing].id,
         title, measure: document.getElementById("biMeasure").value, dimension: document.getElementById("biDimension").value,
-        chart: document.getElementById("biChart").value, filter: document.getElementById("biFilter").value.trim(), limit: Number(document.getElementById("biLimit").value)
+        chart: document.getElementById("biChart").value, filter: document.getElementById("biFilter").value.trim(), limit: Number(document.getElementById("biLimit").value),
+        timeGrain: document.getElementById("biTimeGrain").value
     };
     if (biEditing === null) biBoard.widgets.push(widget); else biBoard.widgets[biEditing] = widget;
     biDirty = true;
