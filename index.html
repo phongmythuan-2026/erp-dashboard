@@ -341,6 +341,44 @@
                         </div>
                     </section>
                 </div>
+
+                <section class="xl:col-span-3 min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <div class="mb-2">
+                        <h3 class="font-bold text-slate-900 text-sm">Phân Tích Doanh Thu Theo Nhóm Vật Tư 1</h3>
+                        <p class="text-xs text-slate-400">Tối đa 6 nhóm lớn nhất + nhóm Khác, theo tháng/năm (tỷ đồng); dùng chung bộ chọn năm ở trên</p>
+                    </div>
+                    <p id="category1RevenueStatus" class="text-xs text-slate-400 mb-3">Đang tải dữ liệu...</p>
+                    <div class="relative h-80 overflow-x-auto overflow-y-hidden">
+                        <div id="category1RevenueChartContainer" class="relative h-full">
+                            <canvas id="category1RevenueChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="xl:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                        <h3 class="font-bold text-slate-900 text-sm">Top 20 Mã PTN Theo Doanh Thu</h3>
+                        <p class="text-xs text-slate-400 mb-3">Doanh thu thuần; theo bộ lọc Dashboard. Tên tra từ danh mục vật tư.</p>
+                        <p id="ptnRevenueStatus" class="text-xs text-slate-500 mb-2"></p>
+                        <div class="h-[360px] overflow-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="sticky top-0 bg-slate-50 text-slate-500"><tr><th class="p-2">Mã PTN / Tên</th><th class="p-2 text-right">Doanh thu</th></tr></thead>
+                                <tbody id="ptnRevenueBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                        <h3 class="font-bold text-slate-900 text-sm">Top 20 Mã PTN Theo Sản Lượng</h3>
+                        <p class="text-xs text-slate-400 mb-3">Số lượng sau trả lại; tách theo mã PTN và đơn vị, xếp chung các đơn vị theo giá trị số.</p>
+                        <p id="ptnQuantityStatus" class="text-xs text-slate-500 mb-2"></p>
+                        <div class="h-[360px] overflow-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="sticky top-0 bg-slate-50 text-slate-500"><tr><th class="p-2">Mã PTN / Tên</th><th class="p-2 text-right">Sản lượng / ĐVT</th></tr></thead>
+                                <tbody id="ptnQuantityBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
             </div>
 
             <!-- BẢNG CHI TIẾT GIAO DỊCH (CHUẨN MẪU HÌNH 4) -->
@@ -367,6 +405,7 @@
                                 <th class="p-3">NGÀY LẬP</th>
                                 <th class="p-3">TÊN KHÁCH HÀNG</th>
                                 <th class="p-3">DANH MỤC / VẬT TƯ</th>
+                                <th class="p-3">MÃ PTN</th>
                                 <th class="p-3">NVKD</th>
                                 <th class="p-3 text-right">SỐ LƯỢNG</th>
                                 <th class="p-3 text-right">DOANH THU</th>
@@ -379,7 +418,7 @@
                         </tbody>
                         <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-300 text-xs">
                             <tr>
-                                <td colspan="5" class="p-3 text-right uppercase">TỔNG CỘNG THEO ĐIỀU KIỆN LỌC:</td>
+                                <td colspan="6" class="p-3 text-right uppercase">TỔNG CỘNG THEO ĐIỀU KIỆN LỌC:</td>
                                 <td id="footTotalQty" class="p-3 text-right text-slate-600">0</td>
                                 <td id="footTotalRevenue" class="p-3 text-right text-blue-600">0 ₫</td>
                                 <td id="footTotalCK" class="p-3 text-right text-emerald-600">0 ₫</td>
@@ -755,6 +794,8 @@
         let salesAvailableMonths = new Set();
         let monthlyRevenueRequestId = 0;
         let materialMap = {};
+        let materialsLoaded = false;
+        let monthlyYearRows = null;
         let chartInstances = {};
         let currentUser = null;
         let managedUsers = [];
@@ -1529,6 +1570,17 @@
             return (m && (m.ten_nhvt || m.ma_nhvt)) || "Chưa phân nhóm";
         }
 
+        function category1Of(r) {
+            const m = materialMap[r.ma_vt];
+            return (m && (m.ten_nhvt1 || m.ma_nhvt1)) || "Chưa phân nhóm";
+        }
+
+        function ptnOf(r) {
+            const code = String(r.ma_vt || "");
+            const index = code.indexOf("-CB-");
+            return index < 0 ? code : code.slice(0, index);
+        }
+
         function fillSalesFilters() {
             const fill = (id, values) => {
                 const sel = document.getElementById(id);
@@ -1550,11 +1602,12 @@
             const rows = rawSalesData.filter(r =>
                 (!cat || categoryOf(r) === cat) &&
                 (!staff || (r.ten_nvkd || r.ma_nhomkd) === staff) &&
-                (!kw || [r.so_ct, r.ten_kh, r.ma_kh, r.ten_vt, r.ma_vt].some(v => String(v ?? '').toLowerCase().includes(kw))));
+                (!kw || [r.so_ct, r.ten_kh, r.ma_kh, r.ten_vt, r.ma_vt, ptnOf(r)].some(v => String(v ?? '').toLowerCase().includes(kw))));
 
             renderKPIs(rows);
             renderSalesTable(rows);
             renderCharts(rows);
+            renderPtnReports(rows);
         }
 
         function renderKPIs(rows) {
@@ -1587,13 +1640,14 @@
 
         dtInit("sales", {
             tbody: "tableBody",
-            cols: [r => r.so_ct, r => r.ngay_ct, r => r.ten_kh || r.ma_kh, r => r.ten_vt || r.ma_vt, r => r.ten_nvkd || r.ma_nhomkd,
+            cols: [r => r.so_ct, r => r.ngay_ct, r => r.ten_kh || r.ma_kh, r => r.ten_vt || r.ma_vt, ptnOf, r => r.ten_nvkd || r.ma_nhomkd,
                    r => Number(r.so_luong || 0), revOf, r => Number(r.tien_ck || 0), r => Number(r.tien2_tra_lai || 0)],
             row: r => `<tr class="hover:bg-slate-50 transition">
                     <td class="p-3 font-bold text-slate-900">${esc(r.so_ct)}</td>
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_ct)}</td>
                     <td class="p-3 font-medium text-slate-800">${esc(r.ten_kh || r.ma_kh)}</td>
                     <td class="p-3 text-slate-600">${matLink(r.ma_vt, r.ten_vt || r.ma_vt)}</td>
+                    <td class="p-3 text-slate-600">${esc(ptnOf(r))}</td>
                     <td class="p-3 text-slate-500">${esc(r.ten_nvkd || r.ma_nhomkd)}</td>
                     <td class="p-3 text-right text-slate-700">${Number(r.so_luong || 0).toLocaleString('vi-VN')} ${esc(r.dvt)}</td>
                     <td class="p-3 text-right font-bold text-blue-600">${formatVND(revOf(r))}</td>
@@ -1606,6 +1660,103 @@
             const m = new Map();
             rows.forEach(r => { const k = keyFn(r) || "(Trống)"; m.set(k, (m.get(k) || 0) + valFn(r)); });
             return [...m.entries()].sort((a, b) => b[1] - a[1]);
+        }
+
+        function renderPtnReports(rows) {
+            const revenue = new Map();
+            const quantity = new Map();
+            let invalidQuantity = 0;
+            rows.forEach(row => {
+                const code = ptnOf(row) || "(Không có mã PTN)";
+                revenue.set(code, (revenue.get(code) || 0) + revOf(row));
+                const value = row.sl_ban_sau_tra_lai;
+                if (value == null || value === "" || !Number.isFinite(Number(value))) {
+                    invalidQuantity++;
+                    return;
+                }
+                const unit = String(row.dvt || "").trim() || "(Chưa có ĐVT)";
+                const key = JSON.stringify([code, unit]);
+                const entry = quantity.get(key) || { code, unit, value: 0 };
+                entry.value += Number(value);
+                quantity.set(key, entry);
+            });
+            const name = code => materialsLoaded
+                ? (materialMap[code] && materialMap[code].ten_vt) || "Không tìm thấy tên trong danh mục"
+                : "Chưa tải được danh mục vật tư";
+            const label = code => `<span class="font-semibold text-slate-800">${esc(code)}</span><br><span class="text-slate-500">${esc(name(code))}</span>`;
+            const topRevenue = [...revenue.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
+            const topQuantity = [...quantity.values()].sort((a, b) => b.value - a.value).slice(0, 20);
+            document.getElementById("ptnRevenueBody").innerHTML = topRevenue.map(([code, value]) =>
+                `<tr><td class="p-2">${label(code)}</td><td class="p-2 text-right whitespace-nowrap">${formatVND(value)}</td></tr>`).join("")
+                || '<tr><td colspan="2" class="p-2 text-slate-400">Không có dữ liệu</td></tr>';
+            document.getElementById("ptnQuantityBody").innerHTML = topQuantity.map(({ code, unit, value }) =>
+                `<tr><td class="p-2">${label(code)}</td><td class="p-2 text-right whitespace-nowrap">${value.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} ${esc(unit)}</td></tr>`).join("")
+                || '<tr><td colspan="2" class="p-2 text-slate-400">Không có dữ liệu</td></tr>';
+            document.getElementById("ptnRevenueStatus").textContent = materialsLoaded ? "" : "Chưa tải được danh mục vật tư; không thể tra tên PTN.";
+            document.getElementById("ptnQuantityStatus").textContent = [
+                materialsLoaded ? "" : "Chưa tải được danh mục vật tư; không thể tra tên PTN.",
+                invalidQuantity ? `Không xếp hạng ${invalidQuantity} dòng thiếu hoặc sai số lượng sau trả lại.` : ""
+            ].filter(Boolean).join(" ");
+        }
+
+        function renderCategoryMonthly(yearRows, chartId, statusId, categoryFn) {
+            const status = document.getElementById(statusId);
+            const container = document.getElementById(`${chartId}Container`);
+            if (!materialsLoaded) {
+                container.style.width = "100%";
+                createChart(chartId, "bar", { labels: [], datasets: [] });
+                status.textContent = "Chưa tải được danh mục vật tư; không thể phân tích theo nhóm.";
+                return;
+            }
+            const totalsByCategory = new Map();
+            const labels = [];
+            const keys = [];
+            yearRows.forEach(({ year, rows }, yearIndex) => {
+                for (let month = 1; month <= 12; month++) {
+                    const mm = String(month).padStart(2, "0");
+                    labels.push([mm, String(year)]);
+                    keys.push(`${year}-${mm}`);
+                }
+                rows.forEach(row => {
+                    const month = Number(String(row.ngay_ct || "").slice(5, 7));
+                    if (!Number.isInteger(month) || month < 1 || month > 12) return;
+                    const category = categoryFn(row);
+                    let totals = totalsByCategory.get(category);
+                    if (!totals) {
+                        totals = Array(yearRows.length * 12).fill(0);
+                        totalsByCategory.set(category, totals);
+                    }
+                    totals[yearIndex * 12 + month - 1] += revOf(row);
+                });
+            });
+            const top = [...totalsByCategory.entries()]
+                .sort((a, b) => sumBy(b[1], value => value) - sumBy(a[1], value => value)).slice(0, 6);
+            const names = new Set(top.map(([name]) => name));
+            const palette = ["#3b82f6", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#14b8a6"];
+            const dataFor = values => values.map((value, i) => salesAvailableMonths.has(keys[i]) ? value / 1e9 : null);
+            const datasets = top.map(([name, values], index) => ({
+                label: name, data: dataFor(values), backgroundColor: palette[index], borderRadius: 2
+            }));
+            if (totalsByCategory.size > top.length) {
+                const other = Array(keys.length).fill(0);
+                totalsByCategory.forEach((values, name) => {
+                    if (!names.has(name)) values.forEach((value, i) => { other[i] += value; });
+                });
+                datasets.push({ label: "Khác", data: dataFor(other), backgroundColor: "#64748b", borderRadius: 2 });
+            }
+            container.style.width = `${Math.max(520, keys.length * 35 + 100)}px`;
+            container.parentElement.scrollLeft = 0;
+            createChart(chartId, "bar", { labels, datasets }, {
+                scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: "Tỷ đồng" } } }
+            });
+            status.textContent = totalsByCategory.size
+                ? `Đã phân tích ${yearRows.length} năm, hiển thị tối đa ${top.length} nhóm lớn nhất${totalsByCategory.size > top.length ? " và gộp nhóm còn lại vào “Khác”" : ""}.`
+                : `Đã phân tích ${yearRows.length} năm; chưa có dữ liệu nhóm vật tư.`;
+        }
+
+        function renderMonthlyCategories(yearRows) {
+            renderCategoryMonthly(yearRows, "categoryRevenueChart", "categoryRevenueStatus", categoryOf);
+            renderCategoryMonthly(yearRows, "category1RevenueChart", "category1RevenueStatus", category1Of);
         }
 
         function updateMonthlyYearFilters(months) {
@@ -1642,17 +1793,28 @@
                 .sort((a, b) => a - b);
             const status = document.getElementById("monthlyRevenueStatus");
             const categoryStatus = document.getElementById("categoryRevenueStatus");
+            const category1Status = document.getElementById("category1RevenueStatus");
             const monthLabels = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
+            monthlyYearRows = null;
 
             if (!years.length) {
                 status.textContent = "Chọn ít nhất một năm để xem báo cáo.";
                 categoryStatus.textContent = "Chọn ít nhất một năm để xem báo cáo.";
+                category1Status.textContent = "Chọn ít nhất một năm để xem báo cáo.";
                 createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: [] });
-                document.getElementById("categoryRevenueChartContainer").style.width = "100%";
-                createChart("categoryRevenueChart", "bar", { labels: [], datasets: [] });
+                ["categoryRevenueChart", "category1RevenueChart"].forEach(id => {
+                    document.getElementById(`${id}Container`).style.width = "100%";
+                    createChart(id, "bar", { labels: [], datasets: [] });
+                });
                 return;
             }
 
+            status.textContent = "Đang tải dữ liệu doanh thu theo tháng...";
+            categoryStatus.textContent = "Đang tải dữ liệu phân tích theo nhóm vật tư...";
+            category1Status.textContent = "Đang tải dữ liệu phân tích theo nhóm vật tư 1...";
+            createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: [] });
+            ["categoryRevenueChart", "category1RevenueChart"].forEach(id =>
+                createChart(id, "bar", { labels: [], datasets: [] }));
             const colors = ["#2563eb", "#f97316", "#15803d", "#8b5cf6", "#db2777", "#0891b2"];
             const monthlyDatasets = [];
             const yearRows = [];
@@ -1684,76 +1846,17 @@
                 if (requestId !== monthlyRevenueRequestId) return;
                 createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: monthlyDatasets });
 
-                const categoryTotals = new Map();
-                const categoryMonthLabels = [];
-                const categoryMonthKeys = [];
-                yearRows.forEach(({ year, rows }, yearIndex) => {
-                    monthLabels.forEach(month => {
-                        categoryMonthLabels.push([month, String(year)]);
-                        categoryMonthKeys.push(`${year}-${month}`);
-                    });
-                    rows.forEach(row => {
-                        const month = Number(String(row.ngay_ct || "").slice(5, 7));
-                        if (month < 1 || month > 12) return;
-                        const category = categoryOf(row);
-                        let totals = categoryTotals.get(category);
-                        if (!totals) {
-                            totals = Array(yearRows.length * 12).fill(0);
-                            categoryTotals.set(category, totals);
-                        }
-                        totals[yearIndex * 12 + month - 1] += revOf(row);
-                    });
-                });
-
-                const topCategories = [...categoryTotals.entries()]
-                    .sort((a, b) => sumBy(b[1], value => value) - sumBy(a[1], value => value))
-                    .slice(0, 6);
-                const topCategoryNames = new Set(topCategories.map(([name]) => name));
-                const categoryPalette = ["#3b82f6", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#14b8a6"];
-                const categoryDatasets = topCategories.map(([name, values], index) => ({
-                    label: name,
-                    data: values.map((value, monthIndex) =>
-                        salesAvailableMonths.has(categoryMonthKeys[monthIndex]) ? value / 1e9 : null),
-                    backgroundColor: categoryPalette[index],
-                    borderRadius: 2
-                }));
-                const otherValues = Array(categoryMonthKeys.length).fill(0);
-                categoryTotals.forEach((values, name) => {
-                    if (topCategoryNames.has(name)) return;
-                    values.forEach((value, index) => { otherValues[index] += value; });
-                });
-                if (categoryTotals.size > topCategories.length) {
-                    categoryDatasets.push({
-                        label: "Khác",
-                        data: otherValues.map((value, monthIndex) =>
-                            salesAvailableMonths.has(categoryMonthKeys[monthIndex]) ? value / 1e9 : null),
-                        backgroundColor: "#64748b",
-                        borderRadius: 2
-                    });
-                }
-                document.getElementById("categoryRevenueChartContainer").style.width =
-                    `${Math.max(520, categoryMonthKeys.length * 35 + 100)}px`;
-                document.getElementById("categoryRevenueChartContainer").parentElement.scrollLeft = 0;
-                createChart("categoryRevenueChart", "bar", {
-                    labels: categoryMonthLabels,
-                    datasets: categoryDatasets
-                }, {
-                    scales: {
-                        x: { stacked: true },
-                        y: {
-                            stacked: true,
-                            title: { display: true, text: "Tỷ đồng" }
-                        }
-                    }
-                });
+                monthlyYearRows = yearRows;
+                renderMonthlyCategories(yearRows);
                 status.textContent = `Đã tải dữ liệu ${years.length} năm; báo cáo độc lập với bộ lọc ngày.`;
-                categoryStatus.textContent = categoryTotals.size
-                    ? `Đã phân tích ${years.length} năm, hiển thị tối đa ${topCategories.length} nhóm lớn nhất${categoryTotals.size > topCategories.length ? " và gộp nhóm còn lại vào “Khác”" : ""}.`
-                    : `Đã phân tích ${years.length} năm; chưa có dữ liệu nhóm vật tư.`;
             } catch (error) {
                 if (requestId !== monthlyRevenueRequestId) return;
                 status.textContent = "Không tải được dữ liệu doanh thu theo tháng.";
                 categoryStatus.textContent = "Không tải được dữ liệu phân tích theo nhóm vật tư.";
+                category1Status.textContent = "Không tải được dữ liệu phân tích theo nhóm vật tư 1.";
+                createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: [] });
+                ["categoryRevenueChart", "category1RevenueChart"].forEach(id =>
+                    createChart(id, "bar", { labels: [], datasets: [] }));
                 reportDataError("Lỗi tải báo cáo doanh thu theo tháng", error);
             }
         }
@@ -2179,8 +2282,10 @@
                 if (result.status === 'success') {
                     allMaterialData = result.data || [];
                     materialMap = Object.fromEntries(allMaterialData.map(m => [m.ma_vt, m]));
+                    materialsLoaded = true;
                     renderMaterialTable(allMaterialData);
                     if (rawSalesData.length) { fillSalesFilters(); applyDashboardFilters(); }
+                    if (monthlyYearRows) renderMonthlyCategories(monthlyYearRows);
                     return true;
                 }
                 throw new Error("Apps Script trả về dữ liệu danh mục vật tư không hợp lệ.");
@@ -2337,7 +2442,7 @@
                         ["Từ khóa", document.getElementById("searchInput").value.trim()]);
                     table = dtExportTable(tableId);
                     const sum = i => table.rows.reduce((t, r) => t + (Number(r[i]) || 0), 0);
-                    table.rows.push(["TỔNG CỘNG", "", "", "", "", sum(5), sum(6), sum(7), sum(8)]);
+                    table.rows.push(["TỔNG CỘNG", "", "", "", "", "", sum(6), sum(7), sum(8), sum(9)]);
                 } else if (screen === "purchase") {
                     title = "Đề xuất mua hàng"; tableId = "purchase";
                     info.push(["Khoảng ngày", range("pur")], ["Trạng thái", document.getElementById("purchaseStatusFilter").selectedOptions[0].textContent],
