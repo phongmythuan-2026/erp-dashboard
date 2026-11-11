@@ -420,7 +420,7 @@
                                 </select>
                             </label>
                         </div>
-                        <p class="text-xs text-slate-400 mb-3">Số lượng sau trả lại; tách theo mã PTN và đơn vị, xếp chung theo giá trị số. Chạm hoặc di chuột để xem chi tiết.</p>
+                        <p class="text-xs text-slate-400 mb-3">Số lượng sau trả lại cộng theo mã PTN; ĐVT lấy từ danh mục mã PTN, không quy đổi. Chạm hoặc di chuột để xem chi tiết.</p>
                         <p id="ptnQuantityStatus" class="text-xs text-slate-500 mb-2"></p>
                         <div class="h-[360px] overflow-auto">
                             <div id="ptnQuantityChartContainer" class="relative min-w-[520px] h-[360px]">
@@ -1826,15 +1826,18 @@
                     invalidQuantity++;
                     return;
                 }
-                const unit = String(row.dvt || "").trim() || "(Chưa có ĐVT)";
-                const key = JSON.stringify([code, unit]);
-                const entry = quantity.get(key) || { code, unit, value: 0 };
+                const entry = quantity.get(code) || { code, value: 0 };
                 entry.value += Number(value);
-                quantity.set(key, entry);
+                quantity.set(code, entry);
             });
             const name = ptnName;
             const topRevenue = limitTop([...revenue.entries()].sort((a, b) => b[1] - a[1]), "ptnRevenueTopLimit");
-            const topQuantity = limitTop([...quantity.values()].sort((a, b) => b.value - a.value), "ptnQuantityTopLimit");
+            const topQuantity = limitTop([...quantity.values()].sort((a, b) => b.value - a.value), "ptnQuantityTopLimit")
+                .map(entry => ({
+                    ...entry,
+                    unit: materialsLoaded && materialMap[entry.code] && String(materialMap[entry.code].dvt || "").trim()
+                        || "Chưa có ĐVT PTN"
+                }));
             const renderPtnChart = (id, entries, datasetLabel, color, valueLabel) => {
                 const shortName = code => {
                     const text = String(name(code));
