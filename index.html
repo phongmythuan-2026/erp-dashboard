@@ -911,7 +911,7 @@
 
         function initializeApplication() {
             const now = new Date();
-            setDateInput("fromDate", new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
+            setDateInput("fromDate", new Date(now.getFullYear(), 0, 1));
             setDateInput("toDate", now);
             ["pur", "pro"].forEach(prefix => {
                 setDateInput(prefix + "FromDate", new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
@@ -1638,6 +1638,10 @@
             button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL...</span>';
             try {
                 const [from, to] = getDashboardDateRange();
+                if (from > to) throw new Error("Từ ngày không được sau Đến ngày. Vui lòng chọn lại khoảng thời gian.");
+                if (Date.parse(to) - Date.parse(from) > 30 * 86400000) {
+                    throw new Error("Khoảng thời gian đọc mới từ SQL không được vượt quá 30 ngày. Vui lòng chọn lại Từ ngày và Đến ngày.");
+                }
                 const chunks = splitDateRange(from, to, 3);
                 let rowCount = 0;
                 for (let i = 0; i < chunks.length; i++) {
@@ -3032,7 +3036,7 @@
             ["filterCategory", "filterCategory1", "filterBusinessGroup", "filterStaff", "filterPtn", "searchInput"].forEach(id => document.getElementById(id).value = "");
             closeSalesSearch();
             syncSearchableSalesFilters();
-            setQuickDate('last30');
+            setQuickDate('year');
         }
         initializeSearchableSalesFilters();
     </script>
