@@ -276,7 +276,7 @@
                 </div>
             </div>
 
-            <!-- 4 BIỂU ĐỒ BÁO CÁO MẪU (CHUẨN MẪU HÌNH 2 & 3) -->
+            <!-- Biểu đồ báo cáo -->
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <!-- Biểu đồ 1: Xu hướng Doanh thu & Lợi nhuận -->
                 <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
@@ -300,11 +300,11 @@
                     </div>
                 </div>
 
-                <!-- Biểu đồ 3: Hiệu quả kênh phân phối -->
+                <!-- Biểu đồ 3: Top nhân viên kinh doanh -->
                 <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                     <div class="mb-4">
-                        <h3 class="font-bold text-slate-900 text-sm">Doanh Thu Theo Nhân Viên Kinh Doanh</h3>
-                        <p class="text-xs text-slate-400">So sánh doanh thu giữa các nhân viên kinh doanh</p>
+                        <h3 class="font-bold text-slate-900 text-sm">Top Nhân Viên Kinh Doanh Đóng Góp Doanh Số Cao Nhất</h3>
+                        <p class="text-xs text-slate-400">Xếp hạng doanh thu theo nhân viên kinh doanh</p>
                     </div>
                     <div class="relative h-72">
                         <canvas id="channelChart"></canvas>
@@ -319,6 +319,22 @@
                     </div>
                     <div class="relative h-72">
                         <canvas id="customerBarChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Báo cáo doanh thu theo tháng, cho phép so sánh nhiều năm -->
+                <div class="xl:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-sm">Doanh Thu Theo Tháng</h3>
+                            <p class="text-xs text-slate-400">So sánh doanh thu từng tháng giữa các năm (tỷ đồng)</p>
+                        </div>
+                        <div id="monthlyYears" role="group" aria-label="Chọn năm xem doanh thu"
+                             class="flex flex-wrap gap-2 text-xs"></div>
+                    </div>
+                    <p id="monthlyRevenueStatus" class="text-xs text-slate-400 mb-3">Đang tải danh sách năm...</p>
+                    <div class="relative h-80">
+                        <canvas id="monthlyRevenueChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -724,6 +740,9 @@
         let allProductionData = [];
         let allMaterialData = [];
         let rawSalesData = [];
+        let salesAvailableYears = [];
+        let salesAvailableMonths = new Set();
+        let monthlyRevenueRequestId = 0;
         let materialMap = {};
         let chartInstances = {};
         let currentUser = null;
@@ -1282,6 +1301,7 @@
             }
             const manifest = await api("getPartitionManifest", token, table);
             const versions = (manifest && manifest.months) || {};
+            if (table === "ban_hang") updateMonthlyYearFilters(versions);
             const byMonth = {};
             const missing = [];
             for (const month of wanted) {
@@ -1398,6 +1418,7 @@
                 }
                 fillSalesFilters();
                 applyDashboardFilters();
+                await loadMonthlyRevenue();
                 return true;
             } catch (err) {
                 reportDataError("Lỗi tải dữ liệu Dashboard", err);
@@ -1582,6 +1603,83 @@
             return [...m.entries()].sort((a, b) => b[1] - a[1]);
         }
 
+        function updateMonthlyYearFilters(months) {
+            const availableMonths = Object.keys(months || {}).sort();
+            const years = [...new Set(availableMonths.map(month => Number(month.slice(0, 4))))]
+                .filter(year => Number.isInteger(year) && year > 0)
+                .sort((a, b) => b - a);
+            salesAvailableMonths = new Set(availableMonths);
+            if (JSON.stringify(years) === JSON.stringify(salesAvailableYears)) return;
+
+            const selected = new Set(
+                [...document.querySelectorAll("#monthlyYears input:checked")]
+                    .map(input => Number(input.value))
+                    .filter(year => years.includes(year))
+            );
+            if (!selected.size && years.length) {
+                const currentYear = new Date().getFullYear();
+                selected.add(years.includes(currentYear) ? currentYear : years[0]);
+            }
+            salesAvailableYears = years;
+            document.getElementById("monthlyYears").innerHTML = years.map(year => `
+                <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" value="${year}" ${selected.has(year) ? "checked" : ""}
+                           onchange="loadMonthlyRevenue()" class="accent-blue-600">
+                    <span>${year}</span>
+                </label>`).join("");
+        }
+
+        async function loadMonthlyRevenue() {
+            const requestId = ++monthlyRevenueRequestId;
+            const years = [...document.querySelectorAll("#monthlyYears input:checked")]
+                .map(input => Number(input.value))
+                .filter(year => salesAvailableYears.includes(year))
+                .sort((a, b) => a - b);
+            const status = document.getElementById("monthlyRevenueStatus");
+            const monthLabels = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
+
+            if (!years.length) {
+                status.textContent = "Chọn ít nhất một năm để xem báo cáo.";
+                createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets: [] });
+                return;
+            }
+
+            const colors = ["#2563eb", "#f97316", "#15803d", "#8b5cf6", "#db2777", "#0891b2"];
+            const datasets = [];
+            try {
+                for (let index = 0; index < years.length; index++) {
+                    const year = years[index];
+                    status.textContent = `Đang tải dữ liệu ${year} (${index + 1}/${years.length})...`;
+                    const rows = await loadPartitioned("ban_hang", `${year}-01-01`, `${year}-12-31`);
+                    if (requestId !== monthlyRevenueRequestId) return;
+
+                    const totals = Array(12).fill(0);
+                    rows.forEach(row => {
+                        const month = Number(String(row.ngay_ct || "").slice(5, 7));
+                        if (month >= 1 && month <= 12) totals[month - 1] += revOf(row);
+                    });
+                    datasets.push({
+                        label: String(year),
+                        data: totals.map((value, monthIndex) => {
+                            const month = `${year}-${monthLabels[monthIndex]}`;
+                            return salesAvailableMonths.has(month) ? value / 1e9 : null;
+                        }),
+                        borderColor: colors[index % colors.length],
+                        backgroundColor: colors[index % colors.length],
+                        tension: 0.25,
+                        pointRadius: 3
+                    });
+                }
+                if (requestId !== monthlyRevenueRequestId) return;
+                createChart("monthlyRevenueChart", "line", { labels: monthLabels, datasets });
+                status.textContent = `Đã tải dữ liệu ${years.length} năm; báo cáo độc lập với bộ lọc ngày.`;
+            } catch (error) {
+                if (requestId !== monthlyRevenueRequestId) return;
+                status.textContent = "Không tải được dữ liệu doanh thu theo tháng.";
+                reportDataError("Lỗi tải báo cáo doanh thu theo tháng", error);
+            }
+        }
+
         function renderCharts(rows) {
             const palette = ['#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6', '#14b8a6', '#ef4444', '#64748b'];
 
@@ -1605,11 +1703,11 @@
                 datasets: [{ data: cats.map(c => c[1]), backgroundColor: palette }]
             });
 
-            const staff = groupSum(rows, r => r.ten_nvkd || r.ma_nhomkd).slice(0, 10);
+            const staff = groupSum(rows, r => r.ten_nvkd || r.ma_nhomkd).slice(0, 5);
             createChart('channelChart', 'bar', {
-                labels: staff.map(s => s[0]),
-                datasets: [{ label: 'Doanh thu', data: staff.map(s => s[1]), backgroundColor: '#6366f1', borderRadius: 8 }]
-            });
+                labels: staff.map(s => s[0].length > 22 ? s[0].slice(0, 21) + "…" : s[0]),
+                datasets: [{ label: 'Doanh số', data: staff.map(s => s[1]), backgroundColor: '#6366f1', borderRadius: 6 }]
+            }, { indexAxis: 'y' });
 
             const cust = groupSum(rows, r => r.ten_kh || r.ma_kh).slice(0, 5);
             createChart('customerBarChart', 'bar', {
