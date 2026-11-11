@@ -84,6 +84,9 @@
                 <button onclick="switchTab('dashboard')" id="nav-dashboard" class="top-tab active shrink-0 px-3 lg:px-4 py-2.5 md:py-0 text-sm transition flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
                 </button>
+                <button onclick="switchTab('bi')" id="nav-bi" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-chart-column"></i><span>Phân tích B.I</span>
+                </button>
                 <button onclick="switchTab('purchase')" id="nav-purchase" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-cart-flatbed"></i><span>Đề xuất mua hàng</span>
                     <span id="pendingBadgeMenu" class="ml-auto bg-amber-500 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
@@ -107,6 +110,52 @@
 
     <!-- MAIN CONTAINER -->
     <main class="flex-1 min-w-0 w-full px-3 sm:px-6 py-2 sm:py-3 space-y-3">
+
+        <div id="screen-bi" class="hidden space-y-4">
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <div><h2 class="font-bold text-slate-900">Phân tích B.I cá nhân</h2>
+                        <p class="text-xs text-slate-500">Bảng và widget chỉ thuộc tài khoản đang đăng nhập. Dữ liệu theo quyền truy cập hiện có.</p></div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="biReload" type="button" class="px-3 py-2 text-xs border border-slate-300 rounded-lg">Tải lại bảng</button>
+                        <button id="biSave" type="button" class="px-3 py-2 text-xs bg-blue-600 text-white rounded-lg">Lưu bảng</button>
+                        <button id="biAdd" type="button" class="px-3 py-2 text-xs bg-emerald-600 text-white rounded-lg">+ Thêm widget</button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-end gap-3 text-xs">
+                    <label class="font-semibold">Từ ngày <input id="biFrom" type="date" class="block border border-slate-300 rounded-lg px-3 py-2 mt-1"></label>
+                    <label class="font-semibold">Đến ngày <input id="biTo" type="date" class="block border border-slate-300 rounded-lg px-3 py-2 mt-1"></label>
+                    <button id="biApply" type="button" class="px-3 py-2 border border-slate-300 rounded-lg">Áp dụng ngày</button>
+                </div>
+                <p id="biStatus" role="status" class="text-xs text-slate-500">Chưa tải bảng.</p>
+            </section>
+            <div id="biWidgets" class="grid grid-cols-1 xl:grid-cols-2 gap-4"></div>
+            <p id="biEmpty" class="text-sm text-slate-500">Chưa có widget. Chọn “Thêm widget” để bắt đầu.</p>
+        </div>
+
+        <div id="biEditor" class="hidden fixed inset-0 z-[60] bg-slate-900/60 p-4 overflow-auto">
+            <form id="biEditorForm" class="mx-auto my-6 max-w-xl bg-white rounded-xl p-5 space-y-4">
+                <h3 id="biEditorTitle" class="font-bold">Cấu hình widget</h3>
+                <label class="block text-xs font-semibold">Tên widget
+                    <input id="biTitle" required maxlength="120" class="block w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"></label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <label class="font-semibold">Chỉ tiêu<select id="biMeasure" class="block w-full mt-1 border border-slate-300 rounded-lg px-3 py-2">
+                        <option value="revenue">Doanh thu thuần</option><option value="quantity">Sản lượng sau trả lại</option><option value="orders">Số đơn hàng</option></select></label>
+                    <label class="font-semibold">Chiều phân tích<select id="biDimension" class="block w-full mt-1 border border-slate-300 rounded-lg px-3 py-2">
+                        <option value="month">Tháng/năm</option><option value="customer">Khách hàng</option><option value="staff">Nhân viên kinh doanh</option>
+                        <option value="business">Nhóm kinh doanh</option><option value="category">Nhóm vật tư</option><option value="category1">Nhóm vật tư 1</option><option value="ptn">Sản phẩm theo mã PTN</option></select></label>
+                    <label class="font-semibold">Dạng hiển thị<select id="biChart" class="block w-full mt-1 border border-slate-300 rounded-lg px-3 py-2">
+                        <option value="bar">Biểu đồ thanh</option><option value="line">Biểu đồ đường</option><option value="table">Bảng số liệu</option></select></label>
+                    <label class="font-semibold">Giới hạn<select id="biLimit" class="block w-full mt-1 border border-slate-300 rounded-lg px-3 py-2">
+                        <option value="5">Top 5</option><option value="10">Top 10</option><option value="20" selected>Top 20</option><option value="0">Tất cả</option></select></label>
+                </div>
+                <label class="block text-xs font-semibold">Lọc theo tên/mã chiều phân tích (không bắt buộc)
+                    <input id="biFilter" maxlength="120" class="block w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"></label>
+                <p class="text-xs text-slate-500">Sản lượng chỉ theo PTN, cộng trực tiếp và dùng ĐVT của PTN. Tháng/năm hiển thị theo thời gian; Top chọn theo giá trị lớn nhất trước khi sắp xếp thời gian.</p>
+                <div class="flex justify-end gap-2"><button id="biCancel" type="button" class="px-4 py-2 border rounded-lg text-sm">Hủy</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Áp dụng widget</button></div>
+            </form>
+        </div>
 
         <!-- ================================================================= -->
         <!-- MÀN HÌNH 1: DASHBOARD BÁN HÀNG                                    -->
@@ -902,6 +951,7 @@
             document.getElementById(`nav-${tabName}`).classList.add("active");
 
             document.getElementById("screen-dashboard").classList.add("hidden");
+            document.getElementById("screen-bi").classList.add("hidden");
             document.getElementById("screen-purchase").classList.add("hidden");
             document.getElementById("screen-production").classList.add("hidden");
             document.getElementById("screen-materials").classList.add("hidden");
@@ -910,6 +960,7 @@
             document.getElementById(`screen-${tabName}`).classList.remove("hidden");
             window.scrollTo({ top: 0 });
             if (tabName === "users") { loadManagedUsers(); loadSyncSettings(); }
+            if (tabName === "bi") biOpen();
         }
 
         function openAuthModal() { document.getElementById("authModal").classList.remove("hidden"); }
@@ -1064,6 +1115,7 @@
                 applyPermissions();
                 closeAuthModal();
                 await loadApplicationData();
+                if (!document.getElementById("screen-bi").classList.contains("hidden")) biOpen();
             } catch (error) {
                 showAuthMessage(error.message, true);
             } finally {
@@ -1072,6 +1124,8 @@
         }
 
         async function logout() {
+            if (biHasUnsavedChanges() && !confirm("Bảng B.I có thay đổi chưa lưu. Đăng xuất sẽ bỏ các thay đổi này. Tiếp tục?")) return;
+            biReset();
             const token = getSessionToken();
             clearSessionToken();
             currentUser = null;
@@ -1085,6 +1139,7 @@
         }
 
         function handleSessionError(error) {
+            biReset();
             console.error("Lỗi xác thực phiên:", error);
             if (/phiên đăng nhập/i.test(error.message)) clearSessionToken();
             currentUser = null;
@@ -1398,7 +1453,7 @@
             }
         };
 
-        async function loadPartitioned(table, from, to) {
+        async function loadPartitioned(table, from, to, updateSalesYears = true, strict = false) {
             const token = getSessionToken();
             const user = (currentUser && currentUser.useremail) || "";
             const wanted = [];
@@ -1407,8 +1462,11 @@
                 if (++m > 12) { m = 1; y++; }
             }
             const manifest = await api("getPartitionManifest", token, table);
+            if (strict && (!manifest || manifest.status !== "success" || !manifest.months || typeof manifest.months !== "object")) {
+                throw new Error("Danh sách phân vùng dữ liệu không hợp lệ.");
+            }
             const versions = (manifest && manifest.months) || {};
-            if (table === "ban_hang") updateMonthlyYearFilters(versions);
+            if (table === "ban_hang" && updateSalesYears) updateMonthlyYearFilters(versions);
             const byMonth = {};
             const missing = [];
             for (const month of wanted) {
@@ -1422,8 +1480,10 @@
             for (let i = 0; i < missing.length; i += 4) batches.push(missing.slice(i, i + 4));
             await Promise.all(batches.map(async batch => {
                 const res = await api("getPartitionMonths", token, table, batch);
+                if (strict && (!res || res.status !== "success" || !res.months)) throw new Error("Không tải được phân vùng dữ liệu.");
                 for (const month of batch) {
                     const part = res.months && res.months[month];
+                    if (strict && (!part || !Array.isArray(part.rows))) throw new Error(`Phân vùng ${month} không đầy đủ; vui lòng tải lại.`);
                     if (!part) continue;
                     byMonth[month] = part.rows || [];
                     try { await partCache.put(`${user}|${table}|${month}`, { v: part.v, rows: part.rows || [] }); } catch (e) { /* bỏ qua */ }
@@ -2974,5 +3034,6 @@
         }
         initializeSearchableSalesFilters();
     </script>
+    <script src="bi.js"></script>
 </body>
 </html>
