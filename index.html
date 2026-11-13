@@ -24,7 +24,63 @@
         #voucherModal .tbl-scroll { max-height: 48vh; }
         .tbl-scroll thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; box-shadow: 0 1px 0 #e2e8f0; }
         .tbl-scroll tfoot td { position: sticky; bottom: 0; background: #f8fafc; box-shadow: 0 -1px 0 #cbd5e1; }
-        @media print { header { display: none !important; } }
+        .print-only { display: none; }
+        @page { size: A4 landscape; margin: 10mm; }
+        @media print {
+            body.dashboard-printing { display: block !important; min-height: 0 !important; background: white !important; }
+            body.dashboard-printing > header,
+            body.dashboard-printing > #authModal,
+            body.dashboard-printing > #appsScriptBridge,
+            body.dashboard-printing > #appError { display: none !important; }
+            body.dashboard-printing > main { display: block !important; width: auto !important; padding: 0 !important; margin: 0 !important; }
+            body.dashboard-printing #screen-bi,
+            body.dashboard-printing #screen-purchase,
+            body.dashboard-printing #screen-production,
+            body.dashboard-printing #screen-materials,
+            body.dashboard-printing #screen-users,
+            body.dashboard-printing #dashboardTransactions { display: none !important; }
+            body.dashboard-printing #screen-dashboard { display: block !important; }
+            body.dashboard-printing #screen-dashboard > .min-w-0 { gap: 10px !important; }
+            body.dashboard-printing .print-only { display: block !important; }
+            body.dashboard-printing .dashboard-print-controls,
+            body.dashboard-printing .dashboard-quick-dates { display: none !important; }
+            body.dashboard-printing #dashboardCharts {
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 10px !important;
+            }
+            body.dashboard-printing #dashboardCharts > * { grid-column: auto !important; }
+            body.dashboard-printing #dashboardCharts > :nth-child(n+3) { grid-column: 1 / -1 !important; }
+            body.dashboard-printing #dashboardCharts > :nth-child(n+3) > .grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 10px !important;
+            }
+            body.dashboard-printing #screen-dashboard .overflow-auto,
+            body.dashboard-printing #screen-dashboard .overflow-y-auto,
+            body.dashboard-printing #screen-dashboard .overflow-x-auto,
+            body.dashboard-printing #screen-dashboard .overflow-hidden {
+                overflow: visible !important;
+                max-height: none !important;
+            }
+            body.dashboard-printing #staffChartScroll,
+            body.dashboard-printing #customerChartScroll,
+            body.dashboard-printing #ptnRevenueChartScroll,
+            body.dashboard-printing #ptnQuantityChartScroll { height: auto !important; }
+            body.dashboard-printing #channelChartContainer,
+            body.dashboard-printing #customerBarChartContainer,
+            body.dashboard-printing #ptnRevenueChartContainer,
+            body.dashboard-printing #ptnQuantityChartContainer {
+                min-width: 0 !important;
+                max-width: 100% !important;
+            }
+            body.dashboard-printing #screen-dashboard .bg-white {
+                box-shadow: none !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
@@ -174,7 +230,10 @@
                         <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Bộ Điều Kiện Phân Tích Báo Cáo</h2>
                         <span id="recordCountBadge" class="text-xs font-semibold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200">Hiển thị 0 / 0 giao dịch</span>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <div class="dashboard-print-controls flex flex-wrap items-center gap-2 text-xs">
+                        <button type="button" onclick="exportDashboardPdf()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-semibold inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-pdf"></i><span>Xuất PDF</span>
+                        </button>
                         <button onclick="resetFilters()" class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition font-medium inline-flex items-center gap-1.5">
                             <i class="fa-solid fa-rotate-left"></i> <span>Đặt lại</span>
                         </button>
@@ -184,7 +243,12 @@
                     </div>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4 text-xs">
+                <div id="dashboardPrintTitle" class="print-only border-b border-slate-200 pb-2">
+                    <h1 class="text-lg font-bold text-slate-900">BÁO CÁO DASHBOARD BÁN HÀNG</h1>
+                    <p id="dashboardPrintPeriod" class="text-xs text-slate-600"></p>
+                </div>
+
+                <div class="dashboard-quick-dates flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4 text-xs">
                     <span class="text-slate-500 font-semibold mr-1">Chọn nhanh:</span>
                     <button onclick="setQuickDate('all')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition font-medium">Tất cả</button>
                     <button onclick="setQuickDate('month')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition font-medium">Tháng này</button>
@@ -324,7 +388,7 @@
             </div>
 
             <!-- Biểu đồ báo cáo -->
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div id="dashboardCharts" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <!-- Biểu đồ 1: Xu hướng Doanh thu & Lợi nhuận -->
                 <div class="xl:col-span-2 min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                     <div class="mb-4">
@@ -361,7 +425,7 @@
                                 </select>
                             </label>
                         </div>
-                        <div class="h-[360px] overflow-y-auto overflow-x-hidden pr-1">
+                        <div id="staffChartScroll" class="h-[360px] overflow-y-auto overflow-x-hidden pr-1">
                             <div id="channelChartContainer" class="relative h-72">
                                 <canvas id="channelChart"></canvas>
                             </div>
@@ -380,7 +444,7 @@
                                 </select>
                             </label>
                         </div>
-                        <div class="h-[360px] overflow-y-auto overflow-x-hidden pr-1">
+                        <div id="customerChartScroll" class="h-[360px] overflow-y-auto overflow-x-hidden pr-1">
                             <div id="customerBarChartContainer" class="relative h-72">
                                 <canvas id="customerBarChart"></canvas>
                             </div>
@@ -456,7 +520,7 @@
                         </div>
                         <p class="text-xs text-slate-400 mb-3">Doanh thu thuần; theo bộ lọc Dashboard. Di chuột hoặc chạm vào thanh để xem tên đầy đủ và giá trị.</p>
                         <p id="ptnRevenueStatus" class="text-xs text-slate-500 mb-2"></p>
-                        <div class="h-[360px] overflow-auto">
+                        <div id="ptnRevenueChartScroll" class="h-[360px] overflow-auto">
                             <div id="ptnRevenueChartContainer" class="relative min-w-[520px] h-[360px]">
                                 <canvas id="ptnRevenueChart" role="img" aria-label="Biểu đồ xếp hạng mã PTN theo doanh thu"></canvas>
                             </div>
@@ -473,7 +537,7 @@
                         </div>
                         <p class="text-xs text-slate-400 mb-3">Số lượng sau trả lại cộng theo mã PTN; ĐVT lấy từ danh mục mã PTN, không quy đổi. Chạm hoặc di chuột để xem chi tiết.</p>
                         <p id="ptnQuantityStatus" class="text-xs text-slate-500 mb-2"></p>
-                        <div class="h-[360px] overflow-auto">
+                        <div id="ptnQuantityChartScroll" class="h-[360px] overflow-auto">
                             <div id="ptnQuantityChartContainer" class="relative min-w-[520px] h-[360px]">
                                 <canvas id="ptnQuantityChart" role="img" aria-label="Biểu đồ xếp hạng mã PTN theo sản lượng"></canvas>
                             </div>
@@ -483,7 +547,7 @@
             </div>
 
             <!-- BẢNG CHI TIẾT GIAO DỊCH (CHUẨN MẪU HÌNH 4) -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+            <div id="dashboardTransactions" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
                     <div>
                         <h3 class="font-bold text-slate-900 text-sm">Chi Tiết Giao Dịch Bán Hàng</h3>
@@ -2977,6 +3041,29 @@
             const headers = [...s.tbody.closest("table").tHead.querySelectorAll("th")].map(th => th.textContent.trim());
             const getters = s.cfg.exportCols || s.cfg.cols;
             return { headers, rows: dtSortedRows(id).map(r => getters.map(get => get(r) ?? "")) };
+        }
+
+        function exportDashboardPdf() {
+            const from = getDateInput("fromDate");
+            const to = getDateInput("toDate");
+            const originalTitle = document.title;
+            const cleanup = () => {
+                document.body.classList.remove("dashboard-printing");
+                document.title = originalTitle;
+                window.removeEventListener("afterprint", cleanup);
+            };
+            document.getElementById("dashboardPrintPeriod").textContent =
+                `Khoảng ngày: ${from} → ${to} · Xuất lúc: ${new Date().toLocaleString("vi-VN")}`;
+            document.title = `PEROMA_Bao_cao_Dashboard_${from}_${to}`;
+            document.body.classList.add("dashboard-printing");
+            window.addEventListener("afterprint", cleanup, { once: true });
+            try {
+                Object.values(chartInstances).forEach(chart => chart.resize());
+                window.print();
+            } catch (error) {
+                cleanup();
+                reportDataError("Lỗi xuất báo cáo PDF", error);
+            }
         }
 
         function exportCurrentScreen() {
