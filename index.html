@@ -1420,7 +1420,9 @@
             renderDateLabel("toDate");
             loadDashboardData();
         }
-        const revOf = r => Number(r.doanh_thu_thuan || 0);
+        window.erpNetRevenue = row => Number(row.tien2 || 0) - Number(row.ck_ds || 0) -
+            Number(row.tien_ck || 0) + Number(row.tien2_tra_lai || 0) + Number(row.tien_ck_tra_lai || 0);
+        const revOf = window.erpNetRevenue;
         const sumBy = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
 
         // Cache IndexedDB theo tháng: so phiên bản manifest, chỉ tải tháng mới/đổi.
@@ -3212,6 +3214,6 @@
         }
         initializeSearchableSalesFilters();
     </script>
-    <script src="bi.js?v=20261111-time-axis"></script>
+    <script src="bi.js?v=20261113-net-revenue-returns"></script>
 </body>
 </html>

@@ -181,7 +181,7 @@ function biAggregate(rows, widget) {
     rows.forEach(row => {
         const [key, label, code = ""] = biDimension(row, widget.dimension);
         if (widget.filter && !searchableText(`${label} ${key} ${code}`).includes(searchableText(widget.filter))) return;
-        const value = widget.measure === "quantity" ? row.sl_ban_sau_tra_lai : row.doanh_thu_thuan;
+        const value = widget.measure === "quantity" ? row.sl_ban_sau_tra_lai : window.erpNetRevenue(row);
         const order = String(row.so_ct || "").trim();
         if (widget.measure === "orders" ? !order : value == null || String(value).trim() === "" || !Number.isFinite(Number(value))) {
             invalid++;
