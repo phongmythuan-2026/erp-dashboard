@@ -490,6 +490,10 @@
                         <p class="text-xs text-slate-400">Danh sách kết quả đáp ứng trọn vẹn bộ điều kiện lọc</p>
                     </div>
                     <div class="w-full sm:w-auto flex flex-wrap items-center gap-2 text-xs">
+                        <input type="file" id="salesImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importSalesFromFile(this)">
+                        <button id="downloadSalesTemplateButton" type="button" onclick="downloadSalesTemplate()" class="hidden px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-file-arrow-down mr-1"></i>Tải template</button>
+                        <button id="importSalesButton" type="button" onclick="document.getElementById('salesImportFile').click()" class="hidden px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-file-import mr-1"></i>Import dữ liệu</button>
+                        <button id="deleteSalesRangeButton" type="button" onclick="deleteSalesRange()" class="hidden px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-trash-can mr-1"></i>Xóa theo thời gian</button>
                         <label for="searchInput" class="sr-only">Tìm kiếm giao dịch bán hàng</label>
                         <div class="relative flex-1 min-w-[200px] sm:w-80">
                             <input type="text" id="searchInput" oninput="applyDashboardFilters()" placeholder="Tìm theo mã đơn, khách hàng, vật tư..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -1097,7 +1101,8 @@
             userNav.classList.toggle("hidden", !isAdmin());
             userNav.classList.toggle("flex", isAdmin());
             ["refreshSalesButton", "refreshPurchaseButton", "refreshProductionButton", "refreshMaterialsButton",
-             "importMaterialsButton", "downloadMaterialTemplateButton"].forEach(id => {
+             "importMaterialsButton", "downloadMaterialTemplateButton", "importSalesButton", "downloadSalesTemplateButton",
+             "deleteSalesRangeButton"].forEach(id => {
                 const button = document.getElementById(id);
                 if (button) button.classList.toggle("hidden", !isAdmin());
             });
@@ -1983,6 +1988,27 @@
             dtSet("sales", rows);
         }
 
+        function deleteSalesRange() {
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được xóa dữ liệu bán hàng."));
+            const from = getDateInput("fromDate");
+            const to = getDateInput("toDate");
+            if (!from || !to || from > to) return reportDataError("Khoảng ngày không hợp lệ", new Error("Hãy chọn khoảng ngày hợp lệ trên dashboard."));
+            if (!confirm(`Xóa toàn bộ dữ liệu bán hàng từ ${from} đến ${to}?\nThao tác này áp dụng cho tất cả giao dịch trong khoảng ngày, không chỉ các dòng đang lọc trên màn hình.`)) return;
+            const button = document.getElementById("deleteSalesRangeButton");
+            button.disabled = true;
+            (async () => {
+                try {
+                    const result = await api("deleteSalesRange", getSessionToken(), from, to);
+                    if (!await loadDashboardData()) return;
+                    showAppSuccess(result.message || `Đã xóa ${result.deleted || 0} giao dịch từ ${from} đến ${to}.`);
+                } catch (error) {
+                    reportDataError("Lỗi xóa dữ liệu bán hàng", error);
+                } finally {
+                    button.disabled = false;
+                }
+            })();
+        }
+
         dtInit("sales", {
             tbody: "tableBody",
             cols: [r => r.so_ct, r => r.ngay_ct, r => r.ten_kh || r.ma_kh, r => r.ten_vt || r.ma_vt, ptnOf, r => r.ten_nvkd || r.ma_nhomkd,
@@ -2699,6 +2725,152 @@
         // =================================================================
         const MATERIAL_IMPORT_COLUMNS = ["ma_vt", "ten_vt", "dvt", "ma_nhvt", "ten_nhvt", "ma_nhvt1", "ten_nhvt1", "ma_msp", "ten_msp"];
         const MATERIAL_IMPORT_CHUNK = 3000;
+        const SALES_IMPORT_COLUMNS = [
+            "ma_cty", "ma_ct", "stt_rec", "stt_rec0", "ngay_ht", "ngay_ct", "so_ct", "ma_kh", "ten_kh",
+            "ma_vt", "ten_vt", "dvt", "so_luong", "gia2", "tien2", "ck_ds", "tien_ck", "sl_tra_lai",
+            "tien2_tra_lai", "tien_ck_tra_lai", "sl_ban_sau_tra_lai", "doanh_thu_thuan", "ma_lo",
+            "ma_quy_cach", "ten_nvkd", "ma_nhomkd", "ngay_tt", "so_dh", "bold"
+        ];
+        const SALES_IMPORT_NUMBER_COLUMNS = new Set([
+            "so_luong", "gia2", "tien2", "ck_ds", "tien_ck", "sl_tra_lai", "tien2_tra_lai",
+            "tien_ck_tra_lai", "sl_ban_sau_tra_lai", "doanh_thu_thuan", "bold"
+        ]);
+        const SALES_IMPORT_KEY_COLUMNS = ["stt_rec", "stt_rec0", "ngay_ct", "so_ct", "ma_vt"];
+        const SALES_IMPORT_CHUNK = 500;
+
+        function downloadSalesTemplate() {
+            try {
+                requireXlsx();
+                const wb = XLSX.utils.book_new();
+                const data = XLSX.utils.aoa_to_sheet([SALES_IMPORT_COLUMNS]);
+                data["!cols"] = SALES_IMPORT_COLUMNS.map(() => ({ wch: 20 }));
+                XLSX.utils.book_append_sheet(wb, data, "ban_hang");
+                const guide = XLSX.utils.aoa_to_sheet([
+                    ["Cột", "Ý nghĩa", "Bắt buộc", "Lưu ý"],
+                    ["stt_rec", "Mã bản ghi", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["stt_rec0", "Số thứ tự dòng", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["ngay_ct", "Ngày chứng từ", "Có", "Dùng YYYY-MM-DD hoặc ngày Excel hợp lệ."],
+                    ["so_ct", "Số chứng từ", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["ma_vt", "Mã vật tư", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["bold", "Dòng tổng hợp", "Không", "Chỉ import giao dịch chi tiết; không import dòng có giá trị 1."],
+                    [],
+                    ["Lưu ý", "Không đổi tên cột ở sheet ban_hang. Giao dịch trùng khóa sẽ được cập nhật; giao dịch mới sẽ được thêm. Các cột số để trống được tính là 0."]
+                ]);
+                guide["!cols"] = [{ wch: 18 }, { wch: 28 }, { wch: 12 }, { wch: 75 }];
+                XLSX.utils.book_append_sheet(wb, guide, "Huong_dan");
+                XLSX.writeFile(wb, "template_import_ban_hang.xlsx");
+            } catch (error) {
+                reportDataError("Lỗi tạo template giao dịch bán hàng", error);
+            }
+        }
+
+        function parseSalesImportDate(value, rowNumber, column) {
+            let year, month, day;
+            if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                year = value.getFullYear();
+                month = value.getMonth() + 1;
+                day = value.getDate();
+            } else if (typeof value === "number") {
+                const parsed = XLSX.SSF.parse_date_code(value);
+                if (parsed) ({ y: year, m: month, d: day } = parsed);
+            } else {
+                const text = String(value ?? "").trim();
+                let match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+                if (match) [, year, month, day] = match.map(Number);
+                else {
+                    match = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+                    if (match) [, day, month, year] = match.map(Number);
+                }
+            }
+            if (!year || !month || !day) throw new Error(`Dòng ${rowNumber}: cột ${column} phải là ngày hợp lệ.`);
+            const result = new Date(Date.UTC(year, month - 1, day));
+            const date = result.toISOString().slice(0, 10);
+            if (result.getUTCFullYear() !== year || result.getUTCMonth() + 1 !== month || result.getUTCDate() !== day) {
+                throw new Error(`Dòng ${rowNumber}: cột ${column} phải là ngày hợp lệ.`);
+            }
+            return date;
+        }
+
+        async function readSalesImportRows(file) {
+            requireXlsx();
+            const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+            const sheetName = wb.SheetNames.includes("ban_hang") ? "ban_hang" : wb.SheetNames[0];
+            if (!sheetName) throw new Error("File không có sheet dữ liệu.");
+            const table = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: "", raw: true });
+            const headers = (table[0] || []).map(h => String(h).trim().toLowerCase());
+            const indexes = Object.fromEntries(SALES_IMPORT_COLUMNS.map(column => [column, headers.indexOf(column)]));
+            const missing = SALES_IMPORT_KEY_COLUMNS.filter(column => indexes[column] < 0);
+            if (missing.length) throw new Error(`File thiếu cột bắt buộc ${missing.join(", ")}. Hãy dùng template.`);
+            const rows = [];
+            const seen = new Set();
+            table.slice(1).forEach((cells, i) => {
+                if (!cells.some(cell => String(cell).trim() !== "")) return;
+                const line = i + 2;
+                const row = {};
+                SALES_IMPORT_COLUMNS.forEach(column => {
+                    const index = indexes[column];
+                    const value = index < 0 ? "" : cells[index];
+                    if (column === "ngay_ct" || column === "ngay_ht") {
+                        row[column] = String(value).trim() ? parseSalesImportDate(value, line, column) : "";
+                    } else if (SALES_IMPORT_NUMBER_COLUMNS.has(column)) {
+                        row[column] = value === "" || value == null ? 0 : Number(value);
+                        if (!Number.isFinite(row[column])) throw new Error(`Dòng ${line}: cột ${column} phải là số hợp lệ.`);
+                    } else {
+                        row[column] = String(value ?? "").trim();
+                    }
+                });
+                const missingValues = SALES_IMPORT_KEY_COLUMNS.filter(column => !row[column]);
+                if (missingValues.length) throw new Error(`Dòng ${line}: thiếu ${missingValues.join(", ")}.`);
+                if (Number(row.bold) === 1) throw new Error(`Dòng ${line}: không import dòng tổng hợp (bold = 1).`);
+                const key = JSON.stringify(SALES_IMPORT_COLUMNS
+                    .filter(column => ["stt_rec", "stt_rec0", "ngay_ht", "ngay_ct", "so_ct", "ma_kh", "ma_vt", "ma_lo", "so_dh"].includes(column))
+                    .map(column => {
+                        const value = String(row[column] ?? "").trim();
+                        return column === "stt_rec0" ? value.replace(/^0+(?=\d)/, "") : value;
+                    }));
+                if (seen.has(key)) throw new Error(`Dòng ${line}: giao dịch bị trùng khóa trong file.`);
+                seen.add(key);
+                rows.push(row);
+            });
+            if (!rows.length) throw new Error("File không có dòng dữ liệu nào.");
+            return rows;
+        }
+
+        async function importSalesFromFile(input) {
+            const file = input.files && input.files[0];
+            input.value = "";
+            if (!file) return;
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được import dữ liệu bán hàng."));
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            const button = document.getElementById("importSalesButton");
+            const originalLabel = button.innerHTML;
+            button.disabled = true;
+            let imported = 0;
+            try {
+                const rows = await readSalesImportRows(file);
+                const dates = rows.map(row => row.ngay_ct).sort();
+                if (!confirm(`Import ${rows.length} giao dịch từ "${file.name}" (${dates[0]} → ${dates[dates.length - 1]})?\nGiao dịch trùng khóa sẽ được cập nhật; giao dịch mới sẽ được thêm.`)) return;
+                let inserted = 0;
+                let updated = 0;
+                for (let i = 0; i < rows.length; i += SALES_IMPORT_CHUNK) {
+                    const chunk = rows.slice(i, i + SALES_IMPORT_CHUNK);
+                    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang import ${Math.min(i + chunk.length, rows.length)}/${rows.length}...</span>`;
+                    const result = await api("importSales", token, chunk);
+                    imported += result.rowCount || chunk.length;
+                    inserted += result.inserted || 0;
+                    updated += result.updated || 0;
+                }
+                if (!await loadDashboardData()) return;
+                showAppSuccess(`Import thành công: ${imported} giao dịch (thêm ${inserted}, cập nhật ${updated}).`);
+            } catch (error) {
+                const detail = imported ? `Đã import ${imported} dòng trước khi gặp lỗi: ${error.message}` : error.message;
+                reportDataError("Lỗi import giao dịch bán hàng", new Error(detail));
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalLabel;
+            }
+        }
 
         function requireXlsx() {
             if (typeof XLSX === "undefined") throw new Error("Chưa tải được thư viện Excel. Vui lòng kiểm tra kết nối mạng và tải lại trang.");
