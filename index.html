@@ -119,6 +119,7 @@
                         <p class="text-xs text-slate-500">Bảng và widget chỉ thuộc tài khoản đang đăng nhập. Dữ liệu theo quyền truy cập hiện có.</p></div>
                     <div class="flex flex-wrap gap-2">
                         <button id="biReload" type="button" class="px-3 py-2 text-xs border border-slate-300 rounded-lg">Tải lại bảng</button>
+                        <button id="biRefreshStock" type="button" class="hidden px-3 py-2 text-xs border border-slate-300 rounded-lg">Tải tồn kho từ SQL</button>
                         <button id="biSave" type="button" class="px-3 py-2 text-xs bg-blue-600 text-white rounded-lg">Lưu bảng</button>
                         <button id="biAdd" type="button" class="px-3 py-2 text-xs bg-emerald-600 text-white rounded-lg">+ Thêm widget</button>
                     </div>
@@ -154,6 +155,14 @@
                 </div>
                 <label class="block text-xs font-semibold">Lọc theo tên/mã chiều phân tích (không bắt buộc)
                     <input id="biFilter" maxlength="120" class="block w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"></label>
+                <fieldset id="biStockOptions" class="hidden border border-slate-200 rounded-lg p-3 text-xs">
+                    <legend class="px-1 font-semibold">Tồn kho (chỉ áp dụng cho Sản lượng)</legend>
+                    <div class="flex flex-wrap gap-4">
+                        <label class="flex items-center gap-2"><input id="biStockSku" type="checkbox"> Theo SKU</label>
+                        <label class="flex items-center gap-2"><input id="biStockPtn" type="checkbox"> Theo Mã PTN</label>
+                    </div>
+                    <p class="text-slate-500 mt-2">Chỉ chọn một cách xem. Đường tồn kho lấy từ ảnh chụp ton_kho.json; bộ lọc áp dụng lên mã SKU/PTN tương ứng.</p>
+                </fieldset>
                 <p class="text-xs text-slate-500">Chọn <b>Áp dụng widget</b> để cập nhật biểu đồ, sau đó chọn <b>Lưu bảng</b> để lưu cấu hình. Trục thời gian kết hợp với chiều khách hàng, nhóm hoặc PTN; Top chọn theo tổng cả khoảng ngày. Chiều Tháng/năm cũ không kết hợp trục thời gian. Sản lượng chỉ theo PTN, cộng trực tiếp và dùng ĐVT của PTN.</p>
                 <div class="flex justify-end gap-2"><button id="biCancel" type="button" class="px-4 py-2 border rounded-lg text-sm">Hủy</button>
                     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Áp dụng widget</button></div>
@@ -1106,7 +1115,7 @@
             userNav.classList.toggle("flex", isAdmin());
             ["refreshSalesButton", "refreshPurchaseButton", "refreshProductionButton", "refreshMaterialsButton",
              "importMaterialsButton", "downloadMaterialTemplateButton", "importSalesButton", "downloadSalesTemplateButton",
-             "deleteSalesRangeButton"].forEach(id => {
+             "deleteSalesRangeButton", "biRefreshStock"].forEach(id => {
                 const button = document.getElementById(id);
                 if (button) button.classList.toggle("hidden", !isAdmin());
             });

@@ -7,6 +7,10 @@ const biTimeGrains = { day: "Ngày", month: "Tháng", quarter: "Quý", year: "N�
 let biBoard = null;
 let biRows = [];
 let biMaterials = {};
+let biStockRows = null;
+let biStockUpdatedAt = "";
+let biStockPromise = null;
+let biStockError = "";
 let biOwner = null;
 let biGeneration = 0;
 let biBusy = false;
@@ -30,6 +34,10 @@ function biReset() {
     biBoard = null;
     biRows = [];
     biMaterials = {};
+    biStockRows = null;
+    biStockUpdatedAt = "";
+    biStockPromise = null;
+    biStockError = "";
     biOwner = null;
     biDirty = false;
     biSetBusy(false);
@@ -64,6 +72,10 @@ async function biLoadBoard() {
     biCharts.forEach(chart => chart.destroy());
     biCharts = [];
     biRows = [];
+    biStockRows = null;
+    biStockUpdatedAt = "";
+    biStockPromise = null;
+    biStockError = "";
     biBoard = null;
     document.getElementById("biWidgets").innerHTML = "";
     document.getElementById("biEditor").classList.add("hidden");
@@ -109,6 +121,75 @@ async function biLoadRows(generation) {
     biBoard.to = to;
     biRender();
     biSetStatus(`${rows.length.toLocaleString("vi-VN")} dòng bán hàng; ${biDirty ? "có thay đổi chưa lưu." : "đã tải cấu hình."}`);
+}
+
+function biLoadStock() {
+    if (biStockRows !== null || biStockPromise) return biStockPromise;
+    const generation = biGeneration;
+    biStockPromise = (async () => {
+        try {
+            const response = await api("getData", getSessionToken(), "ton_kho");
+            if (generation !== biGeneration) return;
+            if (!response || response.status !== "success" || !Array.isArray(response.data)) {
+                throw new Error("Dữ liệu ton_kho.json trả về không hợp lệ.");
+            }
+            biSetStockData(response);
+            biStockError = "";
+            biRender();
+        } catch (error) {
+            if (generation !== biGeneration) return;
+            biStockError = error && error.message ? error.message : String(error);
+            biRender();
+            biSetStatus(`Không tải được dữ liệu tồn kho: ${biStockError}`);
+            reportDataError("Lỗi tải dữ liệu tồn kho", error);
+        } finally {
+            if (generation === biGeneration) biStockPromise = null;
+        }
+    })();
+    return biStockPromise;
+}
+
+function biSetStockData(response) {
+    if (!response || response.status !== "success" || !Array.isArray(response.data)) {
+        throw new Error("Dữ liệu ton_kho.json trả về không hợp lệ.");
+    }
+    biStockRows = response.data.map((row, index) => {
+        if (!row || typeof row.ma_vt !== "string" || typeof row.ma_ptn !== "string" || typeof row.dvt !== "string") {
+            throw new Error(`Dòng tồn kho ${index + 1} không hợp lệ.`);
+        }
+        const quantity = Number(row.ton_cuoi);
+        if (!Number.isFinite(quantity)) throw new Error(`Dòng tồn kho ${index + 1} không hợp lệ.`);
+        return { ma_vt: row.ma_vt, ma_ptn: row.ma_ptn, dvt: row.dvt, ton_cuoi: quantity };
+    });
+    biStockUpdatedAt = String(response.updatedAt || "");
+}
+
+async function biRefreshStock() {
+    if (!biBoard || biBusy) return;
+    if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được tải mới tồn kho từ SQL."));
+    const generation = biGeneration;
+    biSetBusy(true);
+    biSetStatus("Đang tải tồn kho mới từ SQL...");
+    try {
+        if (biStockPromise) await biStockPromise;
+        const result = await api("refreshStockData", getSessionToken());
+        if (generation !== biGeneration) return;
+        if (!result || result.ok !== true || !Number.isInteger(result.rowCount) || result.rowCount < 0) {
+            throw new Error("SQL không xác nhận kết quả tải tồn kho hợp lệ.");
+        }
+        const response = await api("getData", getSessionToken(), "ton_kho");
+        if (generation !== biGeneration) return;
+        biSetStockData(response);
+        biStockError = "";
+        biRender();
+        biSetStatus(`Đã tải mới ${Number(result.rowCount).toLocaleString("vi-VN")} dòng tồn kho từ SQL.`);
+    } catch (error) {
+        if (generation !== biGeneration) return;
+        biSetStatus("Tải tồn kho thất bại; dữ liệu trước đó vẫn được giữ.");
+        reportDataError("Lỗi tải tồn kho từ SQL", error);
+    } finally {
+        if (generation === biGeneration) biSetBusy(false);
+    }
 }
 
 async function biApplyDates() {
@@ -222,11 +303,12 @@ function biAggregate(rows, widget) {
 
 function biRenderTime(content, result, widget) {
     const periods = [...new Set(result.flatMap(group => [...group.periods.keys()]))].sort();
+    const stockTotals = biStockTotals(widget);
     if (widget.chart === "table") {
         const table = document.createElement("table");
         table.className = "w-full text-xs text-left";
         const head = document.createElement("thead");
-        head.innerHTML = "<tr><th class=\"p-2\">Thời gian</th><th class=\"p-2\">Chiều phân tích</th><th class=\"p-2 text-right\">Giá trị</th></tr>";
+        head.innerHTML = `<tr><th class="p-2">Thời gian</th><th class="p-2">Chiều phân tích</th><th class="p-2 text-right">Giá trị</th>${stockTotals.map(stock => `<th class="p-2 text-right whitespace-nowrap">Tồn kho (${esc(stock.unit)})</th>`).join("")}</tr>`;
         table.appendChild(head);
         const body = document.createElement("tbody");
         for (const period of periods) for (const group of result) {
@@ -234,7 +316,7 @@ function biRenderTime(content, result, widget) {
             if (!cell) continue;
             const row = document.createElement("tr");
             row.className = "border-t";
-            row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue({ value: cell.value, unit: group.unit }, widget.measure))}</td>`;
+            row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue({ value: cell.value, unit: group.unit }, widget.measure))}</td>${stockTotals.map(stock => `<td class="p-2 text-right whitespace-nowrap">${esc(biValue(stock, "quantity"))}</td>`).join("")}`;
             body.appendChild(row);
         }
         table.appendChild(body);
@@ -257,14 +339,25 @@ function biRenderTime(content, result, widget) {
             content.appendChild(wrap);
             biCharts.push(new Chart(canvas.getContext("2d"), {
                 type: widget.chart,
-                data: { labels: part, datasets: groups.map((group, i) => ({
-                    label: widget.measure === "quantity" ? `${group.label} (${group.unit})` : group.label,
-                    data: part.map(period => group.periods.has(period) ? group.periods.get(period).value : null),
-                    backgroundColor: colors[i % colors.length], borderColor: colors[i % colors.length], borderRadius: 4
-                })) },
+                data: { labels: part, datasets: [
+                    ...groups.map((group, i) => ({
+                        label: widget.measure === "quantity" ? `${group.label} (${group.unit})` : group.label,
+                        data: part.map(period => group.periods.has(period) ? group.periods.get(period).value : null),
+                        backgroundColor: colors[i % colors.length], borderColor: colors[i % colors.length], borderRadius: 4
+                    })),
+                    ...stockTotals.map((stock, i) => ({
+                        type: "line", label: `Tồn kho (${stock.unit})`, data: part.map(() => stock.value),
+                        borderColor: ["#dc2626", "#d97706", "#7c3aed", "#0891b2"][i % 4],
+                        borderDash: [6, 4], pointRadius: 0, fill: false
+                    }))
+                ] },
                 options: { responsive: true, maintainAspectRatio: false, spanGaps: false,
                     scales: { x: { title: { display: true, text: biTimeGrains[widget.timeGrain] } } },
                     plugins: { tooltip: { callbacks: { label: item => {
+                        if (item.datasetIndex >= groups.length) {
+                            const stock = stockTotals[item.datasetIndex - groups.length];
+                            return `${item.dataset.label}: ${biValue(stock, "quantity")}`;
+                        }
                         const group = groups[item.datasetIndex];
                         return `${group.label}: ${biValue({ value: item.raw, unit: group.unit }, widget.measure)}`;
                     } } } } }
@@ -277,6 +370,33 @@ function biValue(group, measure) {
     if (measure === "revenue") return formatVND(group.value);
     const value = group.value.toLocaleString("vi-VN", { maximumFractionDigits: 3 });
     return measure === "quantity" ? `${value} ${group.unit}` : value;
+}
+
+function biStockTotals(widget) {
+    if (!widget.stockBy || biStockRows === null) return [];
+    const field = widget.stockBy === "sku" ? "ma_vt" : "ma_ptn";
+    const filter = searchableText(widget.filter);
+    const totals = new Map();
+    biStockRows.forEach(row => {
+        if (filter && !searchableText(row[field]).includes(filter)) return;
+        const unit = String(row.dvt || "").trim() || "Chưa có ĐVT";
+        totals.set(unit, (totals.get(unit) || 0) + row.ton_cuoi);
+    });
+    return [...totals.entries()].map(([unit, value]) => ({ unit, value })).sort((a, b) => a.unit.localeCompare(b.unit, "vi"));
+}
+
+function biStockStatus(widget) {
+    if (!widget.stockBy) return "";
+    if (biStockRows === null) {
+        return biStockError
+            ? `<p class="text-xs text-red-700 mt-1">Không tải được ton_kho.json: ${esc(biStockError)}</p>`
+            : '<p class="text-xs text-slate-500 mt-1">Đang tải dữ liệu tồn kho...</p>';
+    }
+    if (!biStockTotals(widget).length) {
+        return `<p class="text-xs text-amber-700 mt-1">Không có tồn kho theo ${widget.stockBy === "sku" ? "SKU" : "Mã PTN"} khớp với bộ lọc.</p>`;
+    }
+    const updatedAt = biStockUpdatedAt ? ` · cập nhật ${esc(biStockUpdatedAt)}` : "";
+    return `<p class="text-xs text-slate-500 mt-1">Tồn kho theo ${widget.stockBy === "sku" ? "SKU" : "Mã PTN"}${updatedAt}.</p>`;
 }
 
 function biRender() {
@@ -294,15 +414,20 @@ function biRender() {
             <button data-bi-action="delete" data-index="${index}" class="text-red-600">Xóa</button></div></div>
             <p class="text-xs text-slate-500 mt-1">${esc(biMeasures[widget.measure])}${widget.measure === "revenue" ? " (VND)" : ""} · ${esc(biDimensions[widget.dimension])}${widget.timeGrain ? ` · Theo ${esc(biTimeGrains[widget.timeGrain].toLowerCase())}` : ""}${widget.filter ? ` · Lọc: ${esc(widget.filter)}` : ""}</p>
             ${widget.measure === "quantity" ? '<p class="text-xs text-amber-700 mt-1">Cộng trực tiếp, không quy đổi; ĐVT theo từng mã PTN, xem ở bảng hoặc chú giải khi rê chuột.</p>' : ""}
+            ${biStockStatus(widget)}
             <p class="text-xs text-amber-700 mt-1">${invalid ? `Bỏ qua ${invalid} dòng thiếu hoặc sai chỉ tiêu.` : ""}</p>
             <div class="bi-content mt-3 overflow-auto max-h-[360px]"></div>`;
         container.appendChild(card);
         const content = card.querySelector(".bi-content");
-        if (!result.length) { content.textContent = "Không có dữ liệu phù hợp."; return; }
+        if (!result.length) {
+            content.textContent = "Không có dữ liệu bán hàng phù hợp.";
+            return;
+        }
         if (widget.timeGrain) { biRenderTime(content, result, widget); return; }
+        const stockTotals = biStockTotals(widget);
         if (widget.chart === "table") {
-            content.innerHTML = `<table class="w-full text-xs text-left"><thead><tr><th class="p-2">Chiều phân tích</th><th class="p-2 text-right">Giá trị</th></tr></thead><tbody>${result.map(group =>
-                `<tr class="border-t"><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue(group, widget.measure))}</td></tr>`).join("")}</tbody></table>`;
+            content.innerHTML = `<table class="w-full text-xs text-left"><thead><tr><th class="p-2">Chiều phân tích</th><th class="p-2 text-right">Giá trị</th>${stockTotals.map(stock => `<th class="p-2 text-right whitespace-nowrap">Tồn kho (${esc(stock.unit)})</th>`).join("")}</tr></thead><tbody>${result.map(group =>
+                `<tr class="border-t"><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue(group, widget.measure))}</td>${stockTotals.map(stock => `<td class="p-2 text-right whitespace-nowrap">${esc(biValue(stock, "quantity"))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
             return;
         }
         for (let offset = 0; offset < result.length; offset += 100) {
@@ -317,18 +442,26 @@ function biRender() {
             content.appendChild(wrap);
             biCharts.push(new Chart(canvas.getContext("2d"), {
                 type: widget.chart,
-                data: { labels: part.map(group => group.label), datasets: [{ label: biMeasures[widget.measure], data: part.map(group => group.value), backgroundColor: "#3b82f6", borderColor: "#2563eb", borderRadius: 4 }] },
+                data: { labels: part.map(group => group.label), datasets: [
+                    { label: biMeasures[widget.measure], data: part.map(group => group.value), backgroundColor: "#3b82f6", borderColor: "#2563eb", borderRadius: 4 },
+                    ...stockTotals.map((stock, i) => ({ type: "line", label: `Tồn kho (${stock.unit})`, data: part.map(() => stock.value),
+                        borderColor: ["#dc2626", "#d97706", "#7c3aed", "#0891b2"][i % 4], borderDash: [6, 4], pointRadius: 0, fill: false }))
+                ] },
                 options: { responsive: true, maintainAspectRatio: false, ...(widget.chart === "bar" ? { indexAxis: "y", scales: { y: { ticks: { autoSkip: false } } } } : {}),
-                    plugins: { tooltip: { callbacks: { label: item => `${biMeasures[widget.measure]}: ${biValue(part[item.dataIndex], widget.measure)}` } } } }
+                    plugins: { tooltip: { callbacks: { label: item => item.datasetIndex === 0
+                        ? `${biMeasures[widget.measure]}: ${biValue(part[item.dataIndex], widget.measure)}`
+                        : `${item.dataset.label}: ${biValue(stockTotals[item.datasetIndex - 1], "quantity")}` } } } }
             }));
         }
     });
+    if (biBoard.widgets.some(widget => widget.measure === "quantity" && widget.stockBy) &&
+        biStockRows === null && !biStockError) biLoadStock();
 }
 
 function biOpenEditor(index) {
     if (!biBoard || biBusy) return;
     if (index === null && biBoard.widgets.length >= 30) return biSetStatus("Mỗi bảng tối đa 30 widget.");
-    const widget = index === null ? { title: "", measure: "revenue", dimension: "month", chart: "bar", filter: "", limit: 20 } : biBoard.widgets[index];
+    const widget = index === null ? { title: "", measure: "revenue", dimension: "month", chart: "bar", filter: "", limit: 20, stockBy: "" } : biBoard.widgets[index];
     biEditing = index;
     document.getElementById("biTitle").value = widget.title;
     document.getElementById("biMeasure").value = widget.measure;
@@ -337,6 +470,8 @@ function biOpenEditor(index) {
     document.getElementById("biFilter").value = widget.filter;
     document.getElementById("biLimit").value = String(widget.limit);
     document.getElementById("biTimeGrain").value = widget.timeGrain || "";
+    document.getElementById("biStockSku").checked = widget.stockBy === "sku";
+    document.getElementById("biStockPtn").checked = widget.stockBy === "ptn";
     biUpdateDimension();
     document.getElementById("biEditor").classList.remove("hidden");
     document.getElementById("biTitle").focus();
@@ -344,6 +479,11 @@ function biOpenEditor(index) {
 
 function biUpdateDimension() {
     const quantity = document.getElementById("biMeasure").value === "quantity";
+    document.getElementById("biStockOptions").classList.toggle("hidden", !quantity);
+    if (!quantity) {
+        document.getElementById("biStockSku").checked = false;
+        document.getElementById("biStockPtn").checked = false;
+    }
     const dimension = document.getElementById("biDimension");
     [...dimension.options].forEach(option => { option.disabled = quantity && option.value !== "ptn"; });
     if (quantity) dimension.value = "ptn";
@@ -354,11 +494,18 @@ function biUpdateDimension() {
 
 document.getElementById("biMeasure").addEventListener("change", biUpdateDimension);
 document.getElementById("biDimension").addEventListener("change", biUpdateDimension);
+document.getElementById("biStockSku").addEventListener("change", event => {
+    if (event.target.checked) document.getElementById("biStockPtn").checked = false;
+});
+document.getElementById("biStockPtn").addEventListener("change", event => {
+    if (event.target.checked) document.getElementById("biStockSku").checked = false;
+});
 document.getElementById("biAdd").addEventListener("click", () => biOpenEditor(null));
 document.getElementById("biCancel").addEventListener("click", () => document.getElementById("biEditor").classList.add("hidden"));
 document.getElementById("biReload").addEventListener("click", biLoadBoard);
 document.getElementById("biSave").addEventListener("click", biSaveBoard);
 document.getElementById("biApply").addEventListener("click", biApplyDates);
+document.getElementById("biRefreshStock").addEventListener("click", biRefreshStock);
 document.getElementById("biEditorForm").addEventListener("submit", event => {
     event.preventDefault();
     const title = document.getElementById("biTitle").value.trim();
@@ -368,7 +515,8 @@ document.getElementById("biEditorForm").addEventListener("submit", event => {
         id: biEditing === null ? crypto.randomUUID() : biBoard.widgets[biEditing].id,
         title, measure: document.getElementById("biMeasure").value, dimension: document.getElementById("biDimension").value,
         chart: document.getElementById("biChart").value, filter: document.getElementById("biFilter").value.trim(), limit: Number(document.getElementById("biLimit").value),
-        timeGrain: document.getElementById("biTimeGrain").value
+        timeGrain: document.getElementById("biTimeGrain").value,
+        stockBy: document.getElementById("biStockSku").checked ? "sku" : document.getElementById("biStockPtn").checked ? "ptn" : ""
     };
     if (biEditing === null) biBoard.widgets.push(widget); else biBoard.widgets[biEditing] = widget;
     biDirty = true;
