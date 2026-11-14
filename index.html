@@ -153,10 +153,18 @@
                     <label class="font-semibold">Dạng hiển thị<select id="biChart" class="block w-full mt-1 border border-slate-300 rounded-lg px-3 py-2">
                         <option value="bar">Biểu đồ thanh</option><option value="line">Biểu đồ đường</option><option value="table">Bảng số liệu</option></select></label>
                     <label class="font-semibold">Giới hạn<select id="biLimit" class="block w-full mt-1 border border-slate-300 rounded-lg px-3 py-2">
-                        <option value="5">Top 5</option><option value="10">Top 10</option><option value="20" selected>Top 20</option><option value="0">Tất cả</option></select></label>
+                        <option value="5">Top 5</option><option value="10">Top 10</option><option value="20">Top 20</option><option value="0" selected>Tất cả</option></select></label>
                 </div>
-                <label class="block text-xs font-semibold">Lọc theo tên/mã chiều phân tích (không bắt buộc)
-                    <input id="biFilter" maxlength="120" class="block w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"></label>
+                <label class="block text-xs font-semibold" for="biFilterSearch">Lọc theo tên/mã chiều phân tích (không bắt buộc)
+                    <div class="relative mt-1">
+                        <input id="biFilterSearch" maxlength="120" autocomplete="off" placeholder="Nhập tên hoặc mã để tìm..."
+                            class="block w-full border border-slate-300 rounded-lg px-3 py-2 pr-9 text-sm" role="combobox"
+                            aria-autocomplete="list" aria-expanded="false" aria-controls="biFilterResults">
+                        <input id="biFilter" type="hidden">
+                        <button id="biFilterClear" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900" aria-label="Xóa bộ lọc">×</button>
+                    </div>
+                </label>
+                <div id="biFilterResults" class="fixed z-[70] hidden max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg text-xs" role="listbox"></div>
                 <fieldset id="biStockOptions" class="hidden border border-slate-200 rounded-lg p-3 text-xs">
                     <legend class="px-1 font-semibold">Tồn kho (chỉ áp dụng cho Sản lượng)</legend>
                     <div class="flex flex-wrap gap-4">
@@ -165,7 +173,7 @@
                     </div>
                     <p class="text-slate-500 mt-2">Chỉ chọn một cách xem. Đường tồn kho lấy từ ảnh chụp ton_kho.json; bộ lọc áp dụng lên mã SKU/PTN tương ứng.</p>
                 </fieldset>
-                <p class="text-xs text-slate-500">Chọn <b>Áp dụng widget</b> để cập nhật biểu đồ, sau đó chọn <b>Lưu bảng</b> để lưu cấu hình. Trục thời gian kết hợp với chiều khách hàng, nhóm hoặc PTN; Top chọn theo tổng cả khoảng ngày. Chiều Tháng/năm cũ không kết hợp trục thời gian. Sản lượng chỉ theo PTN, cộng trực tiếp và dùng ĐVT của PTN.</p>
+                <p class="text-xs text-slate-500">Chọn <b>Áp dụng widget</b> để cập nhật biểu đồ, sau đó chọn <b>Lưu bảng</b> để lưu cấu hình. Giới hạn mặc định là Tất cả. Với chiều PTN/nhóm vật tư, có thể tìm và chọn theo tên/mã từ danh mục vật tư. Trục thời gian kết hợp với chiều khách hàng, nhóm hoặc PTN; Top chọn theo tổng cả khoảng ngày. Chiều Tháng/năm cũ không kết hợp trục thời gian. Sản lượng chỉ theo PTN, cộng trực tiếp và dùng ĐVT của PTN.</p>
                 <div class="flex justify-end gap-2"><button id="biCancel" type="button" class="px-4 py-2 border rounded-lg text-sm">Hủy</button>
                     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Áp dụng widget</button></div>
             </form>

@@ -4,6 +4,7 @@ const biDimensions = {
 };
 const biMeasures = { revenue: "Doanh thu thuần", quantity: "Sản lượng sau trả lại", orders: "Số đơn hàng" };
 const biTimeGrains = { day: "Ngày", month: "Tháng", quarter: "Quý", year: "Năm" };
+const biMaterialFilterDimensions = ["ptn", "category", "category1"];
 let biBoard = null;
 let biRows = [];
 let biMaterials = {};
@@ -17,6 +18,9 @@ let biBusy = false;
 let biDirty = false;
 let biEditing = null;
 let biCharts = [];
+let biFilterMatches = [];
+let biFilterActive = -1;
+let biMaterialFilterOptionCache = {};
 
 function biSetStatus(message) {
     document.getElementById("biStatus").textContent = message;
@@ -38,6 +42,7 @@ function biReset() {
     biStockUpdatedAt = "";
     biStockPromise = null;
     biStockError = "";
+    biMaterialFilterOptionCache = {};
     biOwner = null;
     biDirty = false;
     biSetBusy(false);
@@ -81,6 +86,7 @@ async function biLoadBoard() {
     biStockUpdatedAt = "";
     biStockPromise = null;
     biStockError = "";
+    biMaterialFilterOptionCache = {};
     biBoard = null;
     document.getElementById("biWidgets").innerHTML = "";
     document.getElementById("biEditor").classList.add("hidden");
@@ -332,7 +338,7 @@ function biRenderTime(content, result, widget) {
             if (!cell) continue;
             const row = document.createElement("tr");
             row.className = "border-t";
-            row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue({ value: cell.value, unit: group.unit }, widget.measure))}</td>${stockTotals.map(stock => `<td class="p-2 text-right whitespace-nowrap">${esc(biValue(stock, "quantity"))}</td>`).join("")}`;
+            row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue({ value: cell.value, unit: group.unit }, widget.measure))}</td>${stockTotals.map(stock => `<td class="p-2 text-right whitespace-nowrap">${esc(`${biStockValue(stock)} ${stock.unit}`)}</td>`).join("")}`;
             body.appendChild(row);
         }
         table.appendChild(body);
@@ -389,8 +395,12 @@ function biValue(group, measure) {
 }
 
 function biStockLabel(stock) {
-    const value = stock.value.toLocaleString("vi-VN", { maximumFractionDigits: 3 });
+    const value = biStockValue(stock);
     return `Tồn kho: ${value} (${stock.unit})`;
+}
+
+function biStockValue(stock) {
+    return stock.value.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function biStockTotals(widget) {
@@ -450,7 +460,7 @@ function biRender() {
         const stockTotals = biStockTotals(widget);
         if (widget.chart === "table") {
             content.innerHTML = `<table class="w-full text-xs text-left"><thead><tr><th class="p-2">Chiều phân tích</th><th class="p-2 text-right">Giá trị</th>${stockTotals.map(stock => `<th class="p-2 text-right whitespace-nowrap">${esc(biStockLabel(stock))}</th>`).join("")}</tr></thead><tbody>${result.map(group =>
-                `<tr class="border-t"><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue(group, widget.measure))}</td>${stockTotals.map(stock => `<td class="p-2 text-right whitespace-nowrap">${esc(biValue(stock, "quantity"))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+                `<tr class="border-t"><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue(group, widget.measure))}</td>${stockTotals.map(stock => `<td class="p-2 text-right whitespace-nowrap">${esc(`${biStockValue(stock)} ${stock.unit}`)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
             return;
         }
         for (let offset = 0; offset < result.length; offset += 100) {
@@ -494,13 +504,14 @@ function biMoveWidget(index, offset) {
 function biOpenEditor(index) {
     if (!biBoard || biBusy) return;
     if (index === null && biBoard.widgets.length >= 30) return biSetStatus("Mỗi bảng tối đa 30 widget.");
-    const widget = index === null ? { title: "", measure: "revenue", dimension: "month", chart: "bar", filter: "", limit: 20, stockBy: "" } : biBoard.widgets[index];
+    const widget = index === null ? { title: "", measure: "revenue", dimension: "month", chart: "bar", filter: "", limit: 0, stockBy: "" } : biBoard.widgets[index];
     biEditing = index;
     document.getElementById("biTitle").value = widget.title;
     document.getElementById("biMeasure").value = widget.measure;
     document.getElementById("biDimension").value = widget.dimension;
     document.getElementById("biChart").value = widget.chart;
     document.getElementById("biFilter").value = widget.filter;
+    biSyncFilterSearch();
     document.getElementById("biLimit").value = String(widget.limit);
     document.getElementById("biTimeGrain").value = widget.timeGrain || "";
     document.getElementById("biStockSku").checked = widget.stockBy === "sku";
@@ -523,10 +534,147 @@ function biUpdateDimension() {
     const time = document.getElementById("biTimeGrain");
     time.disabled = dimension.value === "month";
     if (time.disabled) time.value = "";
+    biCloseFilterSearch(false);
+    biSyncFilterSearch();
+}
+
+function biMaterialFilterOptions() {
+    const dimension = document.getElementById("biDimension").value;
+    if (Object.hasOwn(biMaterialFilterOptionCache, dimension)) return biMaterialFilterOptionCache[dimension];
+    const options = new Map();
+    if (dimension === "ptn") {
+        Object.keys(biMaterials).map(code => ptnOf({ ma_vt: code })).filter(Boolean).forEach(code => {
+            const material = biMaterials[code];
+            const name = material && String(material.ten_vt || "").trim();
+            options.set(code, { value: code, label: `${name || "Không tìm thấy tên trong danh mục"} — ${code}` });
+        });
+    } else {
+        const codeField = dimension === "category" ? "ma_nhvt" : "ma_nhvt1";
+        const nameField = dimension === "category" ? "ten_nhvt" : "ten_nhvt1";
+        Object.values(biMaterials).forEach(material => {
+            if (!material || typeof material !== "object") return;
+            const code = String(material[codeField] || "").trim();
+            if (!code) return;
+            const name = String(material[nameField] || "").trim();
+            options.set(code, { value: code, label: `${name || code} — ${code}` });
+        });
+    }
+    biMaterialFilterOptionCache[dimension] = [...options.values()].sort((a, b) => a.label.localeCompare(b.label, "vi", { numeric: true }));
+    return biMaterialFilterOptionCache[dimension];
+}
+
+function biSyncFilterSearch() {
+    const value = document.getElementById("biFilter").value;
+    const option = biMaterialFilterDimensions.includes(document.getElementById("biDimension").value)
+        ? biMaterialFilterOptions().find(item => item.value === value)
+        : null;
+    document.getElementById("biFilterSearch").value = option ? option.label : value;
+}
+
+function biCloseFilterSearch(restore = true) {
+    const input = document.getElementById("biFilterSearch");
+    const menu = document.getElementById("biFilterResults");
+    menu.classList.add("hidden");
+    biFilterMatches = [];
+    biFilterActive = -1;
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+    if (restore) biSyncFilterSearch();
+}
+
+function biRenderFilterSearch(query) {
+    const input = document.getElementById("biFilterSearch");
+    const menu = document.getElementById("biFilterResults");
+    if (!biMaterialFilterDimensions.includes(document.getElementById("biDimension").value)) {
+        biCloseFilterSearch(false);
+        return;
+    }
+    const rect = input.getBoundingClientRect();
+    const width = Math.min(Math.max(rect.width, 320), window.innerWidth - 16);
+    menu.style.width = `${width}px`;
+    menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))}px`;
+    menu.style.top = `${Math.min(rect.bottom + 4, window.innerHeight - 80)}px`;
+    menu.style.maxHeight = `${Math.max(60, Math.min(280, window.innerHeight - Math.min(rect.bottom + 4, window.innerHeight - 80) - 8))}px`;
+    const term = searchableText(query.trim());
+    const matches = biMaterialFilterOptions().filter(option => searchableText(option.label).includes(term));
+    const displayed = matches.slice(0, 100);
+    menu.innerHTML = displayed.map((option, index) =>
+        `<div id="biFilterResults-${index}" role="option" aria-selected="${option.value === document.getElementById("biFilter").value}" data-index="${index}" class="px-3 py-2 cursor-pointer hover:bg-blue-50 text-slate-700 break-words">${esc(option.label)}</div>`).join("")
+        || '<div class="px-3 py-2 text-slate-500">Không tìm thấy kết quả.</div>';
+    if (matches.length > displayed.length) {
+        menu.insertAdjacentHTML("beforeend", `<div class="px-3 py-2 text-slate-500">Hiển thị 100 / ${matches.length} kết quả. Nhập thêm để tìm.</div>`);
+    }
+    biFilterMatches = displayed;
+    biFilterActive = -1;
+    menu.classList.remove("hidden");
+    input.setAttribute("aria-expanded", "true");
+}
+
+function biSetFilterSearchActive(index) {
+    const input = document.getElementById("biFilterSearch");
+    const menu = document.getElementById("biFilterResults");
+    const options = [...menu.querySelectorAll("[role='option']")];
+    if (index < 0 || index >= options.length) return;
+    biFilterActive = index;
+    options.forEach((option, optionIndex) => {
+        option.classList.toggle("bg-blue-100", optionIndex === index);
+    });
+    input.setAttribute("aria-activedescendant", options[index].id);
+    options[index].scrollIntoView({ block: "nearest" });
+}
+
+function biSelectFilterSearchOption(option) {
+    document.getElementById("biFilter").value = option.value;
+    document.getElementById("biFilterSearch").value = option.label;
+    biCloseFilterSearch(false);
 }
 
 document.getElementById("biMeasure").addEventListener("change", biUpdateDimension);
 document.getElementById("biDimension").addEventListener("change", biUpdateDimension);
+document.getElementById("biFilterSearch").addEventListener("focus", event => biRenderFilterSearch(event.target.value));
+document.getElementById("biFilterSearch").addEventListener("input", event => {
+    document.getElementById("biFilter").value = event.target.value.trim();
+    biRenderFilterSearch(event.target.value);
+});
+document.getElementById("biFilterSearch").addEventListener("keydown", event => {
+    const menu = document.getElementById("biFilterResults");
+    if (event.key === "Escape") {
+        biCloseFilterSearch();
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        if (menu.classList.contains("hidden")) biRenderFilterSearch(event.target.value);
+        if (!biFilterMatches.length) return;
+        event.preventDefault();
+        const next = event.key === "ArrowDown"
+            ? (biFilterActive + 1) % biFilterMatches.length
+            : biFilterActive <= 0 ? biFilterMatches.length - 1 : biFilterActive - 1;
+        biSetFilterSearchActive(next);
+    } else if (event.key === "Enter" && !menu.classList.contains("hidden") && biFilterMatches.length) {
+        event.preventDefault();
+        const index = biFilterActive >= 0 ? biFilterActive : 0;
+        biSelectFilterSearchOption(biFilterMatches[index]);
+    }
+});
+document.getElementById("biFilterClear").addEventListener("click", () => {
+    document.getElementById("biFilter").value = "";
+    document.getElementById("biFilterSearch").value = "";
+    biCloseFilterSearch(false);
+    document.getElementById("biFilterSearch").focus();
+});
+document.getElementById("biFilterResults").addEventListener("mousedown", event => {
+    if (event.target.closest("[role='option']")) event.preventDefault();
+});
+document.getElementById("biFilterResults").addEventListener("click", event => {
+    const option = event.target.closest("[role='option']");
+    if (!option) return;
+    const selected = biFilterMatches[Number(option.dataset.index)];
+    if (selected) biSelectFilterSearchOption(selected);
+});
+document.body.appendChild(document.getElementById("biFilterResults"));
+document.addEventListener("click", event => {
+    if (event.target.closest("#biFilterSearch, #biFilterResults")) return;
+    if (document.getElementById("biFilterResults").classList.contains("hidden")) return;
+    biCloseFilterSearch();
+});
 document.getElementById("biStockSku").addEventListener("change", event => {
     if (event.target.checked) document.getElementById("biStockPtn").checked = false;
 });
@@ -534,7 +682,10 @@ document.getElementById("biStockPtn").addEventListener("change", event => {
     if (event.target.checked) document.getElementById("biStockSku").checked = false;
 });
 document.getElementById("biAdd").addEventListener("click", () => biOpenEditor(null));
-document.getElementById("biCancel").addEventListener("click", () => document.getElementById("biEditor").classList.add("hidden"));
+document.getElementById("biCancel").addEventListener("click", () => {
+    biCloseFilterSearch();
+    document.getElementById("biEditor").classList.add("hidden");
+});
 document.getElementById("biReload").addEventListener("click", biLoadBoard);
 document.getElementById("biSave").addEventListener("click", biSaveBoard);
 document.getElementById("biApply").addEventListener("click", biApplyDates);
@@ -553,6 +704,7 @@ document.getElementById("biEditorForm").addEventListener("submit", event => {
     };
     if (biEditing === null) biBoard.widgets.push(widget); else biBoard.widgets[biEditing] = widget;
     biDirty = true;
+    biCloseFilterSearch();
     document.getElementById("biEditor").classList.add("hidden");
     biRender();
     biSetStatus("Widget đã cập nhật; hãy chọn Lưu bảng để lưu thay đổi.");
