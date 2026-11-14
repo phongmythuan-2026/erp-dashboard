@@ -41,6 +41,11 @@ function biReset() {
     biOwner = null;
     biDirty = false;
     biSetBusy(false);
+    const stockButton = document.getElementById("biRefreshStock");
+    stockButton.disabled = false;
+    stockButton.classList.remove("bg-blue-700");
+    stockButton.classList.add("bg-blue-600");
+    stockButton.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i><span>Tải tồn kho</span>';
     document.getElementById("biWidgets").innerHTML = "";
     document.getElementById("biEditor").classList.add("hidden");
     document.getElementById("biFrom").value = "";
@@ -168,7 +173,13 @@ async function biRefreshStock() {
     if (!biBoard || biBusy) return;
     if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được tải mới tồn kho từ SQL."));
     const generation = biGeneration;
+    const button = document.getElementById("biRefreshStock");
+    const originalLabel = button.innerHTML;
+    const originalClass = button.className;
     biSetBusy(true);
+    button.classList.remove("bg-blue-600");
+    button.classList.add("bg-blue-700");
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang tải...</span>';
     biSetStatus("Đang tải tồn kho mới từ SQL...");
     try {
         if (biStockPromise) await biStockPromise;
@@ -188,7 +199,12 @@ async function biRefreshStock() {
         biSetStatus("Tải tồn kho thất bại; dữ liệu trước đó vẫn được giữ.");
         reportDataError("Lỗi tải tồn kho từ SQL", error);
     } finally {
-        if (generation === biGeneration) biSetBusy(false);
+        if (generation === biGeneration) {
+            biSetBusy(false);
+            button.disabled = false;
+            button.innerHTML = originalLabel;
+            button.className = originalClass;
+        }
     }
 }
 
