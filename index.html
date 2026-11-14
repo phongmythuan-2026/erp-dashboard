@@ -3024,6 +3024,23 @@
             context.strokeRect(x, y, width, height);
         }
 
+        function dashboardPdfCardBox(context, x, y, width, height, fill = "#ffffff") {
+            context.save();
+            context.shadowColor = "rgba(15, 23, 42, 0.06)";
+            context.shadowBlur = 12;
+            context.shadowOffsetY = 3;
+            context.fillStyle = fill;
+            context.beginPath();
+            context.roundRect(x, y, width, height, 12);
+            context.fill();
+            context.restore();
+            context.strokeStyle = "#e2e8f0";
+            context.lineWidth = 1;
+            context.beginPath();
+            context.roundRect(x, y, width, height, 12);
+            context.stroke();
+        }
+
         function dashboardPdfDrawImage(context, source, x, y, width, height) {
             if (!source || !source.width || !source.height) return;
             const scale = Math.min(width / source.width, height / source.height);
@@ -3035,12 +3052,12 @@
         function dashboardPdfCanvas() {
             const canvas = document.createElement("canvas");
             canvas.width = 2240;
-            canvas.height = 1584;
+            canvas.height = 1260;
             const context = canvas.getContext("2d");
             if (!context) throw new Error("Không thể tạo trang PDF.");
             context.scale(2, 2);
-            context.fillStyle = "#ffffff";
-            context.fillRect(0, 0, 1120, 792);
+            context.fillStyle = "#f3f6fb";
+            context.fillRect(0, 0, 1120, 630);
             return { canvas, context };
         }
 
@@ -3119,67 +3136,65 @@
         }
 
         function dashboardPdfHeader(context, title, pageNumber, pageCount, generatedAt) {
-            dashboardPdfText(context, "PEROMA GROUP  |  ERP", 42, 27, "bold 14px Arial", "#1d4ed8");
-            dashboardPdfText(context, "BÁO CÁO PHÂN TÍCH BÁN HÀNG", 1078, 29, "bold 10px Arial", "#64748b", "right");
-            context.strokeStyle = "#2563eb";
-            context.lineWidth = 2;
-            context.beginPath();
-            context.moveTo(42, 55);
-            context.lineTo(1078, 55);
-            context.stroke();
-            if (title) dashboardPdfText(context, title, 42, 70, "bold 18px Arial", "#0f172a");
+            context.fillStyle = "#ffffff";
+            context.fillRect(0, 0, 1120, 88);
+            dashboardPdfText(context, "PEROMA GROUP", 42, 17, "bold 11px Arial", "#1d4ed8");
+            dashboardPdfText(context, "ERP  /  SALES DASHBOARD", 142, 18, "10px Arial", "#64748b");
+            dashboardPdfText(context, "BÁO CÁO PHÂN TÍCH BÁN HÀNG", 1078, 18, "bold 9px Arial", "#64748b", "right");
             context.strokeStyle = "#e2e8f0";
             context.lineWidth = 1;
             context.beginPath();
-            context.moveTo(42, 748);
-            context.lineTo(1078, 748);
+            context.moveTo(42, 43);
+            context.lineTo(1078, 43);
             context.stroke();
-            dashboardPdfText(context, `Xuất lúc ${generatedAt}`, 42, 759, "10px Arial", "#64748b");
-            dashboardPdfText(context, `Trang ${pageNumber} / ${pageCount}`, 1078, 759, "10px Arial", "#64748b", "right");
+            context.fillStyle = "#2563eb";
+            context.fillRect(42, 58, 4, 22);
+            if (title) dashboardPdfText(context, title, 56, 57, "bold 18px Arial", "#0f172a");
+            dashboardPdfBox(context, 1017, 57, 61, 25, "#eff6ff", "#dbeafe");
+            dashboardPdfText(context, `${String(pageNumber).padStart(2, "0")} / ${String(pageCount).padStart(2, "0")}`,
+                1047, 64, "bold 9px Arial", "#1d4ed8", "center");
+            context.strokeStyle = "#e2e8f0";
+            context.lineWidth = 1;
+            context.beginPath();
+            context.moveTo(42, 602);
+            context.lineTo(1078, 602);
+            context.stroke();
+            dashboardPdfText(context, `PEROMA GROUP  ·  Xuất lúc ${generatedAt}`, 42, 611, "9px Arial", "#64748b");
+            dashboardPdfText(context, "BÁO CÁO NỘI BỘ", 1078, 611, "9px Arial", "#64748b", "right");
         }
 
         function dashboardPdfChartPanel(context, card, segment, x, y, width, height) {
-            dashboardPdfBox(context, x, y, width, height, "#ffffff");
-            dashboardPdfWrapText(context, card.title, x + 14, y + 13, width - 28, 19, "bold 13px Arial", "#0f172a", 2);
+            dashboardPdfCardBox(context, x, y, width, height);
+            context.fillStyle = "#3b82f6";
+            context.fillRect(x + 16, y + 16, 3, 25);
+            dashboardPdfWrapText(context, card.title, x + 28, y + 15, width - 44, 18, "bold 12px Arial", "#0f172a", 1);
             const descriptionHeight = card.description
-                ? dashboardPdfWrapText(context, card.description, x + 14, y + 43, width - 28, 14,
-                    "10px Arial", "#64748b", 2)
+                ? dashboardPdfWrapText(context, card.description, x + 28, y + 40, width - 44, 13,
+                    "9px Arial", "#64748b", 1)
                 : 0;
-            const imageTop = y + 52 + descriptionHeight;
-            const footerHeight = (segment && segment.caption ? 18 : 0) + (card.status ? 30 : 0);
-            const imageHeight = Math.max(80, y + height - 14 - footerHeight - imageTop);
+            const imageTop = y + 55 + descriptionHeight;
+            const footerHeight = (segment && segment.caption ? 16 : 0) + (card.status ? 24 : 0);
+            const imageHeight = Math.max(80, y + height - 12 - footerHeight - imageTop);
             if (segment) {
-                dashboardPdfDrawImage(context, segment.canvas, x + 12, imageTop, width - 24, imageHeight);
+                dashboardPdfDrawImage(context, segment.canvas, x + 8, imageTop, width - 16, imageHeight);
             } else {
                 dashboardPdfWrapText(context, card.status || "Không có dữ liệu biểu đồ.",
                     x + 20, imageTop + imageHeight / 2 - 8, width - 40, 16, "12px Arial", "#64748b", 2);
             }
-            let footerY = y + height - 14 - footerHeight;
+            let footerY = y + height - 12 - footerHeight;
             if (segment && segment.caption) {
-                dashboardPdfText(context, segment.caption, x + width - 14, footerY, "9px Arial", "#64748b", "right");
-                footerY += 15;
+                dashboardPdfText(context, segment.caption, x + width - 14, footerY, "8px Arial", "#64748b", "right");
+                footerY += 13;
             }
             if (card.status) dashboardPdfWrapText(context, card.status, x + 14, footerY,
-                width - 28, 12, "9px Arial", "#64748b", 2);
+                width - 28, 11, "8px Arial", "#64748b", 2);
         }
 
         function dashboardPdfSummaryPage(context, dateRange, generatedAt, filterRows) {
-            dashboardPdfText(context, "BÁO CÁO DOANH THU BÁN HÀNG", 42, 83, "bold 24px Arial", "#0f172a");
-            dashboardPdfText(context, `Kỳ báo cáo: ${dateRange}  ·  Xuất lúc: ${generatedAt}`,
-                42, 116, "12px Arial", "#475569");
-
-            dashboardPdfBox(context, 42, 145, 1036, 166, "#f8fafc");
-            dashboardPdfText(context, "ĐIỀU KIỆN PHÂN TÍCH", 56, 158, "bold 10px Arial", "#64748b");
-            const rows = filterRows.length ? filterRows : [["Bộ lọc", "Tất cả"]];
-            rows.forEach(([label, value], index) => {
-                const col = index % 3;
-                const row = Math.floor(index / 3);
-                const x = 56 + col * 338;
-                const y = 181 + row * 38;
-                dashboardPdfBox(context, x, y, 324, 30, "#ffffff");
-                dashboardPdfText(context, label, x + 8, y + 4, "bold 9px Arial", "#64748b");
-                dashboardPdfWrapText(context, value, x + 8, y + 15, 308, 11, "10px Arial", "#1e293b", 1);
-            });
+            dashboardPdfText(context, `KỲ BÁO CÁO  ·  ${dateRange}  ·  XUẤT LÚC ${generatedAt}`,
+                42, 99, "10px Arial", "#64748b");
+            dashboardPdfText(context, document.getElementById("recordCountBadge").textContent.trim(),
+                1078, 99, "10px Arial", "#64748b", "right");
 
             const kpis = [
                 ["TỔNG DOANH THU", "kpiDoanhThu", "Số dòng chi tiết", "kpiDong", "#2563eb"],
@@ -3189,23 +3204,51 @@
             ];
             kpis.forEach(([label, valueId, detailLabel, detailId, color], index) => {
                 const x = 42 + index * 261;
-                dashboardPdfBox(context, x, 330, 251, 112, "#ffffff");
+                dashboardPdfCardBox(context, x, 125, 251, 138);
                 context.fillStyle = color;
-                context.fillRect(x, 330, 251, 4);
-                dashboardPdfText(context, label, x + 12, 345, "bold 9px Arial", "#64748b");
+                context.beginPath();
+                context.roundRect(x, 125, 251, 5, [3, 3, 0, 0]);
+                context.fill();
+                dashboardPdfText(context, label, x + 14, 146, "bold 9px Arial", "#64748b");
                 dashboardPdfWrapText(context, document.getElementById(valueId).textContent.trim(),
-                    x + 12, 366, 227, 22, "bold 17px Arial", "#0f172a", 2);
+                    x + 14, 170, 223, 23, "bold 17px Arial", "#0f172a", 2);
                 dashboardPdfWrapText(context,
                     `${detailLabel}: ${document.getElementById(detailId).textContent.trim()}`,
-                    x + 12, 414, 227, 12, "9px Arial", "#64748b", 2);
+                    x + 14, 229, 223, 12, "9px Arial", "#64748b", 1);
             });
-            dashboardPdfText(context, document.getElementById("recordCountBadge").textContent.trim(),
-                1078, 456, "10px Arial", "#64748b", "right");
+
+            dashboardPdfText(context, "ĐIỀU KIỆN PHÂN TÍCH", 42, 303, "bold 10px Arial", "#475569");
+            const rows = filterRows;
+            if (!rows.length) {
+                dashboardPdfText(context, "Không áp dụng bộ lọc bổ sung.", 42, 329, "10px Arial", "#64748b");
+            }
+            rows.forEach(([label, value], index) => {
+                const col = index % 3;
+                const row = Math.floor(index / 3);
+                const x = 42 + col * 350;
+                const y = 327 + row * 60;
+                dashboardPdfCardBox(context, x, y, 336, 50, "#ffffff");
+                dashboardPdfText(context, label.toLocaleUpperCase("vi-VN"), x + 12, y + 8,
+                    "bold 8px Arial", "#64748b");
+                dashboardPdfWrapText(context, value || "Tất cả", x + 12, y + 25,
+                    312, 13, "10px Arial", "#1e293b", 1);
+            });
+
+            const filterRowCount = Math.ceil(rows.length / 3);
+            const scopeTop = rows.length ? 327 + (filterRowCount - 1) * 60 + 66 : 380;
+            dashboardPdfCardBox(context, 42, scopeTop, 1036, 74, "#eff6ff");
+            context.fillStyle = "#2563eb";
+            context.beginPath();
+            context.roundRect(42, scopeTop, 4, 74, [3, 0, 0, 3]);
+            context.fill();
+            dashboardPdfText(context, "PHẠM VI BÁO CÁO", 62, scopeTop + 17, "bold 9px Arial", "#1d4ed8");
+            dashboardPdfText(context, "Chỉ gồm KPI và biểu đồ theo bộ lọc; không bao gồm chi tiết giao dịch bán hàng.",
+                62, scopeTop + 37, "10px Arial", "#334155");
         }
 
         function dashboardPdfRenderPage(model, pageNumber, pageCount, generatedAt, range, filterRows) {
             const { canvas, context } = dashboardPdfCanvas();
-            dashboardPdfHeader(context, model.type === "summary" ? "" : model.title,
+            dashboardPdfHeader(context, model.type === "summary" ? "BÁO CÁO DOANH THU BÁN HÀNG" : model.title,
                 pageNumber, pageCount, generatedAt);
             if (model.type === "summary") {
                 dashboardPdfSummaryPage(context, range, generatedAt, filterRows);
@@ -3218,7 +3261,7 @@
                         ? card.segment
                         : card.segments[0];
                     dashboardPdfChartPanel(context, card, segment,
-                        42 + index * (width + gap), 102, width, 630);
+                        42 + index * (width + gap), 101, width, 486);
                 });
             }
             return canvas;
@@ -3298,14 +3341,16 @@
                 overlay.appendChild(progress);
                 document.body.appendChild(overlay);
 
-                const pdf = new JsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
+                const slideSize = [297, 167.0625];
+                const pdf = new JsPDF({ orientation: "landscape", unit: "mm", format: slideSize, compress: true });
                 for (let i = 0; i < models.length; i++) {
                     progress.textContent = `Đang tạo trang ${i + 1}/${models.length}...`;
                     await new Promise(resolve => setTimeout(resolve, 0));
                     const renderedPage = dashboardPdfRenderPage(models[i], i + 1, models.length,
                         generatedAt, range, filterRows);
-                    if (i) pdf.addPage("a4", "landscape");
-                    pdf.addImage(renderedPage.toDataURL("image/png"), "PNG", 0, 0, 297, 210, undefined, "FAST");
+                    if (i) pdf.addPage(slideSize, "landscape");
+                    pdf.addImage(renderedPage.toDataURL("image/png"), "PNG", 0, 0,
+                        slideSize[0], slideSize[1], undefined, "FAST");
                     renderedPage.width = 0;
                     renderedPage.height = 0;
                 }
