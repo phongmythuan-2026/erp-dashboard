@@ -324,7 +324,7 @@ function biRenderTime(content, result, widget) {
         const table = document.createElement("table");
         table.className = "w-full text-xs text-left";
         const head = document.createElement("thead");
-        head.innerHTML = `<tr><th class="p-2">Thời gian</th><th class="p-2">Chiều phân tích</th><th class="p-2 text-right">Giá trị</th>${stockTotals.map(stock => `<th class="p-2 text-right whitespace-nowrap">Tồn kho (${esc(stock.unit)})</th>`).join("")}</tr>`;
+        head.innerHTML = `<tr><th class="p-2">Thời gian</th><th class="p-2">Chiều phân tích</th><th class="p-2 text-right">Giá trị</th>${stockTotals.map(stock => `<th class="p-2 text-right whitespace-nowrap">${esc(biStockLabel(stock))}</th>`).join("")}</tr>`;
         table.appendChild(head);
         const body = document.createElement("tbody");
         for (const period of periods) for (const group of result) {
@@ -362,7 +362,7 @@ function biRenderTime(content, result, widget) {
                         backgroundColor: colors[i % colors.length], borderColor: colors[i % colors.length], borderRadius: 4
                     })),
                     ...stockTotals.map((stock, i) => ({
-                        type: "line", label: `Tồn kho (${stock.unit})`, data: part.map(() => stock.value),
+                        type: "line", label: biStockLabel(stock), data: part.map(() => stock.value),
                         borderColor: ["#dc2626", "#d97706", "#7c3aed", "#0891b2"][i % 4],
                         borderDash: [6, 4], pointRadius: 0, fill: false
                     }))
@@ -372,7 +372,7 @@ function biRenderTime(content, result, widget) {
                     plugins: { tooltip: { callbacks: { label: item => {
                         if (item.datasetIndex >= groups.length) {
                             const stock = stockTotals[item.datasetIndex - groups.length];
-                            return `${item.dataset.label}: ${biValue(stock, "quantity")}`;
+                            return biStockLabel(stock);
                         }
                         const group = groups[item.datasetIndex];
                         return `${group.label}: ${biValue({ value: item.raw, unit: group.unit }, widget.measure)}`;
@@ -386,6 +386,11 @@ function biValue(group, measure) {
     if (measure === "revenue") return formatVND(group.value);
     const value = group.value.toLocaleString("vi-VN", { maximumFractionDigits: 3 });
     return measure === "quantity" ? `${value} ${group.unit}` : value;
+}
+
+function biStockLabel(stock) {
+    const value = stock.value.toLocaleString("vi-VN", { maximumFractionDigits: 3 });
+    return `Tồn kho: ${value} (${stock.unit})`;
 }
 
 function biStockTotals(widget) {
@@ -426,7 +431,9 @@ function biRender() {
         const card = document.createElement("section");
         card.className = "min-w-0 bg-white rounded-2xl border border-slate-200 p-4";
         card.innerHTML = `<div class="flex flex-wrap justify-between gap-2"><h3 class="font-bold text-sm">${esc(widget.title)}</h3>
-            <div class="flex gap-2 text-xs"><button data-bi-action="edit" data-index="${index}" class="text-blue-600">Sửa</button>
+            <div class="flex gap-2 text-xs"><button type="button" data-bi-action="move-up" data-index="${index}" aria-label="Di chuyển lên" title="Di chuyển lên" class="text-slate-500 hover:text-blue-600 disabled:opacity-30" ${index === 0 ? "disabled" : ""}><i class="fa-solid fa-arrow-up"></i></button>
+            <button type="button" data-bi-action="move-down" data-index="${index}" aria-label="Di chuyển xuống" title="Di chuyển xuống" class="text-slate-500 hover:text-blue-600 disabled:opacity-30" ${index === biBoard.widgets.length - 1 ? "disabled" : ""}><i class="fa-solid fa-arrow-down"></i></button>
+            <button type="button" data-bi-action="edit" data-index="${index}" class="text-blue-600">Sửa</button>
             <button data-bi-action="delete" data-index="${index}" class="text-red-600">Xóa</button></div></div>
             <p class="text-xs text-slate-500 mt-1">${esc(biMeasures[widget.measure])}${widget.measure === "revenue" ? " (VND)" : ""} · ${esc(biDimensions[widget.dimension])}${widget.timeGrain ? ` · Theo ${esc(biTimeGrains[widget.timeGrain].toLowerCase())}` : ""}${widget.filter ? ` · Lọc: ${esc(widget.filter)}` : ""}</p>
             ${widget.measure === "quantity" ? '<p class="text-xs text-amber-700 mt-1">Cộng trực tiếp, không quy đổi; ĐVT theo từng mã PTN, xem ở bảng hoặc chú giải khi rê chuột.</p>' : ""}
@@ -442,7 +449,7 @@ function biRender() {
         if (widget.timeGrain) { biRenderTime(content, result, widget); return; }
         const stockTotals = biStockTotals(widget);
         if (widget.chart === "table") {
-            content.innerHTML = `<table class="w-full text-xs text-left"><thead><tr><th class="p-2">Chiều phân tích</th><th class="p-2 text-right">Giá trị</th>${stockTotals.map(stock => `<th class="p-2 text-right whitespace-nowrap">Tồn kho (${esc(stock.unit)})</th>`).join("")}</tr></thead><tbody>${result.map(group =>
+            content.innerHTML = `<table class="w-full text-xs text-left"><thead><tr><th class="p-2">Chiều phân tích</th><th class="p-2 text-right">Giá trị</th>${stockTotals.map(stock => `<th class="p-2 text-right whitespace-nowrap">${esc(biStockLabel(stock))}</th>`).join("")}</tr></thead><tbody>${result.map(group =>
                 `<tr class="border-t"><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue(group, widget.measure))}</td>${stockTotals.map(stock => `<td class="p-2 text-right whitespace-nowrap">${esc(biValue(stock, "quantity"))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
             return;
         }
@@ -460,18 +467,28 @@ function biRender() {
                 type: widget.chart,
                 data: { labels: part.map(group => group.label), datasets: [
                     { label: biMeasures[widget.measure], data: part.map(group => group.value), backgroundColor: "#3b82f6", borderColor: "#2563eb", borderRadius: 4 },
-                    ...stockTotals.map((stock, i) => ({ type: "line", label: `Tồn kho (${stock.unit})`, data: part.map(() => stock.value),
+                    ...stockTotals.map((stock, i) => ({ type: "line", label: biStockLabel(stock), data: part.map(() => stock.value),
                         borderColor: ["#dc2626", "#d97706", "#7c3aed", "#0891b2"][i % 4], borderDash: [6, 4], pointRadius: 0, fill: false }))
                 ] },
                 options: { responsive: true, maintainAspectRatio: false, ...(widget.chart === "bar" ? { indexAxis: "y", scales: { y: { ticks: { autoSkip: false } } } } : {}),
                     plugins: { tooltip: { callbacks: { label: item => item.datasetIndex === 0
                         ? `${biMeasures[widget.measure]}: ${biValue(part[item.dataIndex], widget.measure)}`
-                        : `${item.dataset.label}: ${biValue(stockTotals[item.datasetIndex - 1], "quantity")}` } } } }
+                        : biStockLabel(stockTotals[item.datasetIndex - 1]) } } } }
             }));
         }
     });
     if (biBoard.widgets.some(widget => widget.measure === "quantity" && widget.stockBy) &&
         biStockRows === null && !biStockError) biLoadStock();
+}
+
+function biMoveWidget(index, offset) {
+    if (!biBoard || biBusy || !Number.isInteger(index) || ![-1, 1].includes(offset)) return;
+    const target = index + offset;
+    if (index < 0 || index >= biBoard.widgets.length || target < 0 || target >= biBoard.widgets.length) return;
+    [biBoard.widgets[index], biBoard.widgets[target]] = [biBoard.widgets[target], biBoard.widgets[index]];
+    biDirty = true;
+    biRender();
+    biSetStatus("Thứ tự widget đã thay đổi; chọn Lưu bảng để lưu lại.");
 }
 
 function biOpenEditor(index) {
@@ -546,6 +563,9 @@ document.getElementById("biWidgets").addEventListener("click", event => {
     if (!button || biBusy) return;
     const index = Number(button.dataset.index);
     if (button.dataset.biAction === "edit") return biOpenEditor(index);
+    if (button.dataset.biAction === "move-up") return biMoveWidget(index, -1);
+    if (button.dataset.biAction === "move-down") return biMoveWidget(index, 1);
+    if (button.dataset.biAction !== "delete") return;
     if (!confirm("Xóa widget này khỏi bảng?")) return;
     biBoard.widgets.splice(index, 1);
     biDirty = true;
