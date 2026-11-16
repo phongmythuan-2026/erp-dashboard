@@ -287,10 +287,12 @@ function biPeriod(row, grain) {
 
 function biAggregate(rows, widget) {
     const groups = new Map();
+    const stackDimension = widget.dimension === "business" && widget.chart === "stack" ? widget.stackDimension : "";
     let invalid = 0;
     rows.forEach(row => {
         const [key, label, code = ""] = biDimension(row, widget.dimension);
         if (widget.filter && !searchableText(`${label} ${key} ${code}`).includes(searchableText(widget.filter))) return;
+        const [stackKey, stackLabel] = stackDimension ? biDimension(row, stackDimension) : [];
         const value = widget.measure === "quantity" ? row.sl_ban_sau_tra_lai : window.erpNetRevenue(row);
         const order = String(row.so_ct || "").trim();
         if (widget.measure === "orders" ? !order : value == null || String(value).trim() === "" || !Number.isFinite(Number(value))) {
@@ -302,6 +304,7 @@ function biAggregate(rows, widget) {
         let group = groups.get(key);
         if (!group) {
             group = { key, label, value: 0, orders: new Set(), periods: new Map() };
+            if (stackDimension) group.breakdowns = new Map();
             groups.set(key, group);
         }
         if (widget.measure === "orders") {
@@ -309,16 +312,45 @@ function biAggregate(rows, widget) {
         } else {
             group.value += Number(value);
         }
+        if (stackDimension) {
+            let breakdown = group.breakdowns.get(stackKey);
+            if (!breakdown) {
+                breakdown = { key: stackKey, label: stackLabel, value: 0, orders: new Set() };
+                group.breakdowns.set(stackKey, breakdown);
+            }
+            if (widget.measure === "orders") breakdown.orders.add(order);
+            else breakdown.value += Number(value);
+        }
         if (period) {
-            if (!group.periods.has(period)) group.periods.set(period, { value: 0, orders: new Set() });
+            if (!group.periods.has(period)) {
+                const cell = { value: 0, orders: new Set() };
+                if (stackDimension) cell.breakdowns = new Map();
+                group.periods.set(period, cell);
+            }
             const cell = group.periods.get(period);
             if (widget.measure === "orders") cell.orders.add(order); else cell.value += Number(value);
+            if (stackDimension) {
+                let breakdown = cell.breakdowns.get(stackKey);
+                if (!breakdown) {
+                    breakdown = { key: stackKey, label: stackLabel, value: 0, orders: new Set() };
+                    cell.breakdowns.set(stackKey, breakdown);
+                }
+                if (widget.measure === "orders") breakdown.orders.add(order);
+                else breakdown.value += Number(value);
+            }
         }
     });
     let result = [...groups.values()];
     if (widget.measure === "orders") result.forEach(group => {
         group.value = group.orders.size;
         group.periods.forEach(cell => { cell.value = cell.orders.size; });
+    });
+    if (stackDimension) result.forEach(group => {
+        const finalizeBreakdowns = breakdowns => breakdowns.forEach(breakdown => {
+            if (widget.measure === "orders") breakdown.value = breakdown.orders.size;
+        });
+        finalizeBreakdowns(group.breakdowns);
+        group.periods.forEach(cell => finalizeBreakdowns(cell.breakdowns));
     });
     result.sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "vi"));
     if (widget.limit) result = result.slice(0, widget.limit);
@@ -366,6 +398,67 @@ function biProductionRemainingLabel(production) {
     return `SL SX còn lại: ${biProductionRemainingValue(production)}`;
 }
 
+function biRenderBusinessStack(content, result, widget, periods = null) {
+    const stackDimension = widget.dimension === "business" && widget.chart === "stack" && widget.stackDimension;
+    if (!stackDimension) return false;
+
+    const colors = ["#2563eb", "#dc2626", "#059669", "#9333ea", "#d97706", "#0891b2", "#db2777", "#4d7c0f"];
+    const series = new Map();
+    result.forEach(group => group.breakdowns.forEach(breakdown => {
+        const key = periods ? JSON.stringify([group.key, breakdown.key]) : breakdown.key;
+        if (!series.has(key)) series.set(key, { key, group, breakdown });
+    }));
+    const allSeries = [...series.values()];
+    const labels = periods || result.map(group => group.label);
+    for (let offset = 0; offset < labels.length; offset += periods ? 60 : 100) {
+        const part = labels.slice(offset, offset + (periods ? 60 : 100));
+        const partGroups = periods ? null : result.slice(offset, offset + 100);
+        const wrap = document.createElement("div");
+        wrap.className = "relative";
+        wrap.style.width = `${Math.max(450, part.length * (periods ? 55 : 38))}px`;
+        wrap.style.height = `${Math.max(300, !periods && widget.chart === "bar" ? part.length * 38 : 300)}px`;
+        const canvas = document.createElement("canvas");
+        canvas.setAttribute("role", "img");
+        canvas.setAttribute("aria-label", widget.title);
+        wrap.appendChild(canvas);
+        content.appendChild(wrap);
+        const datasets = allSeries.map((item, index) => {
+            const { group, breakdown } = item;
+            const data = periods
+                ? part.map(period => {
+                    const cell = group.periods.get(period);
+                    return cell && cell.breakdowns.has(breakdown.key) ? cell.breakdowns.get(breakdown.key).value : 0;
+                })
+                : partGroups.map(current => {
+                    const cell = current.breakdowns.get(breakdown.key);
+                    return cell ? cell.value : 0;
+                });
+            return {
+                label: periods ? `${group.label} · ${breakdown.label}` : breakdown.label,
+                data,
+                backgroundColor: colors[index % colors.length],
+                borderColor: colors[index % colors.length],
+                borderRadius: 4
+            };
+        });
+        biCharts.push(new Chart(canvas.getContext("2d"), {
+            type: "bar",
+            data: { labels: part, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                ...(periods ? {} : { indexAxis: "x" }),
+                scales: {
+                    x: { stacked: true, ...(periods ? { title: { display: true, text: biTimeGrains[widget.timeGrain] } } : {}) },
+                    y: { stacked: true }
+                },
+                plugins: { tooltip: { callbacks: { label: item =>
+                    `${item.dataset.label}: ${biValue({ value: item.raw }, widget.measure)}` } } }
+            }
+        }));
+    }
+    return true;
+}
+
 function biRenderTime(content, result, widget) {
     const production = biProductionSummary(result, widget);
     const hasProductionTotal = widget.measure === "quantity";
@@ -399,6 +492,7 @@ function biRenderTime(content, result, widget) {
         content.appendChild(table);
         return;
     }
+    if (biRenderBusinessStack(content, result, widget, periods)) return;
     const colors = ["#2563eb", "#dc2626", "#059669", "#9333ea", "#d97706", "#0891b2", "#db2777", "#4d7c0f"];
     for (let groupOffset = 0; groupOffset < result.length; groupOffset += 30) {
         const groups = result.slice(groupOffset, groupOffset + 30);
@@ -512,7 +606,7 @@ function biRender() {
             <button type="button" data-bi-action="move-down" data-index="${index}" aria-label="Di chuyển xuống" title="Di chuyển xuống" class="text-slate-500 hover:text-blue-600 disabled:opacity-30" ${index === biBoard.widgets.length - 1 ? "disabled" : ""}><i class="fa-solid fa-arrow-down"></i></button>
             <button type="button" data-bi-action="edit" data-index="${index}" class="text-blue-600">Sửa</button>
             <button data-bi-action="delete" data-index="${index}" class="text-red-600">Xóa</button></div></div>
-            <p class="text-xs text-slate-500 mt-1">${esc(biMeasures[widget.measure])}${widget.measure === "revenue" ? " (VND)" : ""} · ${esc(biDimensions[widget.dimension])}${widget.timeGrain ? ` · Theo ${esc(biTimeGrains[widget.timeGrain].toLowerCase())}` : ""}${widget.filter ? ` · Lọc: ${esc(widget.filter)}` : ""}</p>
+            <p class="text-xs text-slate-500 mt-1">${esc(biMeasures[widget.measure])}${widget.measure === "revenue" ? " (VND)" : ""} · ${esc(biDimensions[widget.dimension])}${widget.stackDimension && widget.dimension === "business" && widget.chart === "stack" ? ` · Stack theo ${esc(biDimensions[widget.stackDimension])}` : ""}${widget.timeGrain ? ` · Theo ${esc(biTimeGrains[widget.timeGrain].toLowerCase())}` : ""}${widget.filter ? ` · Lọc: ${esc(widget.filter)}` : ""}</p>
             ${widget.measure === "quantity" ? '<p class="text-xs text-amber-700 mt-1">Cộng trực tiếp, không quy đổi; ĐVT theo từng mã PTN, xem ở bảng hoặc chú giải khi rê chuột.</p>' : ""}
             ${widget.measure === "quantity" && widget.timeGrain ? `<p class="text-xs text-emerald-700 mt-1">SL SX còn lại là tổng toàn kỳ theo ${widget.stockBy === "sku" ? "SKU" : "Mã PTN"}, kèm số lượng và ĐVT trong chú giải${biProductionRows.length ? "." : ". Chưa có dữ liệu lệnh sản xuất; hãy tải mới từ SQL trong Danh Sách Lệnh Sản Xuất."}</p>` : ""}
             ${biStockStatus(widget)}
@@ -531,6 +625,7 @@ function biRender() {
                 `<tr class="border-t"><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue(group, widget.measure))}</td>${stockTotals.map(stock => `<td class="p-2 text-right whitespace-nowrap">${esc(`${biStockValue(stock)} ${stock.unit}`)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
             return;
         }
+        if (biRenderBusinessStack(content, result, widget)) return;
         const stacked = widget.chart === "stack";
         const chartType = stacked ? "bar" : widget.chart;
         for (let offset = 0; offset < result.length; offset += 100) {
@@ -576,12 +671,13 @@ function biMoveWidget(index, offset) {
 function biOpenEditor(index) {
     if (!biBoard || biBusy) return;
     if (index === null && biBoard.widgets.length >= 30) return biSetStatus("Mỗi bảng tối đa 30 widget.");
-    const widget = index === null ? { title: "", measure: "revenue", dimension: "month", chart: "bar", filter: "", limit: 0, stockBy: "" } : biBoard.widgets[index];
+    const widget = index === null ? { title: "", measure: "revenue", dimension: "month", chart: "bar", filter: "", limit: 0, stockBy: "", stackDimension: "" } : biBoard.widgets[index];
     biEditing = index;
     document.getElementById("biTitle").value = widget.title;
     document.getElementById("biMeasure").value = widget.measure;
     document.getElementById("biDimension").value = widget.dimension;
     document.getElementById("biChart").value = widget.chart;
+    document.getElementById("biStackDimension").value = widget.stackDimension || "";
     document.getElementById("biFilter").value = widget.filter;
     biSyncFilterSearch();
     document.getElementById("biLimit").value = String(widget.limit);
@@ -589,6 +685,7 @@ function biOpenEditor(index) {
     document.getElementById("biStockSku").checked = widget.stockBy === "sku";
     document.getElementById("biStockPtn").checked = widget.stockBy === "ptn";
     biUpdateDimension();
+    biUpdateStackDimension();
     document.getElementById("biEditor").classList.remove("hidden");
     document.getElementById("biTitle").focus();
 }
@@ -606,8 +703,18 @@ function biUpdateDimension() {
     const time = document.getElementById("biTimeGrain");
     time.disabled = dimension.value === "month";
     if (time.disabled) time.value = "";
+    biUpdateStackDimension();
     biCloseFilterSearch(false);
     biSyncFilterSearch();
+}
+
+function biUpdateStackDimension() {
+    const field = document.getElementById("biStackDimensionField");
+    const select = document.getElementById("biStackDimension");
+    const visible = document.getElementById("biDimension").value === "business" &&
+        document.getElementById("biChart").value === "stack";
+    field.classList.toggle("hidden", !visible);
+    if (visible && !select.value) select.value = "category";
 }
 
 function biMaterialFilterOptions() {
@@ -703,6 +810,7 @@ function biSelectFilterSearchOption(option) {
 
 document.getElementById("biMeasure").addEventListener("change", biUpdateDimension);
 document.getElementById("biDimension").addEventListener("change", biUpdateDimension);
+document.getElementById("biChart").addEventListener("change", biUpdateStackDimension);
 document.getElementById("biFilterSearch").addEventListener("focus", event => biRenderFilterSearch(event.target.value));
 document.getElementById("biFilterSearch").addEventListener("input", event => {
     document.getElementById("biFilter").value = event.target.value.trim();
@@ -771,6 +879,8 @@ document.getElementById("biEditorForm").addEventListener("submit", event => {
         id: biEditing === null ? crypto.randomUUID() : biBoard.widgets[biEditing].id,
         title, measure: document.getElementById("biMeasure").value, dimension: document.getElementById("biDimension").value,
         chart: document.getElementById("biChart").value, filter: document.getElementById("biFilter").value.trim(), limit: Number(document.getElementById("biLimit").value),
+        stackDimension: document.getElementById("biDimension").value === "business" && document.getElementById("biChart").value === "stack"
+            ? document.getElementById("biStackDimension").value : "",
         timeGrain: document.getElementById("biTimeGrain").value,
         stockBy: document.getElementById("biStockSku").checked ? "sku" : document.getElementById("biStockPtn").checked ? "ptn" : ""
     };
