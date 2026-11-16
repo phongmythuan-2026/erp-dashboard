@@ -331,11 +331,16 @@ function biAggregate(rows, widget) {
 }
 
 function biProductionByPeriod(result, widget) {
-    const totals = new Map();
-    if (widget.measure !== "quantity" || !widget.timeGrain || !result.length) return totals;
+    const empty = { remaining: new Map(), produced: new Map() };
+    if (widget.measure !== "quantity" || !widget.timeGrain || !result.length) return empty;
 
     const visibleDimensions = new Set(result.map(group => String(group.key)));
-    const grouped = new Map();
+    const grouped = { remaining: new Map(), produced: new Map() };
+    const addToPeriod = (series, period, code, value) => {
+        if (!series.has(period)) series.set(period, new Map());
+        const products = series.get(period);
+        products.set(code, (products.get(code) || 0) + value);
+    };
     biProductionRows.forEach(row => {
         const [dimensionKey] = biDimension(row, widget.dimension);
         if (!visibleDimensions.has(String(dimensionKey))) return;
@@ -344,23 +349,24 @@ function biProductionByPeriod(result, widget) {
         const period = biPeriod(row, widget.timeGrain);
         if (!period) return;
         const remaining = window.erpProductionRemaining(row);
-        if (!Number.isFinite(remaining)) return;
-        if (!grouped.has(period)) grouped.set(period, new Map());
-        const products = grouped.get(period);
-        products.set(code, (products.get(code) || 0) + remaining);
+        if (Number.isFinite(remaining)) addToPeriod(grouped.remaining, period, code, remaining);
+        if (/^(3|6|8)\s*\./.test(String(row.Hinh_thuc_sx || "").trim())) {
+            const quantity = Number(row.so_luong);
+            if (Number.isFinite(quantity)) addToPeriod(grouped.produced, period, code, quantity);
+        }
     });
-    grouped.forEach((products, period) => {
-        totals.set(period, [...products.values()].reduce((sum, value) => sum + value, 0));
-    });
-    return totals;
+    const totalByPeriod = series => new Map([...series].map(([period, products]) =>
+        [period, [...products.values()].reduce((sum, value) => sum + value, 0)]));
+    return { remaining: totalByPeriod(grouped.remaining), produced: totalByPeriod(grouped.produced) };
 }
 
 function biRenderTime(content, result, widget) {
-    const productionByPeriod = biProductionByPeriod(result, widget);
-    const hasProductionSeries = widget.measure === "quantity";
+    const production = biProductionByPeriod(result, widget);
+    const hasProductionLines = widget.measure === "quantity";
     const periods = [...new Set([
         ...result.flatMap(group => [...group.periods.keys()]),
-        ...productionByPeriod.keys()
+        ...production.remaining.keys(),
+        ...production.produced.keys()
     ])].sort();
     const stockTotals = biStockTotals(widget);
     if (widget.chart === "table") {
@@ -379,12 +385,17 @@ function biRenderTime(content, result, widget) {
                 row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue({ value: cell.value, unit: group.unit }, widget.measure))}</td>${stockTotals.map(stock => `<td class="p-2 text-right whitespace-nowrap">${esc(`${biStockValue(stock)} ${stock.unit}`)}</td>`).join("")}`;
                 body.appendChild(row);
             }
-            if (hasProductionSeries) {
-                const row = document.createElement("tr");
-                row.className = "border-t font-semibold text-emerald-700";
-                const value = productionByPeriod.get(period) || 0;
-                row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">SL Sản xuất</td><td class="p-2 text-right whitespace-nowrap">${esc(value.toLocaleString("vi-VN", { maximumFractionDigits: 3 }))}</td>${stockTotals.map(() => "<td></td>").join("")}`;
-                body.appendChild(row);
+            if (hasProductionLines) {
+                [
+                    ["SL SX còn lại", production.remaining, "text-emerald-700"],
+                    ["SL Sản xuất", production.produced, "text-teal-700"]
+                ].forEach(([label, series, color]) => {
+                    const row = document.createElement("tr");
+                    row.className = `border-t font-semibold ${color}`;
+                    const value = series.get(period) || 0;
+                    row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">${label}</td><td class="p-2 text-right whitespace-nowrap">${esc(value.toLocaleString("vi-VN", { maximumFractionDigits: 3 }))}</td>${stockTotals.map(() => "<td></td>").join("")}`;
+                    body.appendChild(row);
+                });
             }
         }
         table.appendChild(body);
@@ -413,12 +424,20 @@ function biRenderTime(content, result, widget) {
                         data: part.map(period => group.periods.has(period) ? group.periods.get(period).value : null),
                         backgroundColor: colors[i % colors.length], borderColor: colors[i % colors.length], borderRadius: 4
                     })),
-                    ...(hasProductionSeries ? [{
-                        type: "line", label: "SL Sản xuất",
-                        data: part.map(period => productionByPeriod.get(period) || 0),
-                        borderColor: "#059669", backgroundColor: "#059669", borderDash: [5, 3],
-                        pointRadius: 2, fill: false
-                    }] : []),
+                    ...(hasProductionLines ? [
+                        {
+                            type: "line", label: "SL SX còn lại",
+                            data: part.map(period => production.remaining.get(period) || 0),
+                            borderColor: "#059669", backgroundColor: "#059669", borderDash: [5, 3],
+                            pointRadius: 2, fill: false
+                        },
+                        {
+                            type: "line", label: "SL Sản xuất",
+                            data: part.map(period => production.produced.get(period) || 0),
+                            borderColor: "#0f766e", backgroundColor: "#0f766e", borderDash: [2, 2],
+                            pointRadius: 2, fill: false
+                        }
+                    ] : []),
                     ...stockTotals.map((stock, i) => ({
                         type: "line", label: biStockLabel(stock), data: part.map(() => stock.value),
                         borderColor: ["#dc2626", "#d97706", "#7c3aed", "#0891b2"][i % 4],
@@ -428,11 +447,15 @@ function biRenderTime(content, result, widget) {
                 options: { responsive: true, maintainAspectRatio: false, spanGaps: false,
                     scales: { x: { title: { display: true, text: biTimeGrains[widget.timeGrain] } } },
                     plugins: { tooltip: { callbacks: { label: item => {
-                        if (hasProductionSeries && item.datasetIndex === groups.length) {
+                        if (hasProductionLines && item.datasetIndex === groups.length) {
                             const value = Number(item.raw || 0).toLocaleString("vi-VN", { maximumFractionDigits: 3 });
-                            return `SL Sản xuất: ${value} (cộng trực tiếp, chưa quy đổi ĐVT)`;
+                            return `SL SX còn lại: ${value} (${widget.stockBy === "sku" ? "cộng theo SKU" : "cộng theo Mã PTN"})`;
                         }
-                        const firstStockIndex = groups.length + (hasProductionSeries ? 1 : 0);
+                        if (hasProductionLines && item.datasetIndex === groups.length + 1) {
+                            const value = Number(item.raw || 0).toLocaleString("vi-VN", { maximumFractionDigits: 3 });
+                            return `SL Sản xuất: ${value} (${widget.stockBy === "sku" ? "cộng theo SKU" : "cộng theo Mã PTN"})`;
+                        }
+                        const firstStockIndex = groups.length + (hasProductionLines ? 2 : 0);
                         if (item.datasetIndex >= firstStockIndex) {
                             const stock = stockTotals[item.datasetIndex - firstStockIndex];
                             return biStockLabel(stock);
@@ -504,7 +527,7 @@ function biRender() {
             <button data-bi-action="delete" data-index="${index}" class="text-red-600">Xóa</button></div></div>
             <p class="text-xs text-slate-500 mt-1">${esc(biMeasures[widget.measure])}${widget.measure === "revenue" ? " (VND)" : ""} · ${esc(biDimensions[widget.dimension])}${widget.timeGrain ? ` · Theo ${esc(biTimeGrains[widget.timeGrain].toLowerCase())}` : ""}${widget.filter ? ` · Lọc: ${esc(widget.filter)}` : ""}</p>
             ${widget.measure === "quantity" ? '<p class="text-xs text-amber-700 mt-1">Cộng trực tiếp, không quy đổi; ĐVT theo từng mã PTN, xem ở bảng hoặc chú giải khi rê chuột.</p>' : ""}
-            ${widget.measure === "quantity" && widget.timeGrain ? `<p class="text-xs text-emerald-700 mt-1">SL Sản xuất nhóm theo ${widget.stockBy === "sku" ? "SKU" : "Mã PTN"}; tổng các dòng còn lại trong kỳ${biProductionRows.length ? "." : ". Chưa có dữ liệu lệnh sản xuất; hãy tải mới từ SQL trong Danh Sách Lệnh Sản Xuất."}</p>` : ""}
+            ${widget.measure === "quantity" && widget.timeGrain ? `<p class="text-xs text-emerald-700 mt-1">SL SX còn lại và SL Sản xuất được tổng theo ${widget.stockBy === "sku" ? "SKU" : "Mã PTN"}; SL Sản xuất chỉ tính hình thức 3, 6, 8${biProductionRows.length ? "." : ". Chưa có dữ liệu lệnh sản xuất; hãy tải mới từ SQL trong Danh Sách Lệnh Sản Xuất."}</p>` : ""}
             ${biStockStatus(widget)}
             <p class="text-xs text-amber-700 mt-1">${invalid ? `Bỏ qua ${invalid} dòng thiếu hoặc sai chỉ tiêu.` : ""}</p>
             <div class="bi-content mt-3 overflow-auto max-h-[360px]"></div>`;
