@@ -275,7 +275,9 @@
                     </div>
                     <div class="min-w-0">
                         <label for="filterCustomer" class="block font-bold text-slate-600 mb-1.5">Tìm theo Tên/mã KH</label>
-                        <input type="search" id="filterCustomer" oninput="applyDashboardFilters()" placeholder="Nhập tên hoặc mã KH..." autocomplete="off" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <select id="filterCustomer" onchange="applyDashboardFilters()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">-- Tất cả khách hàng --</option>
+                        </select>
                     </div>
                   </div>
                 </div>
@@ -1803,6 +1805,14 @@
             return index < 0 ? code : code.slice(0, index);
         }
 
+        function customerIdentity(r) {
+            return [String(r.ten_kh ?? "").trim(), String(r.ma_kh ?? "").trim()];
+        }
+
+        function customerLabel([name, code]) {
+            return `${name || "(Chưa có tên khách hàng)"}${code ? ` — ${code}` : ""}`;
+        }
+
         window.erpProductionRemaining = r => {
             const status = Number(r.trang_thai);
             const type = String(r.Hinh_thuc_sx || "").trim();
@@ -1851,10 +1861,22 @@
             product.innerHTML = product.options[0].outerHTML + products.map(code =>
                 `<option value="${esc(JSON.stringify(code))}">${esc(ptnLabel(code))}</option>`).join("");
             product.value = selectedProduct;
+            const customer = document.getElementById("filterCustomer");
+            const selectedCustomer = customer.value;
+            const selectedCustomerLabel = customer.selectedOptions[0] && customer.selectedOptions[0].textContent;
+            const customers = new Map(rawSalesData.map(row => {
+                const identity = customerIdentity(row);
+                return [JSON.stringify(identity), customerLabel(identity)];
+            }));
+            if (selectedCustomer && !customers.has(selectedCustomer)) customers.set(selectedCustomer, selectedCustomerLabel);
+            customer.innerHTML = customer.options[0].outerHTML + [...customers]
+                .sort((a, b) => a[1].localeCompare(b[1], "vi"))
+                .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join("");
+            customer.value = selectedCustomer;
             syncSearchableSalesFilters();
         }
 
-        const searchableSalesFilterIds = ["filterBusinessGroup", "filterStaff", "filterCategory", "filterCategory1", "filterPtn"];
+        const searchableSalesFilterIds = ["filterBusinessGroup", "filterStaff", "filterCategory", "filterCategory1", "filterPtn", "filterCustomer"];
         const salesSearchControls = new Map();
         let openSalesSearch = null;
 
@@ -2015,7 +2037,7 @@
             const businessGroup = document.getElementById("filterBusinessGroup").value;
             const staff = document.getElementById("filterStaff").value;
             const ptn = document.getElementById("filterPtn").value;
-            const customer = searchableText(document.getElementById("filterCustomer").value.trim());
+            const customer = document.getElementById("filterCustomer").value;
             const kw = document.getElementById("searchInput").value.trim().toLowerCase();
 
             const rows = rawSalesData.filter(r =>
@@ -2025,7 +2047,7 @@
                 (!businessGroup || JSON.stringify(businessGroupOf(r)) === businessGroup) &&
                 (!staff || (r.ten_nvkd || r.ma_nhomkd) === staff) &&
                 (!ptn || JSON.stringify(ptnOf(r)) === ptn) &&
-                (!customer || [r.ten_kh, r.ma_kh].some(value => searchableText(String(value ?? "")).includes(customer))) &&
+                (!customer || JSON.stringify(customerIdentity(r)) === customer) &&
                 (!kw || [r.so_ct, r.ten_kh, r.ma_kh, r.ten_vt, r.ma_vt, ptnOf(r)].some(v => String(v ?? '').toLowerCase().includes(kw))));
 
             renderKPIs(rows);
@@ -3548,7 +3570,7 @@
                 ["Nhóm vật tư", dashboardPdfSelectLabel("filterCategory")],
                 ["Tên nhóm vật tư 1", dashboardPdfSelectLabel("filterCategory1")],
                 ["Sản phẩm (PTN)", dashboardPdfSelectLabel("filterPtn")],
-                ["Khách hàng", document.getElementById("filterCustomer").value.trim()],
+                ["Khách hàng", dashboardPdfSelectLabel("filterCustomer")],
                 ["Năm phân tích", selectedSalesYears.size
                     ? [...selectedSalesYears].sort((a, b) => a - b).join(", ")
                     : ""],
@@ -3655,7 +3677,7 @@
                     info.push(["Nhóm vật tư", labelOf("filterCategory")], ["Tên nhóm vật tư 1", labelOf("filterCategory1")],
                         ["Nhóm kinh doanh", labelOf("filterBusinessGroup")], ["Nhân viên kinh doanh", labelOf("filterStaff")],
                         ["Tên sản phẩm (mã PTN)", labelOf("filterPtn")],
-                        ["Khách hàng", document.getElementById("filterCustomer").value.trim()],
+                        ["Khách hàng", labelOf("filterCustomer")],
                         ["Năm phân tích", selectedSalesYears.size ? [...selectedSalesYears].sort((a, b) => a - b).join(", ") : "Tất cả năm"],
                         ["Từ khóa", document.getElementById("searchInput").value.trim()]);
                     table = dtExportTable(tableId);
