@@ -28,6 +28,11 @@ function biSetStatus(message) {
     document.getElementById("biStatus").textContent = message;
 }
 
+function biToday() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
 function biSetBusy(busy) {
     biBusy = busy;
     document.querySelectorAll("#screen-bi button, #screen-bi input").forEach(element => { element.disabled = busy; });
@@ -72,7 +77,15 @@ window.addEventListener("beforeunload", event => {
 
 async function biOpen() {
     if (!currentUser || !getSessionToken()) return openAuthModal();
-    if (biBoard && biOwner === currentUser.useremail) return;
+    if (biBoard && biOwner === currentUser.useremail) {
+        if (biBoard.autoTo && biBoard.to !== biToday() &&
+            document.getElementById("biFrom").value === biBoard.from &&
+            document.getElementById("biTo").value === biBoard.to) {
+            document.getElementById("biTo").value = biToday();
+            await biApplyDates();
+        }
+        return;
+    }
     await biLoadBoard();
 }
 
@@ -104,15 +117,33 @@ async function biLoadBoard() {
         if (!board || !Number.isInteger(board.revision) || !Array.isArray(board.widgets)) throw new Error("Bảng B.I trả về không hợp lệ.");
         if (!materials || materials.status !== "success" || !Array.isArray(materials.data)) throw new Error("Danh mục vật tư trả về không hợp lệ.");
         biMaterials = Object.fromEntries(materials.data.map(material => [material.ma_vt, material]));
-        if (!board.from && !board.to && board.revision === 0) {
-            board.from = getDateInput("fromDate");
-            board.to = getDateInput("toDate");
-        }
+        const originalFrom = board.from;
+        const originalTo = board.to;
+        const originalAutoTo = board.autoTo;
+        if (!board.from) board.from = getDateInput("fromDate");
+        board.autoTo = board.autoTo !== false || !board.to;
+        if (board.autoTo) board.to = biToday();
+        const needsAutoSave = board.revision === 0 || board.from !== originalFrom ||
+            board.to !== originalTo || board.autoTo !== originalAutoTo;
         biBoard = board;
         document.getElementById("biFrom").value = board.from;
         document.getElementById("biTo").value = board.to;
         biDirty = false;
         await biLoadRows(generation);
+        if (generation !== biGeneration) return;
+        if (needsAutoSave) {
+            biDirty = true;
+            biSetStatus("Đang tự lưu khoảng ngày cho bảng B.I...");
+            try {
+                await biPersistBoard(generation);
+                if (generation !== biGeneration) return;
+                biSetStatus("Đã tự lưu khoảng ngày; các widget đã cập nhật.");
+            } catch (error) {
+                if (generation !== biGeneration) return;
+                biSetStatus("Dữ liệu đã tải nhưng tự lưu khoảng ngày thất bại; hãy chọn Lưu bảng để thử lại.");
+                reportDataError("Lỗi tự lưu bảng B.I", error);
+            }
+        }
     } catch (error) {
         if (generation !== biGeneration) return;
         biBoard = null;
@@ -225,18 +256,48 @@ async function biRefreshStock() {
 async function biApplyDates() {
     if (!biBoard || biBusy) return;
     const generation = ++biGeneration;
+    let rowsLoaded = false;
     biSetBusy(true);
     try {
         await biLoadRows(generation);
+        if (generation !== biGeneration) return;
+        rowsLoaded = true;
+        const autoTo = document.getElementById("biTo").value === biToday();
+        if (biBoard.autoTo !== autoTo) {
+            biBoard.autoTo = autoTo;
+            biDirty = true;
+        }
+        if (biDirty) {
+            biSetStatus("Đang tự lưu khoảng ngày và cấu hình widget...");
+            await biPersistBoard(generation);
+            if (generation !== biGeneration) return;
+            biSetStatus("Đã áp dụng và tự lưu khoảng ngày; các widget đã cập nhật.");
+        } else {
+            biSetStatus("Đã áp dụng khoảng ngày; các widget đã cập nhật.");
+        }
     } catch (error) {
         if (generation !== biGeneration) return;
-        document.getElementById("biFrom").value = biBoard.from;
-        document.getElementById("biTo").value = biBoard.to;
-        biSetStatus("Không tải được khoảng ngày mới; đang giữ dữ liệu khoảng ngày trước.");
-        reportDataError("Lỗi tải dữ liệu B.I", error);
+        if (rowsLoaded) {
+            biDirty = true;
+            biSetStatus("Đã áp dụng ngày nhưng tự lưu thất bại; hãy chọn Lưu bảng để thử lại.");
+            reportDataError("Lỗi tự lưu bảng B.I", error);
+        } else {
+            document.getElementById("biFrom").value = biBoard.from;
+            document.getElementById("biTo").value = biBoard.to;
+            biSetStatus("Không tải được khoảng ngày mới; đang giữ dữ liệu khoảng ngày trước.");
+            reportDataError("Lỗi tải dữ liệu B.I", error);
+        }
     } finally {
         if (generation === biGeneration) biSetBusy(false);
     }
+}
+
+async function biPersistBoard(generation) {
+    const saved = await api("saveBiBoard", getSessionToken(), biBoard, biBoard.revision);
+    if (generation !== biGeneration) return false;
+    biBoard = saved;
+    biDirty = false;
+    return true;
 }
 
 async function biSaveBoard() {
@@ -249,10 +310,8 @@ async function biSaveBoard() {
     biSetBusy(true);
     biSetStatus("Đang lưu bảng...");
     try {
-        const saved = await api("saveBiBoard", getSessionToken(), biBoard, biBoard.revision);
+        await biPersistBoard(generation);
         if (generation !== biGeneration) return;
-        biBoard = saved;
-        biDirty = false;
         biSetStatus("Đã lưu bảng B.I cho tài khoản hiện tại.");
     } catch (error) {
         if (generation !== biGeneration) return;
@@ -916,7 +975,7 @@ document.getElementById("biEditorForm").addEventListener("submit", event => {
         id: biEditing === null ? crypto.randomUUID() : biBoard.widgets[biEditing].id,
         title, measure: document.getElementById("biMeasure").value, dimension: document.getElementById("biDimension").value,
         chart: document.getElementById("biChart").value, filter: document.getElementById("biFilter").value.trim(), limit: Number(document.getElementById("biLimit").value),
-        stackDimension: document.getElementById("biDimension").value === "business" && document.getElementById("biChart").value === "stack"
+        stackDimension: biStackableDimensions.includes(document.getElementById("biDimension").value) && document.getElementById("biChart").value === "stack"
             ? document.getElementById("biStackDimension").value : "",
         timeGrain: document.getElementById("biTimeGrain").value,
         stockBy: document.getElementById("biStockSku").checked ? "sku" : document.getElementById("biStockPtn").checked ? "ptn" : ""

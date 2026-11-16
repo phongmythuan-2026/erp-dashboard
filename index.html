@@ -129,8 +129,9 @@
                 <div class="flex flex-wrap items-end gap-3 text-xs">
                     <label class="font-semibold">Từ ngày <input id="biFrom" type="date" class="block border border-slate-300 rounded-lg px-3 py-2 mt-1"></label>
                     <label class="font-semibold">Đến ngày <input id="biTo" type="date" class="block border border-slate-300 rounded-lg px-3 py-2 mt-1"></label>
-                    <button id="biApply" type="button" class="px-3 py-2 border border-slate-300 rounded-lg">Áp dụng ngày</button>
+                    <button id="biApply" type="button" class="px-3 py-2 border border-slate-300 rounded-lg">Áp dụng & lưu ngày</button>
                 </div>
+                <p class="text-xs text-slate-500">Đến ngày mặc định là hôm nay và tự cập nhật theo ngày hiện tại. Chọn ngày khác rồi áp dụng để lưu cố định; chọn lại hôm nay để tiếp tục tự cập nhật. Khoảng ngày được tự lưu để các widget dùng lại khi mở bảng.</p>
                 <p id="biStatus" role="status" class="text-xs text-slate-500">Chưa tải bảng.</p>
             </section>
             <div id="biWidgets" class="grid grid-cols-1 xl:grid-cols-2 gap-4"></div>
@@ -3876,6 +3877,6 @@
         }
         initializeSearchableSalesFilters();
     </script>
-    <script src="bi.js?v=20261116-stack-breakdown-v2"></script>
+    <script src="bi.js?v=20261116-auto-today-save"></script>
 </body>
 </html>
