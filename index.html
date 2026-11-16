@@ -574,33 +574,43 @@
                         </h2>
                         <p class="text-xs text-slate-500">Hiển thị toàn bộ dòng vật tư - bấm vào một dòng để xem phiếu (master-child)</p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2 text-xs">
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-semibold text-slate-600">Từ</span>
-                            <div class="relative w-32">
-                                <div id="purFromDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
-                                <input type="date" id="purFromDate" onclick="this.showPicker && this.showPicker()" onchange="onPurchaseDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                            </div>
-                            <span class="font-semibold text-slate-600">đến</span>
-                            <div class="relative w-32">
-                                <div id="purToDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
-                                <input type="date" id="purToDate" onclick="this.showPicker && this.showPicker()" onchange="onPurchaseDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                            </div>
-                        </div>
-                        <button id="refreshPurchaseButton" onclick="refreshPurchaseFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold flex items-center gap-1.5">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <input type="file" id="purchaseImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importPurchaseFromFile(this)">
+                        <button id="downloadPurchaseTemplateButton" type="button" onclick="downloadPurchaseTemplate()" class="hidden px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-arrow-down"></i><span>Tải template</span>
+                        </button>
+                        <button id="importPurchaseButton" type="button" onclick="document.getElementById('purchaseImportFile').click()" class="hidden px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-import"></i><span>Import Excel</span>
+                        </button>
+                        <button id="refreshPurchaseButton" onclick="refreshPurchaseFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
                             <i class="fa-solid fa-arrows-rotate"></i><span>Tải mới từ SQL</span>
                         </button>
-                        <input id="searchPurchaseInput" oninput="filterPurchaseTable()" type="search" placeholder="Tìm số phiếu, bộ phận, người đề xuất, vật tư..." class="px-3 py-1.5 w-64 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                        <button type="button" onclick="exportCurrentScreen()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-file-export mr-1"></i>Xuất báo cáo</button>
-                        <label class="font-semibold text-slate-600">Trạng thái:</label>
-                        <select id="purchaseStatusFilter" onchange="filterPurchaseTable()" class="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                            <option value="ALL">-- Tất cả trạng thái --</option>
-                            <option value="1">Trạng thái = 1 (Chờ duyệt)</option>
-                            <option value="2">Trạng thái = 2 (Đã duyệt)</option>
-                            <option value="3">Trạng thái = 3 (Thực hiện)</option>
-                            <option value="4">Trạng thái = 4 (Hoàn thành)</option>
-                        </select>
+                        <button type="button" onclick="exportCurrentScreen()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs whitespace-nowrap"><i class="fa-solid fa-file-export mr-1"></i>Xuất báo cáo</button>
                     </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-semibold text-slate-600">Từ</span>
+                        <div class="relative w-32">
+                            <div id="purFromDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
+                            <input type="date" id="purFromDate" onclick="this.showPicker && this.showPicker()" onchange="onPurchaseDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        </div>
+                        <span class="font-semibold text-slate-600">đến</span>
+                        <div class="relative w-32">
+                            <div id="purToDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
+                            <input type="date" id="purToDate" onclick="this.showPicker && this.showPicker()" onchange="onPurchaseDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        </div>
+                    </div>
+                    <input id="searchPurchaseInput" oninput="filterPurchaseTable()" type="search" placeholder="Tìm số phiếu, bộ phận, người đề xuất, vật tư..." class="px-3 py-1.5 w-64 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <label class="font-semibold text-slate-600">Trạng thái:</label>
+                    <select id="purchaseStatusFilter" onchange="filterPurchaseTable()" class="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="ALL">-- Tất cả trạng thái --</option>
+                        <option value="1">Trạng thái = 1 (Chờ duyệt)</option>
+                        <option value="2">Trạng thái = 2 (Đã duyệt)</option>
+                        <option value="3">Trạng thái = 3 (Thực hiện)</option>
+                        <option value="4">Trạng thái = 4 (Hoàn thành)</option>
+                    </select>
                 </div>
 
                 <div class="tbl-wrap rounded-xl border border-slate-200">
@@ -642,38 +652,48 @@
                         </h2>
                         <p class="text-xs text-slate-500">Hiển thị toàn bộ dòng vật tư - bấm vào một dòng để xem lệnh (master-child)</p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2 text-xs">
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-semibold text-slate-600">Từ</span>
-                            <div class="relative w-32">
-                                <div id="proFromDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
-                                <input type="date" id="proFromDate" onclick="this.showPicker && this.showPicker()" onchange="onProductionDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                            </div>
-                            <span class="font-semibold text-slate-600">đến</span>
-                            <div class="relative w-32">
-                                <div id="proToDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
-                                <input type="date" id="proToDate" onclick="this.showPicker && this.showPicker()" onchange="onProductionDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                            </div>
-                        </div>
-                        <button id="refreshProductionButton" onclick="refreshProductionFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold flex items-center gap-1.5">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <input type="file" id="productionImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importProductionFromFile(this)">
+                        <button id="downloadProductionTemplateButton" type="button" onclick="downloadProductionTemplate()" class="hidden px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-arrow-down"></i><span>Tải template</span>
+                        </button>
+                        <button id="importProductionButton" type="button" onclick="document.getElementById('productionImportFile').click()" class="hidden px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-import"></i><span>Import Excel</span>
+                        </button>
+                        <button id="refreshProductionButton" onclick="refreshProductionFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
                             <i class="fa-solid fa-arrows-rotate"></i><span>Đọc mới từ SQL</span>
                         </button>
-                        <input id="searchProductionInput" oninput="filterProductionTable()" type="search" placeholder="Tìm số lệnh, mã VT, tên VT, mã lô..." class="px-3 py-1.5 w-64 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                        <button type="button" onclick="exportCurrentScreen()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-file-export mr-1"></i>Xuất báo cáo</button>
-                        <label class="font-semibold text-slate-600">Trạng thái:</label>
-                        <select id="productionStatusFilter" onchange="filterProductionTable()" class="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                            <option value="ALL">-- Tất cả trạng thái --</option>
-                            <option value="2">Chờ xuất nguyên liệu</option>
-                            <option value="3">Đã cấp phát vật tư</option>
-                            <option value="4">Đang sản xuất</option>
-                            <option value="5">Hoàn thành</option>
-                            <option value="6">Hủy</option>
-                        </select>
-                        <label class="font-semibold text-slate-600">Hình thức SX:</label>
-                        <select id="productionTypeFilter" onchange="filterProductionTable()" class="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                            <option value="ALL">-- Tất cả hình thức --</option>
-                        </select>
+                        <button type="button" onclick="exportCurrentScreen()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs whitespace-nowrap"><i class="fa-solid fa-file-export mr-1"></i>Xuất báo cáo</button>
                     </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-semibold text-slate-600">Từ</span>
+                        <div class="relative w-32">
+                            <div id="proFromDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
+                            <input type="date" id="proFromDate" onclick="this.showPicker && this.showPicker()" onchange="onProductionDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        </div>
+                        <span class="font-semibold text-slate-600">đến</span>
+                        <div class="relative w-32">
+                            <div id="proToDateLabel" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">dd/mm/yyyy</div>
+                            <input type="date" id="proToDate" onclick="this.showPicker && this.showPicker()" onchange="onProductionDateChange()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        </div>
+                    </div>
+                    <input id="searchProductionInput" oninput="filterProductionTable()" type="search" placeholder="Tìm số lệnh, mã VT, tên VT, mã lô..." class="px-3 py-1.5 w-64 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <label class="font-semibold text-slate-600">Trạng thái:</label>
+                    <select id="productionStatusFilter" onchange="filterProductionTable()" class="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="ALL">-- Tất cả trạng thái --</option>
+                        <option value="2">Chờ xuất nguyên liệu</option>
+                        <option value="3">Đã cấp phát vật tư</option>
+                        <option value="4">Đang sản xuất</option>
+                        <option value="5">Hoàn thành</option>
+                        <option value="6">Hủy</option>
+                    </select>
+                    <label class="font-semibold text-slate-600">Hình thức SX:</label>
+                    <select id="productionTypeFilter" onchange="filterProductionTable()" class="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="ALL">-- Tất cả hình thức --</option>
+                    </select>
                 </div>
 
                 <div class="tbl-wrap rounded-xl border border-slate-200">
@@ -743,6 +763,9 @@
                                 <th class="p-3">Nhóm Vật Tư 1</th>
                                 <th class="p-3">Mã & Tên Nhóm MSP</th>
                                 <th class="p-3">Cập nhật (ldate)</th>
+                                <th class="p-3">Mã nhóm vật tư chính</th>
+                                <th class="p-3">Mã nhóm vật tư 1</th>
+                                <th class="p-3">Mã nhóm MSP</th>
                             </tr>
                         </thead>
                         <tbody id="materialTableBody" class="divide-y divide-slate-100">
@@ -1132,6 +1155,7 @@
             userNav.classList.toggle("hidden", !isAdmin());
             userNav.classList.toggle("flex", isAdmin());
             ["refreshSalesButton", "refreshPurchaseButton", "refreshProductionButton", "refreshMaterialsButton",
+             "importPurchaseButton", "downloadPurchaseTemplateButton", "importProductionButton", "downloadProductionTemplateButton",
              "importMaterialsButton", "downloadMaterialTemplateButton", "importSalesButton", "downloadSalesTemplateButton",
              "deleteSalesRangeButton", "biRefreshStock"].forEach(id => {
                 const button = document.getElementById(id);
@@ -2770,7 +2794,8 @@
             tbody: "materialTableBody",
             defaultSort: (a, b) => String(b.ldate || "").localeCompare(String(a.ldate || ""))
                 || String(a.ma_vt || "").localeCompare(String(b.ma_vt || ""), "vi", { numeric: true }),
-            cols: [r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => r.ten_nhvt || r.ma_nhvt, r => r.ten_nhvt1 || r.ma_nhvt1, r => r.ten_msp || r.ma_msp, r => r.ldate || ""],
+            cols: [r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => r.ten_nhvt || r.ma_nhvt, r => r.ten_nhvt1 || r.ma_nhvt1, r => r.ten_msp || r.ma_msp, r => r.ldate || "",
+                   r => r.ma_nhvt, r => r.ma_nhvt1, r => r.ma_msp],
             row: r => `<tr class="hover:bg-blue-50 transition cursor-pointer" onclick="openMaterial('${esc(r.ma_vt).replace(/'/g, "\\'")}')">
                     <td class="p-3 font-bold text-blue-600">${esc(r.ma_vt)}</td>
                     <td class="p-3 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
@@ -2779,6 +2804,9 @@
                     <td class="p-3 text-slate-600">${esc(r.ten_nhvt1 || r.ma_nhvt1)}</td>
                     <td class="p-3 text-slate-500">${esc(r.ten_msp || r.ma_msp)}</td>
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ldate)}</td>
+                    <td class="p-3 text-slate-600">${esc(r.ma_nhvt)}</td>
+                    <td class="p-3 text-slate-600">${esc(r.ma_nhvt1)}</td>
+                    <td class="p-3 text-slate-600">${esc(r.ma_msp)}</td>
                 </tr>`
         });
 
@@ -3025,6 +3053,180 @@
                 button.disabled = false;
                 button.innerHTML = originalLabel;
             }
+        }
+
+        const PURCHASE_IMPORT_COLUMNS = [
+            "trang_thai", "ngay_ct", "so_ct", "ma_bp", "ten_bp", "ma_kh", "fullname", "muc_dich",
+            "ma_vt", "ten_vt", "dvt", "so_luong", "dien_giai", "ghi_chu", "stt_rec0", "stt_rec"
+        ];
+        const PURCHASE_IMPORT_KEY_COLUMNS = ["so_ct", "ma_vt", "stt_rec0", "stt_rec"];
+        const PURCHASE_IMPORT_REQUIRED_COLUMNS = ["ngay_ct", ...PURCHASE_IMPORT_KEY_COLUMNS];
+        const PURCHASE_IMPORT_NUMBER_COLUMNS = new Set(["trang_thai", "so_luong"]);
+        const PRODUCTION_IMPORT_COLUMNS = [
+            "ngay_ct", "so_ct", "ma_vt", "ten_vt", "dvt", "so_luong", "sl_thuc_te", "ma_lo",
+            "trang_thai", "ten_trang_thai", "ma_ct", "Hinh_thuc_sx", "stt_rec", "stt_rec0"
+        ];
+        const PRODUCTION_IMPORT_KEY_COLUMNS = ["stt_rec", "stt_rec0", "ma_ct", "so_ct", "ma_vt", "ma_lo"];
+        const PRODUCTION_IMPORT_REQUIRED_COLUMNS = ["ngay_ct", "stt_rec", "stt_rec0", "ma_ct", "so_ct", "ma_vt"];
+        const PRODUCTION_IMPORT_NUMBER_COLUMNS = new Set(["so_luong", "sl_thuc_te", "trang_thai"]);
+        const PARTITION_IMPORT_CHUNK = 500;
+
+        function downloadPartitionTemplate(sheetName, fileName, columns, guideRows) {
+            requireXlsx();
+            const wb = XLSX.utils.book_new();
+            const data = XLSX.utils.aoa_to_sheet([columns]);
+            data["!cols"] = columns.map(() => ({ wch: 20 }));
+            XLSX.utils.book_append_sheet(wb, data, sheetName);
+            const guide = XLSX.utils.aoa_to_sheet(guideRows);
+            guide["!cols"] = [{ wch: 20 }, { wch: 58 }, { wch: 12 }, { wch: 60 }];
+            XLSX.utils.book_append_sheet(wb, guide, "Huong_dan");
+            XLSX.writeFile(wb, fileName);
+        }
+
+        function downloadPurchaseTemplate() {
+            try {
+                downloadPartitionTemplate("de_xuat_mua_hang", "template_import_de_xuat_mua_hang.xlsx", PURCHASE_IMPORT_COLUMNS, [
+                    ["Cột", "Ý nghĩa", "Bắt buộc", "Lưu ý"],
+                    ["ngay_ct", "Ngày chứng từ", "Có", "Dùng YYYY-MM-DD hoặc ngày Excel hợp lệ."],
+                    ["so_ct", "Số chứng từ", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["ma_vt", "Mã vật tư", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["stt_rec0", "Mã dòng chi tiết", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["stt_rec", "Mã chứng từ", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["trang_thai", "Trạng thái", "Không", "Để trống được hiểu là 0."],
+                    [],
+                    ["Lưu ý", "Không đổi tên cột ở sheet de_xuat_mua_hang. Trùng khóa sẽ cập nhật; dòng mới sẽ được thêm. cdate được giữ nguyên khi cập nhật, ldate được đặt theo thời điểm import."]
+                ]);
+            } catch (error) {
+                reportDataError("Lỗi tạo template đề xuất mua hàng", error);
+            }
+        }
+
+        function downloadProductionTemplate() {
+            try {
+                downloadPartitionTemplate("lenh_san_xuat", "template_import_lenh_san_xuat.xlsx", PRODUCTION_IMPORT_COLUMNS, [
+                    ["Cột", "Ý nghĩa", "Bắt buộc", "Lưu ý"],
+                    ["ngay_ct", "Ngày chứng từ", "Có", "Dùng YYYY-MM-DD hoặc ngày Excel hợp lệ."],
+                    ["stt_rec", "Mã chứng từ", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["stt_rec0", "Mã dòng chi tiết", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["ma_ct", "Mã chứng từ ERP", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["so_ct", "Số lệnh", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["ma_vt", "Mã vật tư", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["ma_lo", "Mã lô", "Không", "Để trống nếu lệnh không có mã lô."],
+                    ["Hinh_thuc_sx", "Hình thức sản xuất", "Không", "Ví dụ: 3.PHỐI TRỘN, 6.SẢN XUẤT, 8.ĐỔI MÃ SKU."],
+                    [],
+                    ["Lưu ý", "Không đổi tên cột ở sheet lenh_san_xuat. Trùng khóa sẽ cập nhật; dòng mới sẽ được thêm. cdate được giữ nguyên khi cập nhật, ldate được đặt theo thời điểm import."]
+                ]);
+            } catch (error) {
+                reportDataError("Lỗi tạo template lệnh sản xuất", error);
+            }
+        }
+
+        async function readPartitionImportRows(file, tableName, columns, keyColumns, requiredColumns, numberColumns) {
+            requireXlsx();
+            const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+            const sheetName = wb.SheetNames.includes(tableName) ? tableName : wb.SheetNames[0];
+            if (!sheetName) throw new Error("File không có sheet dữ liệu.");
+            const table = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: "", raw: true });
+            const headers = (table[0] || []).map(header => String(header).trim().toLowerCase());
+            const indexes = Object.fromEntries(columns.map(column => [column, headers.indexOf(column.toLowerCase())]));
+            const missing = [...new Set([...keyColumns, ...requiredColumns])].filter(column => indexes[column] < 0);
+            if (missing.length) throw new Error(`File thiếu cột bắt buộc ${missing.join(", ")}. Hãy dùng template.`);
+            const rows = [];
+            const seen = new Set();
+            table.slice(1).forEach((cells, index) => {
+                if (!cells.some(cell => String(cell).trim() !== "")) return;
+                const line = index + 2;
+                const row = {};
+                columns.forEach(column => {
+                    const cellIndex = indexes[column];
+                    const value = cellIndex < 0 ? "" : cells[cellIndex];
+                    if (column.toLowerCase() === "ngay_ct") {
+                        row[column] = parseSalesImportDate(value, line, column);
+                    } else if (numberColumns.has(column)) {
+                        row[column] = value === "" || value == null ? 0 : Number(value);
+                        if (!Number.isFinite(row[column])) throw new Error(`Dòng ${line}: cột ${column} phải là số hợp lệ.`);
+                    } else {
+                        row[column] = String(value == null ? "" : value).trim();
+                    }
+                });
+                const missingValues = requiredColumns.filter(column => !row[column]);
+                if (missingValues.length) throw new Error(`Dòng ${line}: thiếu ${missingValues.join(", ")}.`);
+                const key = JSON.stringify(keyColumns.map(column => {
+                    const value = String(row[column] ?? "").trim();
+                    return column === "stt_rec0" ? value.replace(/^0+(?=\d)/, "") : value;
+                }));
+                if (seen.has(key)) throw new Error(`Dòng ${line}: dữ liệu bị trùng khóa trong file.`);
+                seen.add(key);
+                rows.push(row);
+            });
+            if (!rows.length) throw new Error("File không có dòng dữ liệu nào.");
+            return rows;
+        }
+
+        async function importPartitionDataFromFile(input, config) {
+            const file = input.files && input.files[0];
+            input.value = "";
+            if (!file) return;
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được import dữ liệu."));
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            const button = document.getElementById(config.buttonId);
+            const originalLabel = button.innerHTML;
+            button.disabled = true;
+            let imported = 0;
+            try {
+                const rows = await readPartitionImportRows(
+                    file, config.tableName, config.columns, config.keyColumns, config.requiredColumns, config.numberColumns
+                );
+                const dates = rows.map(row => row.ngay_ct).sort();
+                if (!confirm(`Import ${rows.length} dòng từ "${file.name}" (${dates[0]} → ${dates[dates.length - 1]})?\nDòng trùng khóa sẽ được cập nhật; dòng mới sẽ được thêm.`)) return;
+                let inserted = 0;
+                let updated = 0;
+                for (let i = 0; i < rows.length; i += PARTITION_IMPORT_CHUNK) {
+                    const chunk = rows.slice(i, i + PARTITION_IMPORT_CHUNK);
+                    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang import ${Math.min(i + chunk.length, rows.length)}/${rows.length}...</span>`;
+                    const result = await api(config.method, token, chunk);
+                    imported += result.rowCount || chunk.length;
+                    inserted += result.inserted || 0;
+                    updated += result.updated || 0;
+                }
+                if (!await config.reload()) return;
+                showAppSuccess(`Import thành công: ${imported} dòng (thêm ${inserted}, cập nhật ${updated}).`);
+            } catch (error) {
+                const detail = imported ? `Đã import ${imported} dòng trước khi gặp lỗi: ${error.message}` : error.message;
+                reportDataError(config.errorTitle, new Error(detail));
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalLabel;
+            }
+        }
+
+        function importPurchaseFromFile(input) {
+            return importPartitionDataFromFile(input, {
+                tableName: "de_xuat_mua_hang",
+                method: "importPurchaseRequests",
+                buttonId: "importPurchaseButton",
+                columns: PURCHASE_IMPORT_COLUMNS,
+                keyColumns: PURCHASE_IMPORT_KEY_COLUMNS,
+                requiredColumns: PURCHASE_IMPORT_REQUIRED_COLUMNS,
+                numberColumns: PURCHASE_IMPORT_NUMBER_COLUMNS,
+                reload: loadDeXuatMuaHang,
+                errorTitle: "Lỗi import đề xuất mua hàng"
+            });
+        }
+
+        function importProductionFromFile(input) {
+            return importPartitionDataFromFile(input, {
+                tableName: "lenh_san_xuat",
+                method: "importProductionOrders",
+                buttonId: "importProductionButton",
+                columns: PRODUCTION_IMPORT_COLUMNS,
+                keyColumns: PRODUCTION_IMPORT_KEY_COLUMNS,
+                requiredColumns: PRODUCTION_IMPORT_REQUIRED_COLUMNS,
+                numberColumns: PRODUCTION_IMPORT_NUMBER_COLUMNS,
+                reload: loadLenhSanXuat,
+                errorTitle: "Lỗi import lệnh sản xuất"
+            });
         }
 
         // =================================================================
