@@ -85,15 +85,35 @@
                 <button onclick="switchTab('dashboard')" id="nav-dashboard" class="top-tab active shrink-0 px-3 lg:px-4 py-2.5 md:py-0 text-sm transition flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
                 </button>
+                <div class="relative flex items-stretch">
+                    <button onclick="toggleNavMenu('purchaseMenu')" id="nav-purchase" aria-expanded="false" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-cart-flatbed"></i><span>Mua hàng</span><i class="fa-solid fa-chevron-down text-[10px]"></i>
+                    </button>
+                    <div id="purchaseMenu" class="hidden absolute left-0 top-full z-50 min-w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
+                        <button onclick="switchTab('purchase')" id="nav-purchase-request" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-cart-flatbed w-4"></i><span>Đề xuất mua hàng</span>
+                            <span id="pendingBadgeMenu" class="ml-auto bg-amber-500 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
+                        </button>
+                        <button onclick="switchTab('purchase-history')" id="nav-purchase-history" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-clock-rotate-left w-4"></i><span>Lịch sử mua hàng</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="relative flex items-stretch">
+                    <button onclick="toggleNavMenu('productionMenu')" id="nav-production" aria-expanded="false" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-industry"></i><span>Sản xuất</span><i class="fa-solid fa-chevron-down text-[10px]"></i>
+                    </button>
+                    <div id="productionMenu" class="hidden absolute left-0 top-full z-50 min-w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
+                        <button onclick="switchTab('production')" id="nav-production-order" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-industry w-4"></i><span>Lệnh sản xuất</span>
+                        </button>
+                        <button onclick="switchTab('usage-history')" id="nav-usage-history" class="w-full px-4 py-2.5 text-left text-sm text-slate-500 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-clock-rotate-left w-4"></i><span>Lịch sử sử dụng</span>
+                        </button>
+                    </div>
+                </div>
                 <button onclick="switchTab('bi')" id="nav-bi" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-chart-column"></i><span>Phân tích B.I</span>
-                </button>
-                <button onclick="switchTab('purchase')" id="nav-purchase" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
-                    <i class="fa-solid fa-cart-flatbed"></i><span>Đề xuất mua hàng</span>
-                    <span id="pendingBadgeMenu" class="ml-auto bg-amber-500 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
-                </button>
-                <button onclick="switchTab('production')" id="nav-production" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
-                    <i class="fa-solid fa-industry"></i><span>Lệnh sản xuất</span>
                 </button>
                 <button onclick="switchTab('materials')" id="nav-materials" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-boxes-packing"></i><span>Danh mục vật tư</span>
@@ -648,6 +668,55 @@
             </div>
         </div>
 
+        <div id="screen-purchase-history" class="space-y-6 hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <div class="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 gap-3">
+                    <div>
+                        <h2 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-blue-600"></i><span>Lịch sử mua hàng</span>
+                        </h2>
+                        <p class="text-xs text-slate-500">Tổng hợp số lượng và tiền nhập theo nhà cung cấp, vật tư và tháng; khoảng ngày tải theo trọn các tháng giao nhau.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <input type="file" id="purchaseHistoryImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importPurchaseHistoryFromFile(this)">
+                        <button id="downloadPurchaseHistoryTemplateButton" type="button" onclick="downloadPurchaseHistoryTemplate()" class="hidden px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-arrow-down"></i><span>Tải template</span>
+                        </button>
+                        <button id="importPurchaseHistoryButton" type="button" onclick="document.getElementById('purchaseHistoryImportFile').click()" class="hidden px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-import"></i><span>Import Excel</span>
+                        </button>
+                        <button id="refreshPurchaseHistoryButton" type="button" onclick="refreshPurchaseHistoryFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-rotate"></i><span>Tải mới từ SQL</span>
+                        </button>
+                        <button type="button" onclick="exportCurrentScreen()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs whitespace-nowrap"><i class="fa-solid fa-file-export mr-1"></i>Xuất báo cáo</button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-semibold text-slate-600">Từ</span>
+                        <input type="date" id="historyFromDate" onchange="onPurchaseHistoryDateChange()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
+                        <span class="font-semibold text-slate-600">đến</span>
+                        <input type="date" id="historyToDate" onchange="onPurchaseHistoryDateChange()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
+                    </div>
+                    <input id="searchPurchaseHistoryInput" oninput="filterPurchaseHistoryTable()" type="search" placeholder="Tìm nhà cung cấp, mã/tên vật tư, tháng..." class="px-3 py-1.5 w-72 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div class="tbl-wrap rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="p-3">Mã nhà cung cấp</th><th class="p-3">Tên nhà cung cấp</th>
+                                <th class="p-3">Mã vật tư</th><th class="p-3">Tên vật tư</th><th class="p-3">ĐVT</th>
+                                <th class="p-3 text-right">Năm</th><th class="p-3">Tháng</th>
+                                <th class="p-3 text-right">SL nhập</th><th class="p-3 text-right">Tiền nhập</th>
+                                <th class="p-3 text-right">Đơn giá</th>
+                            </tr>
+                        </thead>
+                        <tbody id="purchaseHistoryTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- ================================================================= -->
         <!-- MÀN HÌNH: LỆNH SẢN XUẤT                                           -->
         <!-- ================================================================= -->
@@ -661,6 +730,7 @@
                         </h2>
                         <p class="text-xs text-slate-500">Hiển thị toàn bộ dòng vật tư - bấm vào một dòng để xem lệnh (master-child)</p>
                     </div>
+
                     <div class="flex flex-wrap items-center justify-end gap-2">
                         <input type="file" id="productionImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importProductionFromFile(this)">
                         <button id="downloadProductionTemplateButton" type="button" onclick="downloadProductionTemplate()" class="hidden px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
@@ -727,6 +797,13 @@
                     </table>
                 </div>
             </div>
+        </div>
+
+        <div id="screen-usage-history" class="hidden">
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h2 class="font-bold text-slate-900">Lịch sử sử dụng</h2>
+                <p class="mt-2 text-sm text-slate-500">Chức năng sẽ được bổ sung sau.</p>
+            </section>
         </div>
 
         <!-- ================================================================= -->
@@ -809,6 +886,7 @@
                         <div id="syncTables" class="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-slate-700">
                             <label><input type="checkbox" value="sales" class="mr-1">Bán hàng</label>
                             <label><input type="checkbox" value="purchase" class="mr-1">Đề xuất mua hàng</label>
+                            <label><input type="checkbox" value="purchase_history" class="mr-1">Lịch sử mua hàng</label>
                             <label><input type="checkbox" value="production" class="mr-1">Lệnh sản xuất</label>
                             <label><input type="checkbox" value="materials" class="mr-1">Danh mục vật tư</label>
                             <label><input type="checkbox" value="departments" class="mr-1">Bộ phận</label>
@@ -962,6 +1040,7 @@
         
         const DT = {};
         let allPurchaseData = [];
+        let allPurchaseHistoryData = [];
         let allProductionData = [];
         let allMaterialData = [];
         let rawSalesData = [];
@@ -984,6 +1063,9 @@
                 setDateInput(prefix + "FromDate", new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
                 setDateInput(prefix + "ToDate", now);
             });
+            document.getElementById("historyFromDate").value =
+                toDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
+            document.getElementById("historyToDate").value = toDateStr(now);
             if (!APPS_SCRIPT_URL || !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(APPS_SCRIPT_URL)) {
                 document.getElementById("loginButton").disabled = true;
                 showAuthMessage("Chưa cấu hình URL triển khai Apps Script trong erp-dashboard/config.js.", true);
@@ -1017,19 +1099,45 @@
 
         function switchTab(tabName) {
             document.querySelectorAll(".top-tab").forEach(btn => btn.classList.remove("active"));
-            document.getElementById(`nav-${tabName}`).classList.add("active");
-
-            document.getElementById("screen-dashboard").classList.add("hidden");
-            document.getElementById("screen-bi").classList.add("hidden");
-            document.getElementById("screen-purchase").classList.add("hidden");
-            document.getElementById("screen-production").classList.add("hidden");
-            document.getElementById("screen-materials").classList.add("hidden");
-            document.getElementById("screen-users").classList.add("hidden");
-
+            document.querySelectorAll("#purchaseMenu button, #productionMenu button").forEach(btn =>
+                btn.classList.remove("bg-blue-50", "text-blue-700", "font-semibold"));
+            ["purchaseMenu", "productionMenu"].forEach(id => {
+                document.getElementById(id).classList.add("hidden");
+                document.getElementById(id.replace("Menu", "")).setAttribute("aria-expanded", "false");
+            });
+            const activeNav = {
+                "purchase": ["purchase", "purchase-request"],
+                "purchase-history": ["purchase", "purchase-history"],
+                "production": ["production", "production-order"],
+                "usage-history": ["production", "usage-history"]
+            }[tabName] || [tabName];
+            activeNav.forEach(name => {
+                const button = document.getElementById(`nav-${name}`);
+                if (!button) return;
+                button.classList.add(name === "purchase" || name === "production" ||
+                    ["dashboard", "bi", "materials", "users"].includes(name) ? "active" : "bg-blue-50");
+                if (name.includes("-")) button.classList.add("text-blue-700", "font-semibold");
+            });
+            ["dashboard", "bi", "purchase", "purchase-history", "production", "usage-history", "materials", "users"]
+                .forEach(name => document.getElementById(`screen-${name}`).classList.add("hidden"));
             document.getElementById(`screen-${tabName}`).classList.remove("hidden");
             window.scrollTo({ top: 0 });
             if (tabName === "users") { loadManagedUsers(); loadSyncSettings(); }
             if (tabName === "bi") biOpen();
+        }
+
+        function toggleNavMenu(id) {
+            const menu = document.getElementById(id);
+            const buttonId = id.replace("Menu", "");
+            const opening = menu.classList.contains("hidden");
+            ["purchaseMenu", "productionMenu"].forEach(menuId => {
+                document.getElementById(menuId).classList.add("hidden");
+                document.getElementById(menuId.replace("Menu", "")).setAttribute("aria-expanded", "false");
+            });
+            if (opening) {
+                menu.classList.remove("hidden");
+                document.getElementById(buttonId).setAttribute("aria-expanded", "true");
+            }
         }
 
         function openAuthModal() { document.getElementById("authModal").classList.remove("hidden"); }
@@ -1165,6 +1273,7 @@
             userNav.classList.toggle("flex", isAdmin());
             ["refreshSalesButton", "refreshPurchaseButton", "refreshProductionButton", "refreshMaterialsButton",
              "importPurchaseButton", "downloadPurchaseTemplateButton", "importProductionButton", "downloadProductionTemplateButton",
+             "refreshPurchaseHistoryButton", "importPurchaseHistoryButton", "downloadPurchaseHistoryTemplateButton",
              "importMaterialsButton", "downloadMaterialTemplateButton", "importSalesButton", "downloadSalesTemplateButton",
              "deleteSalesRangeButton", "biRefreshStock"].forEach(id => {
                 const button = document.getElementById(id);
@@ -1454,7 +1563,8 @@
         }
 
         async function loadApplicationData() {
-            await Promise.all([loadDashboardData(), loadDeXuatMuaHang(), loadLenhSanXuat(), loadDanhMucVatTu()]);
+            await Promise.all([loadDashboardData(), loadDeXuatMuaHang(), loadPurchaseHistory(),
+                loadLenhSanXuat(), loadDanhMucVatTu()]);
         }
 
         // =================================================================
@@ -1565,14 +1675,18 @@
             const rows = [];
             for (const month of wanted) {
                 for (const r of byMonth[month] || []) {
-                    const d = String(r.ngay_ct || "").slice(0, 10);
-                    if (d >= from && d <= to) rows.push(r);
+                    const d = String(r.thang || r.ngay_ct || "").slice(0, 10);
+                    const inRange = table === "lich_su_mua_hang"
+                        ? d.slice(0, 7) >= from.slice(0, 7) && d.slice(0, 7) <= to.slice(0, 7)
+                        : d >= from && d <= to;
+                    if (inRange) rows.push(r);
                 }
             }
             return rows.sort((a, b) => String(b.ngay_ct).localeCompare(String(a.ngay_ct)) || String(b.so_ct || "").localeCompare(String(a.so_ct || "")));
         }
 
         function onPurchaseDateChange() { renderDateLabel("purFromDate"); renderDateLabel("purToDate"); loadDeXuatMuaHang(); }
+        function onPurchaseHistoryDateChange() { loadPurchaseHistory(); }
         function onProductionDateChange() { renderDateLabel("proFromDate"); renderDateLabel("proToDate"); loadLenhSanXuat(); }
 
         function getScreenRange(prefix) {
@@ -2424,6 +2538,52 @@
             }
         }
 
+        async function loadPurchaseHistory() {
+            const token = getSessionToken();
+            if (!token) return false;
+            try {
+                const from = getDateInput("historyFromDate");
+                const to = getDateInput("historyToDate");
+                if (!from || !to || from > to) throw new Error("Khoảng ngày không hợp lệ.");
+                allPurchaseHistoryData = await loadPartitioned("lich_su_mua_hang", from, to);
+                filterPurchaseHistoryTable();
+                return true;
+            } catch (error) {
+                reportDataError("Lỗi tải Lịch sử mua hàng", error);
+                return false;
+            }
+        }
+
+        function filterPurchaseHistoryTable() {
+            const keyword = document.getElementById("searchPurchaseHistoryInput").value.trim().toLocaleLowerCase("vi");
+            const rows = allPurchaseHistoryData.filter(row => !keyword ||
+                [row.ma_kh, row.ten_kh, row.ma_vt, row.ten_vt, row.dvt, row.nam, row.thang]
+                    .some(value => String(value ?? "").toLocaleLowerCase("vi").includes(keyword)));
+            dtSet("purchaseHistory", rows);
+        }
+
+        async function refreshPurchaseHistoryFromSql() {
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được đồng bộ dữ liệu."));
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            const button = document.getElementById("refreshPurchaseHistoryButton");
+            const originalLabel = button.innerHTML;
+            button.disabled = true;
+            try {
+                const [from, to] = [getDateInput("historyFromDate"), getDateInput("historyToDate")];
+                if (!from || !to || from > to) throw new Error("Khoảng ngày không hợp lệ.");
+                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL...</span>';
+                const result = await api("refreshReferenceData", token, "lich_su_mua_hang", from, to);
+                if (!await loadPurchaseHistory()) return;
+                showAppSuccess(`Lịch sử mua hàng ${from} → ${to}: đã đọc ${result.rowCount || 0} dòng từ SQL.`);
+            } catch (error) {
+                reportDataError("Lỗi đồng bộ Lịch sử mua hàng từ SQL", error);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalLabel;
+            }
+        }
+
         function statusBadge(st) {
             st = String(st).trim();
             if (st === '1') return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">⏳ Chờ duyệt</span>`;
@@ -2465,6 +2625,28 @@
                     <td class="px-2.5 py-2 text-slate-500">${esc(r.ghi_chu)}</td>
                     <td class="px-2.5 py-2 text-center">${statusBadge(r.trang_thai)}</td>
                 </tr>`
+        });
+        dtInit("purchaseHistory", {
+            tbody: "purchaseHistoryTableBody",
+            defaultSort: (a, b) => String(b.thang || "").localeCompare(String(a.thang || ""))
+                || String(b.ma_vt || "").localeCompare(String(a.ma_vt || ""), "vi", { numeric: true }),
+            cols: [
+                r => r.ma_kh, r => r.ten_kh, r => r.ma_vt, r => r.ten_vt, r => r.dvt,
+                r => Number(r.nam || 0), r => r.thang, r => Number(r.sl_nhap || 0),
+                r => Number(r.tien_nhap || 0), r => Number(r.don_gia || 0)
+            ],
+            row: r => `<tr class="hover:bg-blue-50 transition">
+                <td class="p-3 whitespace-nowrap">${esc(r.ma_kh)}</td>
+                <td class="p-3">${esc(r.ten_kh)}</td>
+                <td class="p-3 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt)}</td>
+                <td class="p-3">${esc(r.ten_vt)}</td>
+                <td class="p-3 text-slate-500">${esc(r.dvt)}</td>
+                <td class="p-3 text-right">${esc(r.nam)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.thang)}</td>
+                <td class="p-3 text-right">${Number(r.sl_nhap || 0).toLocaleString("vi-VN")}</td>
+                <td class="p-3 text-right">${Number(r.tien_nhap || 0).toLocaleString("vi-VN")}</td>
+                <td class="p-3 text-right">${Number(r.don_gia || 0).toLocaleString("vi-VN")}</td>
+            </tr>`
         });
         dtInit("voucher", {
             tbody: "vmLines",
@@ -2529,7 +2711,8 @@
             return `<a href="#" onclick="${stop ? 'event.stopPropagation();' : ''}openMaterial('${q}');return false" class="font-bold text-blue-600 hover:underline">${esc(text)}</a>`;
         }
 
-        function openMaterial(ma) {
+        async function openMaterial(ma) {
+            if (!materialsLoaded && !await loadDanhMucVatTu()) return;
             const m = materialMap[ma];
             const row = (l, v) => `<div class="flex gap-2 py-1.5 border-b border-slate-100"><span class="w-36 shrink-0 text-slate-400">${l}</span><span class="font-semibold text-slate-800 break-words min-w-0">${esc(v) || '-'}</span></div>`;
             const pair = (a, b) => [a, b].filter(Boolean).join(' - ');
@@ -3090,6 +3273,11 @@
             "trang_thai", "ngay_ct", "so_ct", "ma_bp", "ten_bp", "ma_kh", "fullname", "muc_dich",
             "ma_vt", "ten_vt", "dvt", "so_luong", "dien_giai", "ghi_chu", "stt_rec0", "stt_rec"
         ];
+        const PURCHASE_HISTORY_IMPORT_COLUMNS = [
+            "ma_kh", "ten_kh", "ma_vt", "ten_vt", "dvt", "nam", "thang", "sl_nhap", "tien_nhap", "don_gia"
+        ];
+        const PURCHASE_HISTORY_IMPORT_KEY_COLUMNS = ["ma_kh", "ma_vt", "thang"];
+        const PURCHASE_HISTORY_IMPORT_NUMBER_COLUMNS = new Set(["nam", "sl_nhap", "tien_nhap", "don_gia"]);
         const PURCHASE_IMPORT_KEY_COLUMNS = ["so_ct", "ma_vt", "stt_rec0", "stt_rec"];
         const PURCHASE_IMPORT_REQUIRED_COLUMNS = ["ngay_ct", ...PURCHASE_IMPORT_KEY_COLUMNS];
         const PURCHASE_IMPORT_NUMBER_COLUMNS = new Set(["trang_thai", "so_luong"]);
@@ -3152,6 +3340,26 @@
             }
         }
 
+        function downloadPurchaseHistoryTemplate() {
+            try {
+                downloadPartitionTemplate("lich_su_mua_hang", "template_import_lich_su_mua_hang.xlsx",
+                    PURCHASE_HISTORY_IMPORT_COLUMNS, [
+                        ["Cột", "Ý nghĩa", "Bắt buộc", "Lưu ý"],
+                        ["ma_kh", "Mã nhà cung cấp", "Có", "Khóa tổng hợp cùng mã vật tư và tháng."],
+                        ["ma_vt", "Mã vật tư", "Có", "Giữ nguyên định dạng văn bản."],
+                        ["nam", "Năm", "Có", "Phải khớp năm trong cột thang."],
+                        ["thang", "Tháng", "Có", "Định dạng YYYY-MM; mỗi tháng được lưu thành một tệp JSON riêng."],
+                        ["sl_nhap", "Số lượng nhập", "Không", "Để trống được hiểu là 0."],
+                        ["tien_nhap", "Tiền nhập", "Không", "Để trống được hiểu là 0."],
+                        ["don_gia", "Đơn giá bình quân", "Không", "Để trống được hiểu là 0."],
+                        [],
+                        ["Lưu ý", "Không đổi tên cột ở sheet lich_su_mua_hang. Trùng khóa ma_kh + ma_vt + thang sẽ được cập nhật."]
+                    ]);
+            } catch (error) {
+                reportDataError("Lỗi tạo template lịch sử mua hàng", error);
+            }
+        }
+
         async function readPartitionImportRows(file, tableName, columns, keyColumns, requiredColumns, numberColumns) {
             requireXlsx();
             const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
@@ -3178,6 +3386,9 @@
                         if (!Number.isFinite(row[column])) throw new Error(`Dòng ${line}: cột ${column} phải là số hợp lệ.`);
                     } else {
                         row[column] = String(value == null ? "" : value).trim();
+                        if (column.toLowerCase() === "thang" && !/^\d{4}-(0[1-9]|1[0-2])$/.test(row[column])) {
+                            throw new Error(`Dòng ${line}: cột thang phải có định dạng YYYY-MM.`);
+                        }
                     }
                 });
                 const missingValues = requiredColumns.filter(column => !row[column]);
@@ -3209,7 +3420,7 @@
                 const rows = await readPartitionImportRows(
                     file, config.tableName, config.columns, config.keyColumns, config.requiredColumns, config.numberColumns
                 );
-                const dates = rows.map(row => row.ngay_ct).sort();
+                const dates = rows.map(row => row.ngay_ct || row.thang).sort();
                 if (!confirm(`Import ${rows.length} dòng từ "${file.name}" (${dates[0]} → ${dates[dates.length - 1]})?\nDòng trùng khóa sẽ được cập nhật; dòng mới sẽ được thêm.`)) return;
                 let inserted = 0;
                 let updated = 0;
@@ -3243,6 +3454,20 @@
                 numberColumns: PURCHASE_IMPORT_NUMBER_COLUMNS,
                 reload: loadDeXuatMuaHang,
                 errorTitle: "Lỗi import đề xuất mua hàng"
+            });
+        }
+
+        function importPurchaseHistoryFromFile(input) {
+            return importPartitionDataFromFile(input, {
+                tableName: "lich_su_mua_hang",
+                method: "importPurchaseHistory",
+                buttonId: "importPurchaseHistoryButton",
+                columns: PURCHASE_HISTORY_IMPORT_COLUMNS,
+                keyColumns: PURCHASE_HISTORY_IMPORT_KEY_COLUMNS,
+                requiredColumns: PURCHASE_HISTORY_IMPORT_KEY_COLUMNS,
+                numberColumns: PURCHASE_HISTORY_IMPORT_NUMBER_COLUMNS,
+                reload: loadPurchaseHistory,
+                errorTitle: "Lỗi import lịch sử mua hàng"
             });
         }
 
@@ -3665,7 +3890,7 @@
         function exportCurrentScreen() {
             try {
                 requireXlsx();
-                const screen = ["dashboard", "purchase", "production", "materials", "users"]
+                const screen = ["dashboard", "purchase", "purchase-history", "production", "materials", "users"]
                     .find(name => !document.getElementById(`screen-${name}`).classList.contains("hidden")) || "dashboard";
                 const range = prefix => `${getDateInput(prefix + "FromDate")} → ${getDateInput(prefix + "ToDate")}`;
                 let title, tableId, info = [];
@@ -3687,6 +3912,11 @@
                     title = "Đề xuất mua hàng"; tableId = "purchase";
                     info.push(["Khoảng ngày", range("pur")], ["Trạng thái", document.getElementById("purchaseStatusFilter").selectedOptions[0].textContent],
                         ["Từ khóa", document.getElementById("searchPurchaseInput").value.trim()]);
+                    table = dtExportTable(tableId);
+                } else if (screen === "purchase-history") {
+                    title = "Lịch sử mua hàng"; tableId = "purchaseHistory";
+                    info.push(["Khoảng ngày", `${getDateInput("historyFromDate")} → ${getDateInput("historyToDate")}`],
+                        ["Từ khóa", document.getElementById("searchPurchaseHistoryInput").value.trim()]);
                     table = dtExportTable(tableId);
                 } else if (screen === "production") {
                     title = "Lệnh sản xuất"; tableId = "production";
