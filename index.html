@@ -932,19 +932,48 @@
                         <button type="button" id="syncAddTime" class="mt-2 px-3 py-1.5 text-xs text-blue-700 border border-blue-200 hover:bg-blue-50 rounded-lg"><i class="fa-solid fa-plus mr-1"></i>Thêm mốc giờ</button>
                     </div>
                     <div>
-                        <div class="text-xs font-bold text-slate-500 mb-1.5">Dữ liệu được đồng bộ</div>
-                        <div id="syncTables" class="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-slate-700">
-                            <label><input type="checkbox" value="sales" class="mr-1">Bán hàng</label>
-                            <label><input type="checkbox" value="purchase" class="mr-1">Đề xuất mua hàng</label>
-                            <label><input type="checkbox" value="purchase_history" class="mr-1">Lịch sử mua hàng</label>
-                            <label><input type="checkbox" value="production" class="mr-1">Lệnh sản xuất</label>
-                            <label><input type="checkbox" value="materials" class="mr-1">Danh mục vật tư</label>
-                            <label><input type="checkbox" value="departments" class="mr-1">Bộ phận</label>
-                            <label><input type="checkbox" value="inventory" class="mr-1">Tồn kho</label>
-                        </div>
-                        <label class="block mt-2 text-xs text-slate-600">Bán hàng đọc lại
+                        <label class="block mb-3 text-xs text-slate-600">Bán hàng và trả lại đọc lại
                             <input id="syncSalesDays" type="number" min="1" max="60" value="7" class="w-16 mx-1 px-2 py-1 border border-slate-300 rounded text-sm"> ngày gần nhất mỗi lần chạy
                         </label>
+                        <div class="text-xs font-bold text-slate-500 mb-1.5">Dữ liệu được đồng bộ</div>
+                        <div id="syncTables" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
+                            <div>
+                                <div class="mb-1 text-xs font-semibold text-slate-500">Danh mục</div>
+                                <div class="flex flex-col gap-1">
+                                    <label><input type="checkbox" value="materials" class="mr-1">Danh mục vật tư</label>
+                                    <label><input type="checkbox" value="departments" class="mr-1">Bộ phận</label>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="mb-1 text-xs font-semibold text-slate-500">Bán hàng</div>
+                                <div class="flex flex-col gap-1">
+                                    <label><input type="checkbox" value="sales_orders" class="mr-1">Xuất bán hàng</label>
+                                    <label><input type="checkbox" value="sales_returns" class="mr-1">Hàng bán trả lại</label>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="mb-1 text-xs font-semibold text-slate-500">Mua hàng</div>
+                                <div class="flex flex-col gap-1">
+                                    <label><input type="checkbox" value="purchase" class="mr-1">Đề xuất mua hàng</label>
+                                    <label><input type="checkbox" value="purchase_history" class="mr-1">Lịch sử mua hàng</label>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="mb-1 text-xs font-semibold text-slate-500">Sản xuất</div>
+                                <div class="flex flex-col gap-1">
+                                    <label><input type="checkbox" value="production" class="mr-1">Lệnh sản xuất</label>
+                                    <label class="text-slate-400" title="Chưa có truy vấn SQL và tác vụ đồng bộ cho dữ liệu này.">
+                                        <input type="checkbox" value="usage_history" class="mr-1" disabled>Lịch sử sử dụng
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="mb-1 text-xs font-semibold text-slate-500">Kho</div>
+                                <div class="flex flex-col gap-1">
+                                    <label><input type="checkbox" value="inventory" class="mr-1">Tồn kho</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
