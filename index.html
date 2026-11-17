@@ -1696,11 +1696,13 @@
             renderDateLabel("toDate");
             loadDashboardData();
         }
+        window.erpRevenueByRow = row => row.__salesReturn ? 0
+            : Number(row.tien2 || 0) - Number(row.ck_ds || 0) - Number(row.tien_ck || 0);
         window.erpNetRevenue = row => row.__salesReturn
             ? -Number(row.tien2_tra_lai || 0) + Number(row.tien_ck_tra_lai || 0)
-            : Number(row.tien2 || 0) - Number(row.ck_ds || 0) -
-                Number(row.tien_ck || 0) - Number(row.tien2_tra_lai || 0) + Number(row.tien_ck_tra_lai || 0);
-        const revOf = window.erpNetRevenue;
+            : window.erpRevenueByRow(row);
+        const revOf = window.erpRevenueByRow;
+        const netRevOf = window.erpNetRevenue;
         const sumBy = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
         window.erpBuildSalesReportRows = (salesRows, returnRows) => {
             const normalize = value => String(value == null ? "" : value).trim().replace(/^0+(?=\d)/, "");
@@ -2407,7 +2409,7 @@
         }
 
         function renderKPIs(rows) {
-            const rev = sumBy(rows, revOf);
+            const rev = sumBy(rows, netRevOf);
             const salesRows = rows.filter(row => !row.__salesReturn);
             const returnRows = rows.filter(row => row.__salesReturn);
             const ck = sumBy(salesRows, r => Number(r.tien_ck || 0) + Number(r.ck_ds || 0)) -
@@ -2440,7 +2442,7 @@
         function renderDashboardSalesTable(rows) {
             document.getElementById("dashboardFootTotalQty").innerText =
                 sumBy(rows, row => Number(row.so_luong || 0)).toLocaleString("vi-VN");
-            document.getElementById("dashboardFootTotalRevenue").innerText = formatVND(sumBy(rows, revOf));
+            document.getElementById("dashboardFootTotalRevenue").innerText = formatVND(sumBy(rows, netRevOf));
             document.getElementById("dashboardFootTotalCK").innerText = formatVND(sumBy(rows, row =>
                 row.__salesReturn ? Number(row.tien_ck_tra_lai || 0) : Number(row.tien_ck || 0) + Number(row.ck_ds || 0)));
             document.getElementById("dashboardFootTotalReturn").innerText =
@@ -2515,7 +2517,7 @@
                 </tr>`
         });
 
-        function groupSum(rows, keyFn, valFn = revOf) {
+        function groupSum(rows, keyFn, valFn = netRevOf) {
             const m = new Map();
             rows.forEach(r => { const k = keyFn(r) || "(Trống)"; m.set(k, (m.get(k) || 0) + valFn(r)); });
             return [...m.entries()].sort((a, b) => b[1] - a[1]);
@@ -2557,7 +2559,7 @@
             let invalidQuantity = 0;
             rows.forEach(row => {
                 const code = ptnOf(row) || "(Không có mã PTN)";
-                revenue.set(code, (revenue.get(code) || 0) + revOf(row));
+                revenue.set(code, (revenue.get(code) || 0) + netRevOf(row));
                 const value = row.sl_ban_sau_tra_lai;
                 if (value == null || value === "" || !Number.isFinite(Number(value))) {
                     invalidQuantity++;
@@ -2640,7 +2642,7 @@
                         totals = Array(yearRows.length * 12).fill(0);
                         totalsByCategory.set(category, totals);
                     }
-                    totals[yearIndex * 12 + month - 1] += revOf(row);
+                    totals[yearIndex * 12 + month - 1] += netRevOf(row);
                 });
             });
             const sorted = [...totalsByCategory.entries()]
@@ -2742,7 +2744,7 @@
                 const totals = Array(12).fill(0);
                 yearData.forEach(row => {
                     const month = Number(String(row.ngay_ct || "").slice(5, 7));
-                    if (month >= 1 && month <= 12) totals[month - 1] += revOf(row);
+                    if (month >= 1 && month <= 12) totals[month - 1] += netRevOf(row);
                 });
                 return {
                     label: String(year),
@@ -4225,7 +4227,8 @@
                         ["Từ khóa", document.getElementById("searchInput").value.trim()]);
                     table = dtExportTable(tableId);
                     const sum = i => table.rows.reduce((t, r) => t + (Number(r[i]) || 0), 0);
-                    table.rows.push(["TỔNG CỘNG", "", "", "", "", "", "", sum(7), sum(8), sum(9), sum(10)]);
+                    table.rows.push(["TỔNG CỘNG", "", "", "", "", "", "", sum(7),
+                        sumBy(dtSortedRows(tableId), netRevOf), sum(9), sum(10)]);
                 } else if (screen === "purchase") {
                     title = "Đề xuất mua hàng"; tableId = "purchase";
                     info.push(["Khoảng ngày", range("pur")], ["Trạng thái", document.getElementById("purchaseStatusFilter").selectedOptions[0].textContent],
