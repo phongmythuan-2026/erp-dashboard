@@ -3280,10 +3280,11 @@
             "ma_vt", "ten_vt", "dvt", "so_luong", "dien_giai", "ghi_chu", "stt_rec0", "stt_rec"
         ];
         const PURCHASE_HISTORY_IMPORT_COLUMNS = [
-            "ma_kh", "ten_kh", "ma_vt", "ten_vt", "dvt", "nam", "thang", "sl_nhap", "tien_nhap", "don_gia"
+            "id", "ma_kh", "ten_kh", "ma_vt", "ten_vt", "dvt", "nam", "thang", "sl_nhap", "tien_nhap", "don_gia"
         ];
-        const PURCHASE_HISTORY_IMPORT_KEY_COLUMNS = ["ma_kh", "ma_vt", "thang"];
-        const PURCHASE_HISTORY_IMPORT_NUMBER_COLUMNS = new Set(["nam", "sl_nhap", "tien_nhap", "don_gia"]);
+        const PURCHASE_HISTORY_IMPORT_KEY_COLUMNS = [];
+        const PURCHASE_HISTORY_IMPORT_REQUIRED_COLUMNS = ["ma_kh", "ma_vt", "nam", "thang"];
+        const PURCHASE_HISTORY_IMPORT_NUMBER_COLUMNS = new Set(["id", "nam", "sl_nhap", "tien_nhap", "don_gia"]);
         const PURCHASE_IMPORT_KEY_COLUMNS = ["so_ct", "ma_vt", "stt_rec0", "stt_rec"];
         const PURCHASE_IMPORT_REQUIRED_COLUMNS = ["ngay_ct", ...PURCHASE_IMPORT_KEY_COLUMNS];
         const PURCHASE_IMPORT_NUMBER_COLUMNS = new Set(["trang_thai", "so_luong"]);
@@ -3351,7 +3352,8 @@
                 downloadPartitionTemplate("lich_su_mua_hang", "template_import_lich_su_mua_hang.xlsx",
                     PURCHASE_HISTORY_IMPORT_COLUMNS, [
                         ["Cột", "Ý nghĩa", "Bắt buộc", "Lưu ý"],
-                        ["ma_kh", "Mã nhà cung cấp", "Có", "Khóa tổng hợp cùng mã vật tư và tháng."],
+                        ["id", "Khóa dữ liệu", "Không", "Để trống để tự sinh ID; nhập ID có sẵn để cập nhật dòng đó."],
+                        ["ma_kh", "Mã nhà cung cấp", "Có", ""],
                         ["ma_vt", "Mã vật tư", "Có", "Giữ nguyên định dạng văn bản."],
                         ["nam", "Năm", "Có", "Phải khớp năm trong cột thang."],
                         ["thang", "Tháng", "Có", "Định dạng YYYY-MM; mỗi tháng được lưu thành một tệp JSON riêng."],
@@ -3359,7 +3361,7 @@
                         ["tien_nhap", "Tiền nhập", "Không", "Để trống được hiểu là 0."],
                         ["don_gia", "Đơn giá bình quân", "Không", "Để trống được hiểu là 0."],
                         [],
-                        ["Lưu ý", "Không đổi tên cột ở sheet lich_su_mua_hang. Trùng khóa ma_kh + ma_vt + thang sẽ được cập nhật."]
+                        ["Lưu ý", "Không đổi tên cột ở sheet lich_su_mua_hang. ID để trống sẽ được tự sinh; chỉ dòng có ID khớp mới được cập nhật."]
                     ]);
             } catch (error) {
                 reportDataError("Lỗi tạo template lịch sử mua hàng", error);
@@ -3388,7 +3390,9 @@
                     if (column.toLowerCase() === "ngay_ct") {
                         row[column] = parseSalesImportDate(value, line, column);
                     } else if (numberColumns.has(column)) {
-                        row[column] = value === "" || value == null ? 0 : Number(value);
+                        row[column] = value === "" || value == null
+                            ? (column.toLowerCase() === "id" ? "" : 0)
+                            : Number(value);
                         if (!Number.isFinite(row[column])) throw new Error(`Dòng ${line}: cột ${column} phải là số hợp lệ.`);
                     } else {
                         row[column] = String(value == null ? "" : value).trim();
@@ -3399,12 +3403,16 @@
                 });
                 const missingValues = requiredColumns.filter(column => !row[column]);
                 if (missingValues.length) throw new Error(`Dòng ${line}: thiếu ${missingValues.join(", ")}.`);
-                const key = JSON.stringify(keyColumns.map(column => {
-                    const value = String(row[column] ?? "").trim();
-                    return column === "stt_rec0" ? value.replace(/^0+(?=\d)/, "") : value;
-                }));
-                if (seen.has(key)) throw new Error(`Dòng ${line}: dữ liệu bị trùng khóa trong file.`);
-                seen.add(key);
+                const hasKey = keyColumns.length > 0 && keyColumns.every(column =>
+                    row[column] !== "" && row[column] !== null && row[column] !== undefined);
+                if (hasKey) {
+                    const key = JSON.stringify(keyColumns.map(column => {
+                        const value = String(row[column] ?? "").trim();
+                        return column === "stt_rec0" ? value.replace(/^0+(?=\d)/, "") : value;
+                    }));
+                    if (seen.has(key)) throw new Error(`Dòng ${line}: dữ liệu bị trùng khóa trong file.`);
+                    seen.add(key);
+                }
                 rows.push(row);
             });
             if (!rows.length) throw new Error("File không có dòng dữ liệu nào.");
@@ -3427,7 +3435,10 @@
                     file, config.tableName, config.columns, config.keyColumns, config.requiredColumns, config.numberColumns
                 );
                 const dates = rows.map(row => row.ngay_ct || row.thang).sort();
-                if (!confirm(`Import ${rows.length} dòng từ "${file.name}" (${dates[0]} → ${dates[dates.length - 1]})?\nDòng trùng khóa sẽ được cập nhật; dòng mới sẽ được thêm.`)) return;
+                const importBehavior = config.tableName === "lich_su_mua_hang"
+                    ? "Dòng có ID sẽ cập nhật bản ghi tương ứng; ID để trống sẽ được tự sinh."
+                    : "Dòng trùng khóa sẽ được cập nhật; dòng mới sẽ được thêm.";
+                if (!confirm(`Import ${rows.length} dòng từ "${file.name}" (${dates[0]} → ${dates[dates.length - 1]})?\n${importBehavior}`)) return;
                 let inserted = 0;
                 let updated = 0;
                 for (let i = 0; i < rows.length; i += PARTITION_IMPORT_CHUNK) {
@@ -3470,7 +3481,7 @@
                 buttonId: "importPurchaseHistoryButton",
                 columns: PURCHASE_HISTORY_IMPORT_COLUMNS,
                 keyColumns: PURCHASE_HISTORY_IMPORT_KEY_COLUMNS,
-                requiredColumns: PURCHASE_HISTORY_IMPORT_KEY_COLUMNS,
+                requiredColumns: PURCHASE_HISTORY_IMPORT_REQUIRED_COLUMNS,
                 numberColumns: PURCHASE_HISTORY_IMPORT_NUMBER_COLUMNS,
                 reload: loadPurchaseHistory,
                 errorTitle: "Lỗi import lịch sử mua hàng"
