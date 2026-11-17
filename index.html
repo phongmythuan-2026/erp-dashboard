@@ -89,7 +89,7 @@
                     <button onclick="toggleNavMenu('purchaseMenu')" id="nav-purchase" aria-expanded="false" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
                         <i class="fa-solid fa-cart-flatbed"></i><span>Mua hàng</span><i class="fa-solid fa-chevron-down text-[10px]"></i>
                     </button>
-                    <div id="purchaseMenu" class="hidden absolute left-0 top-full z-50 min-w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
+                    <div id="purchaseMenu" class="hidden fixed z-50 min-w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
                         <button onclick="switchTab('purchase')" id="nav-purchase-request" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-cart-flatbed w-4"></i><span>Đề xuất mua hàng</span>
                             <span id="pendingBadgeMenu" class="ml-auto bg-amber-500 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
@@ -103,7 +103,7 @@
                     <button onclick="toggleNavMenu('productionMenu')" id="nav-production" aria-expanded="false" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
                         <i class="fa-solid fa-industry"></i><span>Sản xuất</span><i class="fa-solid fa-chevron-down text-[10px]"></i>
                     </button>
-                    <div id="productionMenu" class="hidden absolute left-0 top-full z-50 min-w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
+                    <div id="productionMenu" class="hidden fixed z-50 min-w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
                         <button onclick="switchTab('production')" id="nav-production-order" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-industry w-4"></i><span>Lệnh sản xuất</span>
                         </button>
@@ -1136,7 +1136,13 @@
             });
             if (opening) {
                 menu.classList.remove("hidden");
-                document.getElementById(`nav-${buttonId}`).setAttribute("aria-expanded", "true");
+                const button = document.getElementById(`nav-${buttonId}`);
+                const bounds = button.getBoundingClientRect();
+                const left = Math.max(8, Math.min(bounds.left, window.innerWidth - menu.offsetWidth - 8));
+                const top = Math.min(bounds.bottom, window.innerHeight - menu.offsetHeight - 8);
+                menu.style.left = `${left}px`;
+                menu.style.top = `${Math.max(8, top)}px`;
+                button.setAttribute("aria-expanded", "true");
             }
         }
 
