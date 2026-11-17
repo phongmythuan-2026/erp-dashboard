@@ -159,18 +159,20 @@ async function biLoadRows(generation) {
     const to = document.getElementById("biTo").value;
     if (!from || !to || from > to) throw new Error("Khoảng ngày B.I không hợp lệ.");
     biSetStatus("Đang tải dữ liệu bán hàng và lệnh sản xuất...");
-    const [rows, productionRows] = await Promise.all([
-        loadPartitioned("ban_hang", from, to, false, true),
+    const [salesRows, returnRows, productionRows] = await Promise.all([
+        loadPartitioned("ban_hang_so2", from, to, false, true),
+        loadPartitioned("ban_hang_tra_lai_so4", from, to, false, true),
         loadPartitioned("lenh_san_xuat", from, to, false, true)
     ]);
     if (generation !== biGeneration) return;
+    const rows = window.erpBuildSalesReportRows(salesRows, returnRows);
     biRows = rows;
     biProductionRows = productionRows;
     if (biBoard.from !== from || biBoard.to !== to) biDirty = true;
     biBoard.from = from;
     biBoard.to = to;
     biRender();
-    biSetStatus(`${rows.length.toLocaleString("vi-VN")} dòng bán hàng, ${productionRows.length.toLocaleString("vi-VN")} dòng lệnh sản xuất; ${biDirty ? "có thay đổi chưa lưu." : "đã tải cấu hình."}`);
+    biSetStatus(`${salesRows.length.toLocaleString("vi-VN")} dòng bán hàng, ${returnRows.length.toLocaleString("vi-VN")} dòng trả lại, ${productionRows.length.toLocaleString("vi-VN")} dòng lệnh sản xuất; ${biDirty ? "có thay đổi chưa lưu." : "đã tải cấu hình."}`);
 }
 
 function biLoadStock() {
@@ -362,6 +364,7 @@ function biAggregate(rows, widget) {
     };
     let invalid = 0;
     rows.forEach(row => {
+        if (row.__salesReturn && (widget.measure === "orders" || widget.measure === "quantity")) return;
         const [key, label, code = ""] = biDimension(row, widget.dimension);
         if (widget.filter && !searchableText(`${label} ${key} ${code}`).includes(searchableText(widget.filter))) return;
         const [stackKey, stackLabel] = stackDimension ? biDimension(row, stackDimension) : [];

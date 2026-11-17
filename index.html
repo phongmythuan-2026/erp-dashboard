@@ -86,6 +86,19 @@
                     <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
                 </button>
                 <div class="relative flex items-stretch">
+                    <button onclick="toggleNavMenu('salesMenu')" id="nav-sales" aria-expanded="false" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-receipt"></i><span>Bán hàng</span><i class="fa-solid fa-chevron-down text-[10px]"></i>
+                    </button>
+                    <div id="salesMenu" class="hidden fixed z-50 min-w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
+                        <button onclick="switchTab('sales-orders')" id="nav-sales-orders" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-file-invoice w-4"></i><span>Xuất bán hàng</span>
+                        </button>
+                        <button onclick="switchTab('sales-returns')" id="nav-sales-returns" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-rotate-left w-4"></i><span>Hàng bán trả lại</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="relative flex items-stretch">
                     <button onclick="toggleNavMenu('purchaseMenu')" id="nav-purchase" aria-expanded="false" class="top-tab shrink-0 px-3 py-2.5 md:py-0 text-sm font-medium transition flex items-center gap-2 whitespace-nowrap">
                         <i class="fa-solid fa-cart-flatbed"></i><span>Mua hàng</span><i class="fa-solid fa-chevron-down text-[10px]"></i>
                     </button>
@@ -224,8 +237,8 @@
                         <button onclick="resetFilters()" class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition font-medium inline-flex items-center gap-1.5">
                             <i class="fa-solid fa-rotate-left"></i> <span>Đặt lại</span>
                         </button>
-                        <button id="refreshSalesButton" onclick="refreshSalesFromSql()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold inline-flex items-center gap-1.5">
-                            <i class="fa-solid fa-arrows-rotate"></i><span>Đọc mới từ SQL</span>
+                        <button id="refreshSalesButton" onclick="loadDashboardData()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-rotate"></i><span>Tải lại báo cáo</span>
                         </button>
                     </div>
                 </div>
@@ -534,49 +547,88 @@
                 </div>
             </div>
 
-            <!-- BẢNG CHI TIẾT GIAO DỊCH (CHUẨN MẪU HÌNH 4) -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
                     <div>
-                        <h3 class="font-bold text-slate-900 text-sm">Chi Tiết Giao Dịch Bán Hàng</h3>
-                        <p class="text-xs text-slate-400">Danh sách kết quả đáp ứng trọn vẹn bộ điều kiện lọc</p>
+                        <h3 class="font-bold text-slate-900 text-sm">Chi tiết giao dịch bán hàng</h3>
+                        <p class="text-xs text-slate-500">Gồm phiếu xuất bán và hàng bán trả lại theo bộ lọc Dashboard.</p>
                     </div>
-                    <div class="w-full sm:w-auto flex flex-wrap items-center gap-2 text-xs">
-                        <input type="file" id="salesImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importSalesFromFile(this)">
-                        <button id="downloadSalesTemplateButton" type="button" onclick="downloadSalesTemplate()" class="hidden px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-file-arrow-down mr-1"></i>Tải template</button>
-                        <button id="importSalesButton" type="button" onclick="document.getElementById('salesImportFile').click()" class="hidden px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-file-import mr-1"></i>Import dữ liệu</button>
-                        <button id="deleteSalesRangeButton" type="button" onclick="deleteSalesRange()" class="hidden px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-trash-can mr-1"></i>Xóa theo thời gian</button>
-                        <label for="searchInput" class="sr-only">Tìm kiếm giao dịch bán hàng</label>
-                        <div class="relative flex-1 min-w-[200px] sm:w-80">
-                            <input type="text" id="searchInput" oninput="applyDashboardFilters()" placeholder="Tìm theo mã đơn, khách hàng, vật tư..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-                        </div>
-                        <button type="button" onclick="exportCurrentScreen()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-file-export mr-1"></i>Xuất báo cáo</button>
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <span id="dashboardSalesCountBadge" class="text-xs font-semibold bg-blue-50 text-blue-700 px-2.5 py-2 rounded-full border border-blue-200">0 giao dịch</span>
+                        <label for="searchInput" class="sr-only">Tìm giao dịch trong báo cáo bán hàng</label>
+                        <input type="search" id="searchInput" oninput="applyDashboardFilters()" placeholder="Tìm mã chứng từ, khách hàng, vật tư..." class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <button type="button" onclick="exportCurrentScreen()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-file-export mr-1"></i>Xuất Excel</button>
                     </div>
                 </div>
-
                 <div class="overflow-x-auto rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs text-slate-700">
                         <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
                             <tr>
-                                <th class="p-3">MÃ ĐƠN (CT)</th>
-                                <th class="p-3">NGÀY LẬP</th>
-                                <th class="p-3">TÊN KHÁCH HÀNG</th>
-                                <th class="p-3">DANH MỤC / VẬT TƯ</th>
-                                <th class="p-3">MÃ PTN</th>
-                                <th class="p-3">NVKD</th>
-                                <th class="p-3 text-right">SỐ LƯỢNG</th>
-                                <th class="p-3 text-right">DOANH THU</th>
-                                <th class="p-3 text-right">CHIẾT KHẤU</th>
-                                <th class="p-3 text-right">TRẢ LẠI</th>
+                                <th class="p-3">LOẠI PHIẾU</th><th class="p-3">MÃ CHỨNG TỪ</th>
+                                <th class="p-3">NGÀY LẬP</th><th class="p-3">TÊN KHÁCH HÀNG</th>
+                                <th class="p-3">DANH MỤC / VẬT TƯ</th><th class="p-3">MÃ PTN</th><th class="p-3">NVKD</th>
+                                <th class="p-3 text-right">SỐ LƯỢNG</th><th class="p-3 text-right">DOANH THU THUẦN</th>
+                                <th class="p-3 text-right">CHIẾT KHẤU</th><th class="p-3 text-right">TRẢ LẠI</th>
                             </tr>
                         </thead>
-                        <tbody id="tableBody" class="divide-y divide-slate-100">
-                            <!-- JS Render các dòng dữ liệu -->
-                        </tbody>
+                        <tbody id="dashboardSalesTableBody" class="divide-y divide-slate-100"></tbody>
                         <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-300 text-xs">
                             <tr>
-                                <td colspan="6" class="p-3 text-right uppercase">TỔNG CỘNG THEO ĐIỀU KIỆN LỌC:</td>
+                                <td colspan="7" class="p-3 text-right uppercase">TỔNG CỘNG THEO ĐIỀU KIỆN LỌC:</td>
+                                <td id="dashboardFootTotalQty" class="p-3 text-right text-slate-600">0</td>
+                                <td id="dashboardFootTotalRevenue" class="p-3 text-right text-blue-600">0 ₫</td>
+                                <td id="dashboardFootTotalCK" class="p-3 text-right text-emerald-600">0 ₫</td>
+                                <td id="dashboardFootTotalReturn" class="p-3 text-right text-red-500">0 ₫</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
+
+          </div>
+        </div>
+
+        <div id="screen-sales" class="hidden space-y-4">
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div>
+                        <h2 id="salesDetailTitle" class="font-bold text-slate-900 text-base">Xuất bán hàng</h2>
+                        <p id="salesTableSource" class="text-xs text-slate-500">Dữ liệu từ ban_hang_so2_YYYY_MM.json</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <input type="file" id="salesImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importSalesFromFile(this)">
+                        <button id="downloadSalesTemplateButton" type="button" onclick="downloadSalesTemplate()" class="hidden px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-file-arrow-down mr-1"></i>Tải template</button>
+                        <button id="importSalesButton" type="button" onclick="document.getElementById('salesImportFile').click()" class="hidden px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-file-import mr-1"></i>Import dữ liệu</button>
+                        <button id="deleteSalesRangeButton" type="button" onclick="deleteSalesRange()" class="hidden px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-trash-can mr-1"></i>Xóa theo thời gian</button>
+                        <button id="refreshSalesTableButton" type="button" onclick="refreshSalesFromSql()" class="hidden px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-arrows-rotate mr-1"></i><span id="refreshSalesTableLabel">Tải mới từ SQL</span></button>
+                        <button type="button" onclick="exportCurrentScreen()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold whitespace-nowrap"><i class="fa-solid fa-file-export mr-1"></i>Xuất báo cáo</button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-end gap-3 text-xs">
+                    <label class="font-semibold">Từ ngày<input id="salesDataFromDate" type="date" onchange="onSalesDataDateChange()" class="block border border-slate-300 rounded-lg px-3 py-2 mt-1"></label>
+                    <label class="font-semibold">Đến ngày<input id="salesDataToDate" type="date" onchange="onSalesDataDateChange()" class="block border border-slate-300 rounded-lg px-3 py-2 mt-1"></label>
+                    <span id="salesTableCountBadge" class="text-xs font-semibold bg-blue-50 text-blue-700 px-2.5 py-2 rounded-full border border-blue-200">Đang tải dữ liệu...</span>
+                    <label for="salesDataSearch" class="sr-only">Tìm kiếm chứng từ bán hàng</label>
+                    <div class="relative flex-1 min-w-[200px] sm:w-80">
+                        <input type="text" id="salesDataSearch" oninput="applySalesTableFilters()" placeholder="Tìm theo mã chứng từ, khách hàng, vật tư..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                    </div>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="p-3">MÃ CHỨNG TỪ</th><th class="p-3">NGÀY LẬP</th>
+                                <th class="p-3">TÊN KHÁCH HÀNG</th><th class="p-3">DANH MỤC / VẬT TƯ</th>
+                                <th class="p-3">MÃ PTN</th><th class="p-3">NVKD</th>
+                                <th class="p-3 text-right">SỐ LƯỢNG</th><th class="p-3 text-right">DOANH THU</th>
+                                <th class="p-3 text-right">CHIẾT KHẤU</th><th class="p-3 text-right">TRẢ LẠI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-100"></tbody>
+                        <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-300 text-xs">
+                            <tr>
+                                <td colspan="6" class="p-3 text-right uppercase">TỔNG CỘNG:</td>
                                 <td id="footTotalQty" class="p-3 text-right text-slate-600">0</td>
                                 <td id="footTotalRevenue" class="p-3 text-right text-blue-600">0 ₫</td>
                                 <td id="footTotalCK" class="p-3 text-right text-emerald-600">0 ₫</td>
@@ -585,9 +637,7 @@
                         </tfoot>
                     </table>
                 </div>
-            </div>
-
-          </div>
+            </section>
         </div>
 
         <!-- ================================================================= -->
@@ -1044,8 +1094,15 @@
         let allProductionData = [];
         let allMaterialData = [];
         let rawSalesData = [];
+        let rawSalesReturnData = [];
+        let salesTableData = [];
+        let salesTableMode = "sales";
+        let salesTableRequestId = 0;
+        let salesTableLoadedKey = "";
+        let dashboardLoadedRangeKey = "";
         let salesAvailableYears = [];
         let salesAvailableMonths = new Set();
+        const salesMonthsByTable = new Map();
         let dashboardRequestId = 0;
         let selectedSalesYears = new Set();
         let materialMap = {};
@@ -1099,13 +1156,15 @@
 
         function switchTab(tabName) {
             document.querySelectorAll(".top-tab").forEach(btn => btn.classList.remove("active"));
-            document.querySelectorAll("#purchaseMenu button, #productionMenu button").forEach(btn =>
+            document.querySelectorAll("#salesMenu button, #purchaseMenu button, #productionMenu button").forEach(btn =>
                 btn.classList.remove("bg-blue-50", "text-blue-700", "font-semibold"));
-            ["purchaseMenu", "productionMenu"].forEach(id => {
+            ["salesMenu", "purchaseMenu", "productionMenu"].forEach(id => {
                 document.getElementById(id).classList.add("hidden");
                 document.getElementById(`nav-${id.replace("Menu", "")}`).setAttribute("aria-expanded", "false");
             });
             const activeNav = {
+                "sales-orders": ["sales", "sales-orders"],
+                "sales-returns": ["sales", "sales-returns"],
                 "purchase": ["purchase", "purchase-request"],
                 "purchase-history": ["purchase", "purchase-history"],
                 "production": ["production", "production-order"],
@@ -1115,12 +1174,22 @@
                 const button = document.getElementById(`nav-${name}`);
                 if (!button) return;
                 button.classList.add(name === "purchase" || name === "production" ||
-                    ["dashboard", "bi", "materials", "users"].includes(name) ? "active" : "bg-blue-50");
+                    ["dashboard", "sales", "bi", "materials", "users"].includes(name) ? "active" : "bg-blue-50");
                 if (name.includes("-")) button.classList.add("text-blue-700", "font-semibold");
             });
-            ["dashboard", "bi", "purchase", "purchase-history", "production", "usage-history", "materials", "users"]
+            ["dashboard", "sales", "bi", "purchase", "purchase-history", "production", "usage-history", "materials", "users"]
                 .forEach(name => document.getElementById(`screen-${name}`).classList.add("hidden"));
-            document.getElementById(`screen-${tabName}`).classList.remove("hidden");
+            const salesMode = tabName === "sales-returns" ? "returns" : "sales";
+            if (tabName === "sales-orders" || tabName === "sales-returns") setSalesTableMode(salesMode);
+            const screenName = tabName === "sales-orders" || tabName === "sales-returns" ? "sales" : tabName;
+            document.getElementById(`screen-${screenName}`).classList.remove("hidden");
+            if (screenName === "sales") {
+                syncSalesDataDateInputs();
+                loadSalesTableData();
+            } else if (screenName === "dashboard" &&
+                dashboardLoadedRangeKey !== `${getDateInput("fromDate")}|${getDateInput("toDate")}`) {
+                loadDashboardData();
+            }
             window.scrollTo({ top: 0 });
             if (tabName === "users") { loadManagedUsers(); loadSyncSettings(); }
             if (tabName === "bi") biOpen();
@@ -1130,7 +1199,7 @@
             const menu = document.getElementById(id);
             const buttonId = id.replace("Menu", "");
             const opening = menu.classList.contains("hidden");
-            ["purchaseMenu", "productionMenu"].forEach(menuId => {
+            ["salesMenu", "purchaseMenu", "productionMenu"].forEach(menuId => {
                 document.getElementById(menuId).classList.add("hidden");
                 document.getElementById(`nav-${menuId.replace("Menu", "")}`).setAttribute("aria-expanded", "false");
             });
@@ -1277,11 +1346,11 @@
             const userNav = document.getElementById("nav-users");
             userNav.classList.toggle("hidden", !isAdmin());
             userNav.classList.toggle("flex", isAdmin());
-            ["refreshSalesButton", "refreshPurchaseButton", "refreshProductionButton", "refreshMaterialsButton",
+            ["refreshPurchaseButton", "refreshProductionButton", "refreshMaterialsButton",
              "importPurchaseButton", "downloadPurchaseTemplateButton", "importProductionButton", "downloadProductionTemplateButton",
              "refreshPurchaseHistoryButton", "importPurchaseHistoryButton", "downloadPurchaseHistoryTemplateButton",
              "importMaterialsButton", "downloadMaterialTemplateButton", "importSalesButton", "downloadSalesTemplateButton",
-             "deleteSalesRangeButton", "biRefreshStock"].forEach(id => {
+             "deleteSalesRangeButton", "refreshSalesTableButton", "biRefreshStock"].forEach(id => {
                 const button = document.getElementById(id);
                 if (button) button.classList.toggle("hidden", !isAdmin());
             });
@@ -1600,10 +1669,129 @@
             renderDateLabel("toDate");
             loadDashboardData();
         }
-        window.erpNetRevenue = row => Number(row.tien2 || 0) - Number(row.ck_ds || 0) -
-            Number(row.tien_ck || 0) - Number(row.tien2_tra_lai || 0) + Number(row.tien_ck_tra_lai || 0);
+        window.erpNetRevenue = row => row.__salesReturn
+            ? -Number(row.tien2_tra_lai || 0) + Number(row.tien_ck_tra_lai || 0)
+            : Number(row.tien2 || 0) - Number(row.ck_ds || 0) -
+                Number(row.tien_ck || 0) - Number(row.tien2_tra_lai || 0) + Number(row.tien_ck_tra_lai || 0);
         const revOf = window.erpNetRevenue;
         const sumBy = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
+        window.erpBuildSalesReportRows = (salesRows, returnRows) => {
+            const normalize = value => String(value == null ? "" : value).trim().replace(/^0+(?=\d)/, "");
+            const sales = salesRows.map(row => ({
+                ...row,
+                __salesReturn: false,
+                sl_ban_sau_tra_lai: Number(row.so_luong || 0)
+            }));
+            const salesByKey = new Map(sales.map(row =>
+                [`${normalize(row.stt_rec)}|${normalize(row.stt_rec0)}`, row]));
+            const returns = returnRows.map(row => {
+                const sale = salesByKey.get(`${normalize(row.stt_rec_hd)}|${normalize(row.stt_rec0_hd)}`);
+                if (sale) sale.sl_ban_sau_tra_lai -= Number(row.sl_tra_lai || 0);
+                return {
+                    ...row,
+                    __salesReturn: true,
+                    so_luong: -Number(row.sl_tra_lai || 0),
+                    tien2: 0,
+                    ck_ds: 0,
+                    tien_ck: Number(row.tien_ck_tra_lai || 0),
+                    tien2_tra_lai: Number(row.tien2_tra_lai || 0),
+                    tien_ck_tra_lai: Number(row.tien_ck_tra_lai || 0),
+                    sl_ban_sau_tra_lai: 0
+                };
+            });
+            return sales.concat(returns);
+        };
+        function salesTableName() {
+            return salesTableMode === "returns" ? "ban_hang_tra_lai_so4" : "ban_hang_so2";
+        }
+        function setSalesTableMode(mode) {
+            salesTableMode = mode === "returns" ? "returns" : "sales";
+            const returns = salesTableMode === "returns";
+            document.getElementById("salesDetailTitle").textContent =
+                returns ? "Hàng bán trả lại" : "Xuất bán hàng";
+            document.getElementById("salesTableSource").textContent = returns
+                ? "Dữ liệu từ ban_hang_tra_lai_so4_YYYY_MM.json"
+                : "Dữ liệu từ ban_hang_so2_YYYY_MM.json";
+            document.getElementById("refreshSalesTableLabel").textContent =
+                returns ? "Tải phiếu trả lại từ SQL" : "Tải phiếu bán từ SQL";
+            document.getElementById("downloadSalesTemplateButton").innerHTML =
+                `<i class="fa-solid fa-file-arrow-down mr-1"></i>${returns ? "Tải template trả lại" : "Tải template bán hàng"}`;
+            document.getElementById("importSalesButton").innerHTML =
+                `<i class="fa-solid fa-file-import mr-1"></i>${returns ? "Import phiếu trả lại" : "Import phiếu bán"}`;
+            salesTableLoadedKey = "";
+            applySalesTableFilters();
+        }
+
+        function salesTableRange() {
+            const from = document.getElementById("salesDataFromDate").value;
+            const to = document.getElementById("salesDataToDate").value;
+            if (!from || !to || from > to) throw new Error("Khoảng ngày không hợp lệ.");
+            return [from, to];
+        }
+
+        function syncSalesDataDateInputs() {
+            document.getElementById("salesDataFromDate").value = getDateInput("fromDate");
+            document.getElementById("salesDataToDate").value = getDateInput("toDate");
+        }
+
+        function onSalesDataDateChange() {
+            const [from, to] = [document.getElementById("salesDataFromDate").value,
+                document.getElementById("salesDataToDate").value];
+            if (!from || !to || from > to) {
+                salesTableRequestId++;
+                salesTableData = [];
+                applySalesTableFilters();
+                document.getElementById("salesTableCountBadge").textContent = "Khoảng ngày không hợp lệ";
+                return;
+            }
+            document.getElementById("fromDate").value = from;
+            document.getElementById("toDate").value = to;
+            renderDateLabel("fromDate");
+            renderDateLabel("toDate");
+            selectedSalesYears.clear();
+            renderYearFilter();
+            salesTableLoadedKey = "";
+            loadSalesTableData();
+        }
+
+        async function loadSalesTableData(force = false) {
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            const requestId = ++salesTableRequestId;
+            try {
+                const [from, to] = salesTableRange();
+                const key = `${salesTableName()}|${from}|${to}`;
+                if (!force && salesTableLoadedKey === key) {
+                    applySalesTableFilters();
+                    return true;
+                }
+                document.getElementById("salesTableCountBadge").textContent = "Đang tải dữ liệu...";
+                const rows = await loadPartitioned(salesTableName(), from, to, false, true);
+                if (requestId !== salesTableRequestId) return false;
+                salesTableData = rows;
+                salesTableLoadedKey = key;
+                applySalesTableFilters();
+                return true;
+            } catch (error) {
+                if (requestId !== salesTableRequestId) return false;
+                salesTableData = [];
+                applySalesTableFilters();
+                document.getElementById("salesTableCountBadge").textContent = "Không tải được dữ liệu";
+                reportDataError("Lỗi tải dữ liệu bán hàng", error);
+                return false;
+            }
+        }
+
+        function applySalesTableFilters() {
+            if (!document.getElementById("tableBody")) return;
+            const keyword = document.getElementById("salesDataSearch").value.trim().toLocaleLowerCase("vi");
+            const rows = window.erpBuildSalesReportRows(
+                salesTableMode === "returns" ? [] : salesTableData,
+                salesTableMode === "returns" ? salesTableData : []
+            ).filter(row => !keyword || [row.so_ct, row.ten_kh, row.ma_kh, row.ten_vt, row.ma_vt, ptnOf(row)]
+                .some(value => String(value ?? "").toLocaleLowerCase("vi").includes(keyword)));
+            renderSalesTable(rows);
+        }
 
         // Cache IndexedDB theo tháng: so phiên bản manifest, chỉ tải tháng mới/đổi.
         const partCache = {
@@ -1655,7 +1843,11 @@
                 throw new Error("Danh sách phân vùng dữ liệu không hợp lệ.");
             }
             const versions = (manifest && manifest.months) || {};
-            if (table === "ban_hang" && updateSalesYears) updateMonthlyYearFilters(versions);
+            if ((table === "ban_hang_so2" || table === "ban_hang_tra_lai_so4") && updateSalesYears) {
+                salesMonthsByTable.set(table, Object.keys(versions));
+                const availableMonths = [...new Set([...salesMonthsByTable.values()].flat())].sort();
+                updateMonthlyYearFilters(Object.fromEntries(availableMonths.map(month => [month, true])));
+            }
             const byMonth = {};
             const missing = [];
             for (const month of wanted) {
@@ -1770,29 +1962,42 @@
 
             try {
                 if (!fromDate || !toDate || fromDate > toDate) throw new Error("Khoảng ngày không hợp lệ.");
+                dashboardLoadedRangeKey = "";
                 rawSalesData = [];
+                rawSalesReturnData = [];
                 applyDashboardFilters();
                 document.getElementById("recordCountBadge").innerText = "Đang tải dữ liệu...";
                 ["monthlyRevenueStatus", "categoryRevenueStatus", "category1RevenueStatus", "businessGroupRevenueStatus"]
                     .forEach(id => { document.getElementById(id).textContent = "Đang tải dữ liệu Dashboard..."; });
-                let loadedRows;
+                let loadedRows, loadedReturnRows;
                 try {
-                    loadedRows = await loadPartitioned("ban_hang", fromDate, toDate);
+                    [loadedRows, loadedReturnRows] = await Promise.all([
+                        loadPartitioned("ban_hang_so2", fromDate, toDate),
+                        loadPartitioned("ban_hang_tra_lai_so4", fromDate, toDate, true, true)
+                    ]);
                 } catch (cacheError) {
                     if (requestId !== dashboardRequestId) return false;
                     console.warn("Cache lỗi, tải trực tiếp:", cacheError);
-                    const result = await api("getData", token, "ban_hang", fromDate, toDate);
-                    if (result.status !== 'success') throw new Error("Apps Script trả về dữ liệu bán hàng không hợp lệ.");
-                    loadedRows = result.data || [];
+                    const results = await Promise.all([
+                        api("getData", token, "ban_hang_so2", fromDate, toDate),
+                        api("getData", token, "ban_hang_tra_lai_so4", fromDate, toDate)
+                    ]);
+                    if (results.some(result => !result || result.status !== "success" || !Array.isArray(result.data))) {
+                        throw new Error("Apps Script trả về dữ liệu bán hàng hoặc trả lại không hợp lệ.");
+                    }
+                    [loadedRows, loadedReturnRows] = results.map(result => result.data);
                 }
                 if (requestId !== dashboardRequestId) return false;
                 rawSalesData = loadedRows;
+                rawSalesReturnData = loadedReturnRows;
+                dashboardLoadedRangeKey = `${fromDate}|${toDate}`;
                 fillSalesFilters();
                 applyDashboardFilters();
                 return true;
             } catch (err) {
                 if (requestId !== dashboardRequestId) return false;
                 rawSalesData = [];
+                rawSalesReturnData = [];
                 applyDashboardFilters();
                 document.getElementById("recordCountBadge").innerText = "Không tải được dữ liệu";
                 ["monthlyRevenueStatus", "categoryRevenueStatus", "category1RevenueStatus", "businessGroupRevenueStatus"]
@@ -1823,33 +2028,30 @@
             const token = getSessionToken();
             if (!token) return openAuthModal();
 
-            const button = document.getElementById("refreshSalesButton");
+            const button = document.getElementById("refreshSalesTableButton");
             const originalLabel = button.innerHTML;
             button.disabled = true;
             button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL...</span>';
             try {
-                const [from, to] = getDashboardDateRange();
+                const [from, to] = salesTableRange();
                 if (from > to) throw new Error("Từ ngày không được sau Đến ngày. Vui lòng chọn lại khoảng thời gian.");
                 if (Date.parse(to) - Date.parse(from) > 30 * 86400000) {
                     throw new Error("Khoảng thời gian đọc mới từ SQL không được vượt quá 30 ngày. Vui lòng chọn lại Từ ngày và Đến ngày.");
                 }
                 const chunks = splitDateRange(from, to, 3);
                 let rowCount = 0;
+                const table = salesTableName();
                 for (let i = 0; i < chunks.length; i++) {
                     button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL ${i + 1}/${chunks.length}...</span>`;
-                    const part = await api("refreshSalesData", token, chunks[i][0], chunks[i][1]);
+                    const part = await api("refreshSalesData", token, chunks[i][0], chunks[i][1], table);
                     rowCount += part.rowCount || 0;
                 }
-                const result = { message: `Bán hàng ${from} → ${to}: đã đọc ${rowCount} dòng từ SQL (${chunks.length} đợt).` };
-                if (!await loadDashboardData()) return;
-                const status = document.getElementById("appError");
-                document.getElementById("appErrorMessage").textContent = result.message;
-                status.classList.remove("hidden", "border-red-300", "bg-red-50", "text-red-800");
-                status.classList.add("flex", "border-emerald-300", "bg-emerald-50", "text-emerald-800");
-                setTimeout(() => {
-                    status.classList.add("hidden");
-                    status.classList.remove("flex", "border-emerald-300", "bg-emerald-50", "text-emerald-800");
-                }, 5000);
+                const tableLabel = salesTableMode === "returns" ? "Phiếu trả lại" : "Phiếu xuất bán";
+                const result = { message: `${tableLabel} ${from} → ${to}: đã đọc ${rowCount} dòng từ SQL (${chunks.length} đợt).` };
+                salesTableLoadedKey = "";
+                dashboardLoadedRangeKey = "";
+                if (!await loadSalesTableData(true)) return;
+                showAppSuccess(result.message);
             } catch (error) {
                 reportDataError("Lỗi cập nhật bán hàng từ SQL", error);
             } finally {
@@ -1953,6 +2155,7 @@
 
         function fillSalesFilters() {
             closeSalesSearch();
+            const rows = window.erpBuildSalesReportRows(rawSalesData, rawSalesReturnData);
             const fill = (id, values) => {
                 const sel = document.getElementById(id);
                 const cur = sel.value;
@@ -1961,13 +2164,13 @@
                     .map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
                 sel.value = cur;
             };
-            fill("filterCategory", rawSalesData.map(categoryOf));
-            fill("filterCategory1", rawSalesData.map(category1Of));
-            fill("filterStaff", rawSalesData.map(r => r.ten_nvkd || r.ma_nhomkd));
+            fill("filterCategory", rows.map(categoryOf));
+            fill("filterCategory1", rows.map(category1Of));
+            fill("filterStaff", rows.map(r => r.ten_nvkd || r.ma_nhomkd));
             const sel = document.getElementById("filterBusinessGroup");
             const current = sel.value;
             const currentCode = current ? JSON.parse(current) : null;
-            const codes = [...new Set([...Object.keys(businessGroupNames), ...rawSalesData.map(businessGroupOf),
+            const codes = [...new Set([...Object.keys(businessGroupNames), ...rows.map(businessGroupOf),
                 ...(currentCode === null ? [] : [currentCode])])]
                 .sort((a, b) => businessGroupLabel(a).localeCompare(businessGroupLabel(b), "vi"));
             sel.innerHTML = sel.options[0].outerHTML + codes.map(code =>
@@ -1976,7 +2179,7 @@
             const product = document.getElementById("filterPtn");
             const selectedProduct = product.value;
             const selectedCode = selectedProduct ? JSON.parse(selectedProduct) : null;
-            const products = [...new Set([...rawSalesData.map(ptnOf), ...(selectedCode === null ? [] : [selectedCode])])]
+            const products = [...new Set([...rows.map(ptnOf), ...(selectedCode === null ? [] : [selectedCode])])]
                 .sort((a, b) => ptnLabel(a).localeCompare(ptnLabel(b), "vi", { numeric: true }));
             product.innerHTML = product.options[0].outerHTML + products.map(code =>
                 `<option value="${esc(JSON.stringify(code))}">${esc(ptnLabel(code))}</option>`).join("");
@@ -1984,7 +2187,7 @@
             const customer = document.getElementById("filterCustomer");
             const selectedCustomer = customer.value;
             const selectedCustomerLabel = customer.selectedOptions[0] && customer.selectedOptions[0].textContent;
-            const customers = new Map(rawSalesData.map(row => {
+            const customers = new Map(rows.map(row => {
                 const identity = customerIdentity(row);
                 return [JSON.stringify(identity), customerLabel(identity)];
             }));
@@ -2158,9 +2361,9 @@
             const staff = document.getElementById("filterStaff").value;
             const ptn = document.getElementById("filterPtn").value;
             const customer = document.getElementById("filterCustomer").value;
-            const kw = document.getElementById("searchInput").value.trim().toLowerCase();
+            const kw = document.getElementById("searchInput").value.trim().toLocaleLowerCase("vi");
 
-            const rows = rawSalesData.filter(r =>
+            const matchesFilters = r =>
                 (!selectedSalesYears.size || selectedSalesYears.has(Number(String(r.ngay_ct || "").slice(0, 4)))) &&
                 (!cat || categoryOf(r) === cat) &&
                 (!cat1 || category1Of(r) === cat1) &&
@@ -2168,10 +2371,15 @@
                 (!staff || (r.ten_nvkd || r.ma_nhomkd) === staff) &&
                 (!ptn || JSON.stringify(ptnOf(r)) === ptn) &&
                 (!customer || JSON.stringify(customerIdentity(r)) === customer) &&
-                (!kw || [r.so_ct, r.ten_kh, r.ma_kh, r.ten_vt, r.ma_vt, ptnOf(r)].some(v => String(v ?? '').toLowerCase().includes(kw))));
+                (!kw || [r.so_ct, r.ten_kh, r.ma_kh, r.ten_vt, r.ma_vt, ptnOf(r)]
+                    .some(value => String(value ?? "").toLocaleLowerCase("vi").includes(kw)));
+            const rows = window.erpBuildSalesReportRows(rawSalesData, rawSalesReturnData).filter(matchesFilters);
 
+            document.getElementById("recordCountBadge").textContent =
+                `Hiển thị ${rows.length} / ${rawSalesData.length + rawSalesReturnData.length} giao dịch`;
+            document.getElementById("dashboardSalesCountBadge").textContent = `${rows.length.toLocaleString("vi-VN")} giao dịch`;
             renderKPIs(rows);
-            renderSalesTable(rows);
+            renderDashboardSalesTable(rows);
             renderCharts(rows);
             renderPtnReports(rows);
             renderMonthlyRevenue(rows);
@@ -2179,10 +2387,13 @@
 
         function renderKPIs(rows) {
             const rev = sumBy(rows, revOf);
-            const ck = sumBy(rows, r => Number(r.tien_ck || 0));
-            const ret = sumBy(rows, r => Number(r.tien2_tra_lai || 0));
-            const gross = sumBy(rows, r => Number(r.tien2 || 0));
-            const orders = new Set(rows.map(r => r.so_ct)).size;
+            const salesRows = rows.filter(row => !row.__salesReturn);
+            const returnRows = rows.filter(row => row.__salesReturn);
+            const ck = sumBy(salesRows, r => Number(r.tien_ck || 0) + Number(r.ck_ds || 0)) -
+                sumBy(returnRows, r => Number(r.tien_ck_tra_lai || 0));
+            const ret = sumBy(returnRows, r => Number(r.tien2_tra_lai || 0));
+            const gross = sumBy(salesRows, r => Number(r.tien2 || 0));
+            const orders = new Set(salesRows.map(r => r.so_ct).filter(Boolean)).size;
             const cust = new Set(rows.map(r => r.ma_kh).filter(Boolean)).size;
             const pct = (a, b) => (b > 0 ? (a / b * 100).toFixed(1) : "0.0") + "%";
 
@@ -2197,26 +2408,45 @@
         }
 
         function renderSalesTable(rows) {
-            document.getElementById("recordCountBadge").innerText = `Hiển thị ${rows.length} / ${rawSalesData.length} dòng`;
+            const allRows = salesTableData;
+            const tableLabel = salesTableMode === "returns" ? "phiếu trả lại" : "phiếu bán";
+            document.getElementById("salesTableCountBadge").innerText =
+                `Hiển thị ${rows.length} / ${allRows.length} ${tableLabel}`;
             document.getElementById("footTotalQty").innerText = sumBy(rows, r => Number(r.so_luong || 0)).toLocaleString('vi-VN');
             document.getElementById("footTotalRevenue").innerText = formatVND(sumBy(rows, revOf));
-            document.getElementById("footTotalCK").innerText = formatVND(sumBy(rows, r => Number(r.tien_ck || 0)));
+            document.getElementById("footTotalCK").innerText = formatVND(sumBy(rows, r =>
+                r.__salesReturn ? Number(r.tien_ck_tra_lai || 0) : Number(r.tien_ck || 0) + Number(r.ck_ds || 0)));
             document.getElementById("footTotalReturn").innerText = formatVND(sumBy(rows, r => Number(r.tien2_tra_lai || 0)));
             dtSet("sales", rows);
         }
 
+        function renderDashboardSalesTable(rows) {
+            document.getElementById("dashboardFootTotalQty").innerText =
+                sumBy(rows, row => Number(row.so_luong || 0)).toLocaleString("vi-VN");
+            document.getElementById("dashboardFootTotalRevenue").innerText = formatVND(sumBy(rows, revOf));
+            document.getElementById("dashboardFootTotalCK").innerText = formatVND(sumBy(rows, row =>
+                row.__salesReturn ? Number(row.tien_ck_tra_lai || 0) : Number(row.tien_ck || 0) + Number(row.ck_ds || 0)));
+            document.getElementById("dashboardFootTotalReturn").innerText =
+                formatVND(sumBy(rows, row => Number(row.tien2_tra_lai || 0)));
+            dtSet("dashboardSales", rows);
+        }
+
         function deleteSalesRange() {
             if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được xóa dữ liệu bán hàng."));
-            const from = getDateInput("fromDate");
-            const to = getDateInput("toDate");
-            if (!from || !to || from > to) return reportDataError("Khoảng ngày không hợp lệ", new Error("Hãy chọn khoảng ngày hợp lệ trên dashboard."));
-            if (!confirm(`Xóa toàn bộ dữ liệu bán hàng từ ${from} đến ${to}?\nThao tác này áp dụng cho tất cả giao dịch trong khoảng ngày, không chỉ các dòng đang lọc trên màn hình.`)) return;
+            let from, to;
+            try { [from, to] = salesTableRange(); }
+            catch (error) { return reportDataError("Khoảng ngày không hợp lệ", error); }
+            const table = salesTableName();
+            const tableLabel = salesTableMode === "returns" ? "phiếu trả lại" : "phiếu bán";
+            if (!confirm(`Xóa toàn bộ ${tableLabel} từ ${from} đến ${to}?\nThao tác này áp dụng cho tất cả giao dịch trong khoảng ngày, không chỉ các dòng đang lọc trên màn hình.`)) return;
             const button = document.getElementById("deleteSalesRangeButton");
             button.disabled = true;
             (async () => {
                 try {
-                    const result = await api("deleteSalesRange", getSessionToken(), from, to);
-                    if (!await loadDashboardData()) return;
+                    const result = await api("deleteSalesRange", getSessionToken(), from, to, table);
+                    salesTableLoadedKey = "";
+                    dashboardLoadedRangeKey = "";
+                    if (!await loadSalesTableData(true)) return;
                     showAppSuccess(result.message || `Đã xóa ${result.deleted || 0} giao dịch từ ${from} đến ${to}.`);
                 } catch (error) {
                     reportDataError("Lỗi xóa dữ liệu bán hàng", error);
@@ -2240,6 +2470,30 @@
                     <td class="p-3 text-right text-slate-700">${Number(r.so_luong || 0).toLocaleString('vi-VN')} ${esc(r.dvt)}</td>
                     <td class="p-3 text-right font-bold text-blue-600">${formatVND(revOf(r))}</td>
                     <td class="p-3 text-right text-emerald-600">${formatVND(r.tien_ck)}</td>
+                    <td class="p-3 text-right text-red-500">${formatVND(r.tien2_tra_lai)}</td>
+                </tr>`
+        });
+
+        dtInit("dashboardSales", {
+            tbody: "dashboardSalesTableBody",
+            cols: [r => r.__salesReturn ? "Hàng bán trả lại" : "Xuất bán hàng", r => r.so_ct,
+                r => r.ngay_ct, r => r.ten_kh || r.ma_kh, r => r.ten_vt || r.ma_vt, ptnOf,
+                r => r.ten_nvkd || r.ma_nhomkd, r => Number(r.so_luong || 0), revOf,
+                r => r.__salesReturn ? Number(r.tien_ck_tra_lai || 0) : Number(r.tien_ck || 0) + Number(r.ck_ds || 0),
+                r => Number(r.tien2_tra_lai || 0)],
+            row: r => `<tr class="hover:bg-slate-50 transition">
+                    <td class="p-3">${r.__salesReturn
+                        ? '<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Hàng bán trả lại</span>'
+                        : '<span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">Xuất bán hàng</span>'}</td>
+                    <td class="p-3 font-bold text-slate-900">${esc(r.so_ct)}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_ct)}</td>
+                    <td class="p-3 font-medium text-slate-800">${esc(r.ten_kh || r.ma_kh)}</td>
+                    <td class="p-3 text-slate-600">${matLink(r.ma_vt, r.ten_vt || r.ma_vt)}</td>
+                    <td class="p-3 text-slate-600">${esc(ptnOf(r))}</td>
+                    <td class="p-3 text-slate-500">${esc(r.ten_nvkd || r.ma_nhomkd)}</td>
+                    <td class="p-3 text-right text-slate-700">${Number(r.so_luong || 0).toLocaleString("vi-VN")} ${esc(r.dvt)}</td>
+                    <td class="p-3 text-right font-bold text-blue-600">${formatVND(revOf(r))}</td>
+                    <td class="p-3 text-right text-emerald-600">${formatVND(r.__salesReturn ? r.tien_ck_tra_lai : Number(r.tien_ck || 0) + Number(r.ck_ds || 0))}</td>
                     <td class="p-3 text-right text-red-500">${formatVND(r.tien2_tra_lai)}</td>
                 </tr>`
         });
@@ -2489,7 +2743,8 @@
             const palette = ['#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6', '#14b8a6', '#ef4444', '#64748b'];
 
             const byDay = groupSum(rows, r => r.ngay_ct).sort((a, b) => a[0].localeCompare(b[0]));
-            const retByDay = new Map(groupSum(rows, r => r.ngay_ct, r => Number(r.tien2_tra_lai || 0)));
+            const retByDay = new Map(groupSum(rows, r => r.ngay_ct,
+                r => r.__salesReturn ? Number(r.tien2_tra_lai || 0) : 0));
             createChart('trendChart', 'line', {
                 labels: byDay.map(d => d[0]),
                 datasets: [
@@ -3036,39 +3291,50 @@
         const MATERIAL_IMPORT_COLUMNS = ["ma_vt", "ten_vt", "dvt", "ma_nhvt", "ten_nhvt", "ma_nhvt1", "ten_nhvt1", "ma_msp", "ten_msp"];
         const MATERIAL_IMPORT_CHUNK = 3000;
         const SALES_IMPORT_COLUMNS = [
-            "ma_cty", "ma_ct", "stt_rec", "stt_rec0", "ngay_ht", "ngay_ct", "so_ct", "ma_kh", "ten_kh",
-            "ma_vt", "ten_vt", "dvt", "so_luong", "gia2", "tien2", "ck_ds", "tien_ck", "sl_tra_lai",
-            "tien2_tra_lai", "tien_ck_tra_lai", "sl_ban_sau_tra_lai", "doanh_thu_thuan", "ma_lo",
-            "ma_quy_cach", "ten_nvkd", "ma_nhomkd", "ngay_tt", "so_dh", "bold"
+            "ma_cty", "ma_ct", "stt_rec", "stt_rec0", "ngay_ct", "so_ct", "so_dh", "ma_kh",
+            "ten_kh", "ma_nvkd", "ten_nvkd", "ma_nhomkd", "ma_vt", "ten_vt", "dvt", "so_luong",
+            "gia2", "tien2", "ck_ds", "tien_ck", "doanh_thu_ban", "ma_lo", "ma_tt", "ngay_tt"
+        ];
+        const SALES_RETURN_IMPORT_COLUMNS = [
+            "ma_cty", "ma_ct", "stt_rec", "stt_rec0", "stt_rec_hd", "stt_rec0_hd", "ngay_ct",
+            "so_ct", "ma_kh", "ten_kh", "ma_nvkd", "ten_nvkd", "ma_nhomkd", "ma_vt", "ten_vt",
+            "dvt", "sl_tra_lai", "gia2_tra_lai", "tien2_tra_lai", "tien_ck_tra_lai", "ma_lo"
         ];
         const SALES_IMPORT_NUMBER_COLUMNS = new Set([
-            "so_luong", "gia2", "tien2", "ck_ds", "tien_ck", "sl_tra_lai", "tien2_tra_lai",
-            "tien_ck_tra_lai", "sl_ban_sau_tra_lai", "doanh_thu_thuan", "bold"
+            "so_luong", "gia2", "tien2", "ck_ds", "tien_ck", "doanh_thu_ban",
+            "sl_tra_lai", "gia2_tra_lai", "tien2_tra_lai", "tien_ck_tra_lai"
         ]);
         const SALES_IMPORT_KEY_COLUMNS = ["stt_rec", "stt_rec0", "ngay_ct", "so_ct", "ma_vt"];
+        const SALES_RETURN_IMPORT_KEY_COLUMNS = ["stt_rec", "stt_rec0", "ngay_ct", "so_ct", "ma_vt"];
         const SALES_IMPORT_CHUNK = 500;
 
         function downloadSalesTemplate() {
             try {
                 requireXlsx();
+                const returns = salesTableMode === "returns";
+                const columns = returns ? SALES_RETURN_IMPORT_COLUMNS : SALES_IMPORT_COLUMNS;
+                const sheetName = returns ? "ban_hang_tra_lai_so4" : "ban_hang_so2";
                 const wb = XLSX.utils.book_new();
-                const data = XLSX.utils.aoa_to_sheet([SALES_IMPORT_COLUMNS]);
-                data["!cols"] = SALES_IMPORT_COLUMNS.map(() => ({ wch: 20 }));
-                XLSX.utils.book_append_sheet(wb, data, "ban_hang");
+                const data = XLSX.utils.aoa_to_sheet([columns]);
+                data["!cols"] = columns.map(() => ({ wch: 20 }));
+                XLSX.utils.book_append_sheet(wb, data, sheetName);
                 const guide = XLSX.utils.aoa_to_sheet([
                     ["Cột", "Ý nghĩa", "Bắt buộc", "Lưu ý"],
                     ["stt_rec", "Mã bản ghi", "Có", "Giữ nguyên định dạng văn bản."],
                     ["stt_rec0", "Số thứ tự dòng", "Có", "Giữ nguyên định dạng văn bản."],
+                    ...(returns ? [
+                        ["stt_rec_hd", "Mã phiếu bán gốc", "Không", "Tham chiếu tùy chọn."],
+                        ["stt_rec0_hd", "Dòng phiếu bán gốc", "Không", "Tham chiếu tùy chọn."]
+                    ] : []),
                     ["ngay_ct", "Ngày chứng từ", "Có", "Dùng YYYY-MM-DD hoặc ngày Excel hợp lệ."],
                     ["so_ct", "Số chứng từ", "Có", "Giữ nguyên định dạng văn bản."],
                     ["ma_vt", "Mã vật tư", "Có", "Giữ nguyên định dạng văn bản."],
-                    ["bold", "Dòng tổng hợp", "Không", "Chỉ import giao dịch chi tiết; không import dòng có giá trị 1."],
                     [],
-                    ["Lưu ý", "Không đổi tên cột ở sheet ban_hang. Giao dịch trùng khóa sẽ được cập nhật; giao dịch mới sẽ được thêm. Các cột số để trống được tính là 0."]
+                    ["Lưu ý", `Không đổi tên cột ở sheet ${sheetName}. Giao dịch trùng khóa sẽ được cập nhật; giao dịch mới sẽ được thêm. Các cột số để trống được tính là 0.`]
                 ]);
                 guide["!cols"] = [{ wch: 18 }, { wch: 28 }, { wch: 12 }, { wch: 75 }];
                 XLSX.utils.book_append_sheet(wb, guide, "Huong_dan");
-                XLSX.writeFile(wb, "template_import_ban_hang.xlsx");
+                XLSX.writeFile(wb, `template_import_${sheetName}.xlsx`);
             } catch (error) {
                 reportDataError("Lỗi tạo template giao dịch bán hàng", error);
             }
@@ -3103,13 +3369,18 @@
 
         async function readSalesImportRows(file) {
             requireXlsx();
+            const returns = salesTableMode === "returns";
+            const columns = returns ? SALES_RETURN_IMPORT_COLUMNS : SALES_IMPORT_COLUMNS;
+            const requiredColumns = returns ? SALES_RETURN_IMPORT_KEY_COLUMNS : SALES_IMPORT_KEY_COLUMNS;
+            const identityColumns = ["stt_rec", "stt_rec0"];
+            const expectedSheet = returns ? "ban_hang_tra_lai_so4" : "ban_hang_so2";
             const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
-            const sheetName = wb.SheetNames.includes("ban_hang") ? "ban_hang" : wb.SheetNames[0];
+            const sheetName = wb.SheetNames.includes(expectedSheet) ? expectedSheet : wb.SheetNames[0];
             if (!sheetName) throw new Error("File không có sheet dữ liệu.");
             const table = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: "", raw: true });
             const headers = (table[0] || []).map(h => String(h).trim().toLowerCase());
-            const indexes = Object.fromEntries(SALES_IMPORT_COLUMNS.map(column => [column, headers.indexOf(column)]));
-            const missing = SALES_IMPORT_KEY_COLUMNS.filter(column => indexes[column] < 0);
+            const indexes = Object.fromEntries(columns.map(column => [column, headers.indexOf(column)]));
+            const missing = requiredColumns.filter(column => indexes[column] < 0);
             if (missing.length) throw new Error(`File thiếu cột bắt buộc ${missing.join(", ")}. Hãy dùng template.`);
             const rows = [];
             const seen = new Set();
@@ -3117,10 +3388,10 @@
                 if (!cells.some(cell => String(cell).trim() !== "")) return;
                 const line = i + 2;
                 const row = {};
-                SALES_IMPORT_COLUMNS.forEach(column => {
+                columns.forEach(column => {
                     const index = indexes[column];
                     const value = index < 0 ? "" : cells[index];
-                    if (column === "ngay_ct" || column === "ngay_ht") {
+                    if (column === "ngay_ct" || column === "ngay_tt") {
                         row[column] = String(value).trim() ? parseSalesImportDate(value, line, column) : "";
                     } else if (SALES_IMPORT_NUMBER_COLUMNS.has(column)) {
                         row[column] = value === "" || value == null ? 0 : Number(value);
@@ -3129,15 +3400,12 @@
                         row[column] = String(value ?? "").trim();
                     }
                 });
-                const missingValues = SALES_IMPORT_KEY_COLUMNS.filter(column => !row[column]);
+                const missingValues = requiredColumns.filter(column => !row[column]);
                 if (missingValues.length) throw new Error(`Dòng ${line}: thiếu ${missingValues.join(", ")}.`);
-                if (Number(row.bold) === 1) throw new Error(`Dòng ${line}: không import dòng tổng hợp (bold = 1).`);
-                const key = JSON.stringify(SALES_IMPORT_COLUMNS
-                    .filter(column => ["stt_rec", "stt_rec0", "ngay_ht", "ngay_ct", "so_ct", "ma_kh", "ma_vt", "ma_lo", "so_dh"].includes(column))
-                    .map(column => {
-                        const value = String(row[column] ?? "").trim();
-                        return column === "stt_rec0" ? value.replace(/^0+(?=\d)/, "") : value;
-                    }));
+                const key = JSON.stringify(identityColumns.map(column => {
+                    const value = String(row[column] ?? "").trim();
+                    return column === "stt_rec0" ? value.replace(/^0+(?=\d)/, "") : value;
+                }));
                 if (seen.has(key)) throw new Error(`Dòng ${line}: giao dịch bị trùng khóa trong file.`);
                 seen.add(key);
                 rows.push(row);
@@ -3166,13 +3434,15 @@
                 for (let i = 0; i < rows.length; i += SALES_IMPORT_CHUNK) {
                     const chunk = rows.slice(i, i + SALES_IMPORT_CHUNK);
                     button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang import ${Math.min(i + chunk.length, rows.length)}/${rows.length}...</span>`;
-                    const result = await api("importSales", token, chunk);
+                    const result = await api(salesTableMode === "returns" ? "importSalesReturns" : "importSales", token, chunk);
                     imported += result.rowCount || chunk.length;
                     inserted += result.inserted || 0;
                     updated += result.updated || 0;
                 }
-                if (!await loadDashboardData()) return;
-                showAppSuccess(`Import thành công: ${imported} giao dịch (thêm ${inserted}, cập nhật ${updated}).`);
+                salesTableLoadedKey = "";
+                dashboardLoadedRangeKey = "";
+                if (!await loadSalesTableData(true)) return;
+                showAppSuccess(`Import thành công: ${imported} ${salesTableMode === "returns" ? "phiếu trả lại" : "phiếu bán"} (thêm ${inserted}, cập nhật ${updated}).`);
             } catch (error) {
                 const detail = imported ? `Đã import ${imported} dòng trước khi gặp lỗi: ${error.message}` : error.message;
                 reportDataError("Lỗi import giao dịch bán hàng", new Error(detail));
@@ -3907,13 +4177,22 @@
         function exportCurrentScreen() {
             try {
                 requireXlsx();
-                const screen = ["dashboard", "purchase", "purchase-history", "production", "materials", "users"]
+                const screen = ["dashboard", "sales", "purchase", "purchase-history", "production", "materials", "users"]
                     .find(name => !document.getElementById(`screen-${name}`).classList.contains("hidden")) || "dashboard";
                 const range = prefix => `${getDateInput(prefix + "FromDate")} → ${getDateInput(prefix + "ToDate")}`;
                 let title, tableId, info = [];
                 let table;
-                if (screen === "dashboard") {
-                    title = "Bán hàng"; tableId = "sales";
+                if (screen === "sales") {
+                    title = salesTableMode === "returns" ? "Phiếu trả lại bán hàng" : "Phiếu xuất bán hàng";
+                    tableId = "sales";
+                    info.push(["Khoảng ngày", `${document.getElementById("salesDataFromDate").value} → ${document.getElementById("salesDataToDate").value}`],
+                        ["Từ khóa", document.getElementById("salesDataSearch").value.trim()],
+                        ["Nguồn dữ liệu", salesTableName()]);
+                    table = dtExportTable(tableId);
+                    const sum = i => table.rows.reduce((total, row) => total + (Number(row[i]) || 0), 0);
+                    table.rows.push(["TỔNG CỘNG", "", "", "", "", "", sum(6), sum(7), sum(8), sum(9)]);
+                } else if (screen === "dashboard") {
+                    title = "Chi tiết bán hàng Dashboard"; tableId = "dashboardSales";
                     info.push(["Khoảng ngày", `${getDateInput("fromDate")} → ${getDateInput("toDate")}`]);
                     const labelOf = id => { const sel = document.getElementById(id); return sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : ""; };
                     info.push(["Nhóm vật tư", labelOf("filterCategory")], ["Tên nhóm vật tư 1", labelOf("filterCategory1")],
@@ -3924,7 +4203,7 @@
                         ["Từ khóa", document.getElementById("searchInput").value.trim()]);
                     table = dtExportTable(tableId);
                     const sum = i => table.rows.reduce((t, r) => t + (Number(r[i]) || 0), 0);
-                    table.rows.push(["TỔNG CỘNG", "", "", "", "", "", sum(6), sum(7), sum(8), sum(9)]);
+                    table.rows.push(["TỔNG CỘNG", "", "", "", "", "", "", sum(7), sum(8), sum(9), sum(10)]);
                 } else if (screen === "purchase") {
                     title = "Đề xuất mua hàng"; tableId = "purchase";
                     info.push(["Khoảng ngày", range("pur")], ["Trạng thái", document.getElementById("purchaseStatusFilter").selectedOptions[0].textContent],
@@ -3952,7 +4231,7 @@
                         rows: managedUsers.map(u => [u.useremail, u.ho_ten, u.ma_bp || "", u.role === "admin" ? "Admin" : "User - chỉ xem"])
                     };
                 }
-                const exported = table.rows.length - (screen === "dashboard" && table.rows.length ? 1 : 0);
+                const exported = table.rows.length - (["dashboard", "sales"].includes(screen) && table.rows.length ? 1 : 0);
                 const wb = XLSX.utils.book_new();
                 const sheet = XLSX.utils.aoa_to_sheet([table.headers, ...table.rows]);
                 sheet["!cols"] = table.headers.map((h, i) => ({
@@ -4110,11 +4389,14 @@
             const y = now.getFullYear(), m = now.getMonth();
             if (type === "all") {
                 try {
-                    const manifest = await api("getPartitionManifest", getSessionToken(), "ban_hang");
-                    if (!manifest || manifest.status !== "success") {
+                    const manifests = await Promise.all([
+                        api("getPartitionManifest", getSessionToken(), "ban_hang_so2"),
+                        api("getPartitionManifest", getSessionToken(), "ban_hang_tra_lai_so4")
+                    ]);
+                    if (manifests.some(manifest => !manifest || manifest.status !== "success")) {
                         throw new Error("Không tải được danh sách tháng bán hàng.");
                     }
-                    const months = Object.keys(manifest.months || {}).sort();
+                    const months = manifests.flatMap(manifest => Object.keys(manifest.months || {})).sort();
                     if (!months.length) throw new Error("Chưa có dữ liệu bán hàng theo tháng.");
                     const [year, month] = months[0].split("-").map(Number);
                     setDateInput("fromDate", new Date(year, month - 1, 1));
