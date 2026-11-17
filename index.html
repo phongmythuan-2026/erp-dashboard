@@ -64,7 +64,7 @@
 
     <!-- Top Navigation Header -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        <div class="px-3 sm:px-6 md:min-h-16 py-2 md:py-0 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <div class="px-3 sm:px-6 md:min-h-16 py-2 md:py-0 flex flex-wrap xl:flex-nowrap items-center justify-between gap-x-2 gap-y-1">
             <div class="flex items-center space-x-3 min-w-0">
                 <div class="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-lg font-bold shadow-md shrink-0">
                     <i class="fa-solid fa-server"></i>
@@ -80,8 +80,8 @@
                 </div>
             </div>
 
-            <nav aria-label="Điều hướng chính" class="order-last w-full border-t border-slate-200 -mx-3 sm:-mx-6 md:mx-0 px-0" tabindex="0">
-            <div class="px-2 md:px-0 min-h-12 w-full flex flex-wrap items-stretch gap-1">
+            <nav aria-label="Điều hướng chính" class="order-last w-full border-t border-slate-200 -mx-3 sm:-mx-6 md:mx-0 px-0 xl:order-none xl:w-auto xl:flex-1 xl:min-w-0 xl:self-stretch xl:border-t-0" tabindex="0">
+            <div class="px-2 md:px-0 min-h-12 w-full flex flex-wrap items-stretch gap-1 xl:flex-nowrap">
                 <button onclick="switchTab('dashboard')" id="nav-dashboard" class="top-tab active shrink-0 px-3 lg:px-4 py-2.5 text-sm transition flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
                 </button>
