@@ -3660,7 +3660,8 @@
                     if (column.toLowerCase() === "ngay_ct") {
                         row[column] = parseSalesImportDate(value, line, column);
                     } else if (numberColumns.has(column)) {
-                        row[column] = value === "" || value == null
+                        const isBlank = value == null || (typeof value === "string" && value.trim() === "");
+                        row[column] = isBlank
                             ? (column.toLowerCase() === "id" ? "" : 0)
                             : Number(value);
                         if (!Number.isFinite(row[column])) throw new Error(`Dòng ${line}: cột ${column} phải là số hợp lệ.`);
