@@ -593,7 +593,6 @@
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
                     <div>
                         <h2 id="salesDetailTitle" class="font-bold text-slate-900 text-base">Xuất bán hàng</h2>
-                        <p id="salesTableSource" class="text-xs text-slate-500">Dữ liệu từ ban_hang_so2_YYYY_MM.json</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 text-xs">
                         <input type="file" id="salesImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importSalesFromFile(this)">
@@ -607,7 +606,6 @@
                 <div class="flex flex-wrap items-end gap-3 text-xs">
                     <label class="font-semibold">Từ ngày<input id="salesDataFromDate" type="date" onchange="onSalesDataDateChange()" class="block border border-slate-300 rounded-lg px-3 py-2 mt-1"></label>
                     <label class="font-semibold">Đến ngày<input id="salesDataToDate" type="date" onchange="onSalesDataDateChange()" class="block border border-slate-300 rounded-lg px-3 py-2 mt-1"></label>
-                    <span id="salesTableCountBadge" class="text-xs font-semibold bg-blue-50 text-blue-700 px-2.5 py-2 rounded-full border border-blue-200">Đang tải dữ liệu...</span>
                     <label for="salesDataSearch" class="sr-only">Tìm kiếm chứng từ bán hàng</label>
                     <div class="relative flex-1 min-w-[200px] sm:w-80">
                         <input type="text" id="salesDataSearch" oninput="applySalesTableFilters()" placeholder="Tìm theo mã chứng từ, khách hàng, vật tư..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -1738,9 +1736,6 @@
             const returns = salesTableMode === "returns";
             document.getElementById("salesDetailTitle").textContent =
                 returns ? "Hàng bán trả lại" : "Xuất bán hàng";
-            document.getElementById("salesTableSource").textContent = returns
-                ? "Dữ liệu từ ban_hang_tra_lai_so4_YYYY_MM.json"
-                : "Dữ liệu từ ban_hang_so2_YYYY_MM.json";
             document.getElementById("refreshSalesTableLabel").textContent =
                 returns ? "Tải phiếu trả lại từ SQL" : "Tải phiếu bán từ SQL";
             document.getElementById("downloadSalesTemplateButton").innerHTML =
@@ -1770,7 +1765,6 @@
                 salesTableRequestId++;
                 salesTableData = [];
                 applySalesTableFilters();
-                document.getElementById("salesTableCountBadge").textContent = "Khoảng ngày không hợp lệ";
                 return;
             }
             document.getElementById("fromDate").value = from;
@@ -1794,7 +1788,6 @@
                     applySalesTableFilters();
                     return true;
                 }
-                document.getElementById("salesTableCountBadge").textContent = "Đang tải dữ liệu...";
                 const rows = await loadPartitioned(salesTableName(), from, to, false, true);
                 if (requestId !== salesTableRequestId) return false;
                 salesTableData = rows;
@@ -1805,7 +1798,6 @@
                 if (requestId !== salesTableRequestId) return false;
                 salesTableData = [];
                 applySalesTableFilters();
-                document.getElementById("salesTableCountBadge").textContent = "Không tải được dữ liệu";
                 reportDataError("Lỗi tải dữ liệu bán hàng", error);
                 return false;
             }
@@ -2437,10 +2429,6 @@
         }
 
         function renderSalesTable(rows) {
-            const allRows = salesTableData;
-            const tableLabel = salesTableMode === "returns" ? "phiếu trả lại" : "phiếu bán";
-            document.getElementById("salesTableCountBadge").innerText =
-                `Hiển thị ${rows.length} / ${allRows.length} ${tableLabel}`;
             document.getElementById("footTotalQty").innerText = sumBy(rows, r => Number(r.so_luong || 0)).toLocaleString('vi-VN');
             document.getElementById("footTotalRevenue").innerText = formatVND(sumBy(rows, revOf));
             document.getElementById("footTotalCK").innerText = formatVND(sumBy(rows, r =>
