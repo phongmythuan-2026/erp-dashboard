@@ -123,7 +123,7 @@
                         <button onclick="switchTab('production')" id="nav-production-order" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-industry w-4"></i><span>Lệnh sản xuất</span>
                         </button>
-                        <button onclick="switchTab('usage-history')" id="nav-usage-history" class="w-full px-4 py-2.5 text-left text-sm text-slate-500 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
+                        <button onclick="switchTab('usage-history')" id="nav-usage-history" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-clock-rotate-left w-4"></i><span>Lịch sử sử dụng</span>
                         </button>
                     </div>
@@ -659,6 +659,9 @@
                         <button id="importPurchaseButton" type="button" onclick="document.getElementById('purchaseImportFile').click()" class="hidden px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
                             <i class="fa-solid fa-file-import"></i><span>Import Excel</span>
                         </button>
+                        <button id="deletePurchaseRangeButton" type="button" onclick="deletePurchaseRange()" class="hidden px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-trash-can"></i><span>Xóa theo thời gian</span>
+                        </button>
                         <button id="refreshPurchaseButton" onclick="refreshPurchaseFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
                             <i class="fa-solid fa-arrows-rotate"></i><span>Tải mới từ SQL</span>
                         </button>
@@ -723,7 +726,7 @@
                         <h2 class="font-bold text-slate-900 text-base flex items-center gap-2">
                             <i class="fa-solid fa-clock-rotate-left text-blue-600"></i><span>Lịch sử mua hàng</span>
                         </h2>
-                        <p class="text-xs text-slate-500">Tổng hợp số lượng và tiền nhập theo nhà cung cấp, vật tư và tháng; khoảng ngày tải theo trọn các tháng giao nhau.</p>
+                        <p class="text-xs text-slate-500">Chi tiết từng dòng chứng từ nhập hàng; lọc và tải dữ liệu theo khoảng ngày.</p>
                     </div>
                     <div class="flex flex-wrap items-center justify-end gap-2">
                         <input type="file" id="purchaseHistoryImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importPurchaseHistoryFromFile(this)">
@@ -732,6 +735,9 @@
                         </button>
                         <button id="importPurchaseHistoryButton" type="button" onclick="document.getElementById('purchaseHistoryImportFile').click()" class="hidden px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
                             <i class="fa-solid fa-file-import"></i><span>Import Excel</span>
+                        </button>
+                        <button id="deletePurchaseHistoryRangeButton" type="button" onclick="deletePurchaseHistoryRange()" class="hidden px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-trash-can"></i><span>Xóa theo thời gian</span>
                         </button>
                         <button id="refreshPurchaseHistoryButton" type="button" onclick="refreshPurchaseHistoryFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
                             <i class="fa-solid fa-arrows-rotate"></i><span>Tải mới từ SQL</span>
@@ -746,17 +752,18 @@
                         <span class="font-semibold text-slate-600">đến</span>
                         <input type="date" id="historyToDate" onchange="onPurchaseHistoryDateChange()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
                     </div>
-                    <input id="searchPurchaseHistoryInput" oninput="filterPurchaseHistoryTable()" type="search" placeholder="Tìm nhà cung cấp, mã/tên vật tư, tháng..." class="px-3 py-1.5 w-72 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <input id="searchPurchaseHistoryInput" oninput="filterPurchaseHistoryTable()" type="search" placeholder="Tìm chứng từ, nhà cung cấp, vật tư, mã lô..." class="px-3 py-1.5 w-72 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
                 <div class="tbl-wrap rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs text-slate-700">
                         <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
                             <tr>
+                                <th class="p-3">Ngày CT</th><th class="p-3">Số CT</th>
                                 <th class="p-3">Mã nhà cung cấp</th><th class="p-3">Tên nhà cung cấp</th>
                                 <th class="p-3">Mã vật tư</th><th class="p-3">Tên vật tư</th><th class="p-3">ĐVT</th>
-                                <th class="p-3 text-right">Năm</th><th class="p-3">Tháng</th>
                                 <th class="p-3 text-right">SL nhập</th><th class="p-3 text-right">Tiền nhập</th>
-                                <th class="p-3 text-right">Đơn giá</th>
+                                <th class="p-3">Mã NT</th><th class="p-3 text-right">Tỷ giá</th><th class="p-3">Mã lô</th>
+                                <th class="p-3">STT_REC</th><th class="p-3">STT_REC0</th><th class="p-3">Ngày tạo</th><th class="p-3">Ngày sửa</th>
                             </tr>
                         </thead>
                         <tbody id="purchaseHistoryTableBody" class="divide-y divide-slate-100"></tbody>
@@ -847,11 +854,57 @@
             </div>
         </div>
 
-        <div id="screen-usage-history" class="hidden">
-            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <h2 class="font-bold text-slate-900">Lịch sử sử dụng</h2>
-                <p class="mt-2 text-sm text-slate-500">Chức năng sẽ được bổ sung sau.</p>
-            </section>
+        <div id="screen-usage-history" class="space-y-6 hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <div class="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 gap-3">
+                    <div>
+                        <h2 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-blue-600"></i><span>Lịch sử sử dụng</span>
+                        </h2>
+                        <p class="text-xs text-slate-500">Chi tiết nguyên vật liệu xuất để sử dụng cho lệnh sản xuất.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <input type="file" id="usageHistoryImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importUsageHistoryFromFile(this)">
+                        <button id="downloadUsageHistoryTemplateButton" type="button" onclick="downloadUsageHistoryTemplate()" class="hidden px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-arrow-down"></i><span>Tải template</span>
+                        </button>
+                        <button id="importUsageHistoryButton" type="button" onclick="document.getElementById('usageHistoryImportFile').click()" class="hidden px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-import"></i><span>Import Excel</span>
+                        </button>
+                        <button id="deleteUsageHistoryRangeButton" type="button" onclick="deleteUsageHistoryRange()" class="hidden px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-trash-can"></i><span>Xóa theo thời gian</span>
+                        </button>
+                        <button id="refreshUsageHistoryButton" type="button" onclick="refreshUsageHistoryFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-rotate"></i><span>Tải mới từ SQL</span>
+                        </button>
+                        <button type="button" onclick="exportCurrentScreen()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs whitespace-nowrap"><i class="fa-solid fa-file-export mr-1"></i>Xuất báo cáo</button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-semibold text-slate-600">Từ</span>
+                        <input type="date" id="usageFromDate" onchange="onUsageHistoryDateChange()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
+                        <span class="font-semibold text-slate-600">đến</span>
+                        <input type="date" id="usageToDate" onchange="onUsageHistoryDateChange()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
+                    </div>
+                    <input id="searchUsageHistoryInput" oninput="filterUsageHistoryTable()" type="search" placeholder="Tìm phiếu, vật tư, sản phẩm, mã lô, lệnh SX..." class="px-3 py-1.5 w-96 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div class="tbl-wrap rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="p-3">Ngày CT</th><th class="p-3">Số CT</th>
+                                <th class="p-3">Mã VT</th><th class="p-3">Tên vật tư</th><th class="p-3">ĐVT</th><th class="p-3 text-right">SL xuất</th>
+                                <th class="p-3">Mã lô</th><th class="p-3">Mã SPCT trong phiếu</th>
+                                <th class="p-3">STT_REC LSX</th><th class="p-3">STT_REC0 LSX</th>
+                                <th class="p-3">Số LSX</th><th class="p-3">Mã SPCT</th><th class="p-3">Tên SPCT</th><th class="p-3">ĐVT LSX</th><th class="p-3 text-right">SL LSX</th><th class="p-3">Mã lô LSX</th>
+                                <th class="p-3">STT_REC</th><th class="p-3">STT_REC0</th><th class="p-3">Mã đối tượng</th><th class="p-3">Tên đối tượng</th><th class="p-3">Ngày tạo</th><th class="p-3">Ngày sửa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usageHistoryTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- ================================================================= -->
@@ -960,9 +1013,7 @@
                                 <div class="mb-1 text-xs font-semibold text-slate-500">Sản xuất</div>
                                 <div class="flex flex-col gap-1">
                                     <label><input type="checkbox" value="production" class="mr-1">Lệnh sản xuất</label>
-                                    <label class="text-slate-400" title="Chưa có truy vấn SQL và tác vụ đồng bộ cho dữ liệu này.">
-                                        <input type="checkbox" value="usage_history" class="mr-1" disabled>Lịch sử sử dụng
-                                    </label>
+                                    <label><input type="checkbox" value="usage_history" class="mr-1">Lịch sử sử dụng</label>
                                 </div>
                             </div>
                             <div>
@@ -1119,6 +1170,7 @@
         let allPurchaseData = [];
         let allPurchaseHistoryData = [];
         let allProductionData = [];
+        let allUsageHistoryData = [];
         let allMaterialData = [];
         let rawSalesData = [];
         let rawSalesReturnData = [];
@@ -1150,6 +1202,10 @@
             document.getElementById("historyFromDate").value =
                 toDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
             document.getElementById("historyToDate").value = toDateStr(now);
+            ["usage"].forEach(prefix => {
+                setDateInput(prefix + "FromDate", new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
+                setDateInput(prefix + "ToDate", now);
+            });
             if (!APPS_SCRIPT_URL || !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(APPS_SCRIPT_URL)) {
                 document.getElementById("loginButton").disabled = true;
                 showAuthMessage("Chưa cấu hình URL triển khai Apps Script trong erp-dashboard/config.js.", true);
@@ -1213,6 +1269,8 @@
             if (screenName === "sales") {
                 syncSalesDataDateInputs();
                 loadSalesTableData();
+            } else if (screenName === "usage-history") {
+                loadUsageHistory();
             } else if (screenName === "dashboard" &&
                 dashboardLoadedRangeKey !== `${getDateInput("fromDate")}|${getDateInput("toDate")}`) {
                 loadDashboardData();
@@ -1376,6 +1434,8 @@
             ["refreshPurchaseButton", "refreshProductionButton", "refreshMaterialsButton",
              "importPurchaseButton", "downloadPurchaseTemplateButton", "importProductionButton", "downloadProductionTemplateButton",
              "refreshPurchaseHistoryButton", "importPurchaseHistoryButton", "downloadPurchaseHistoryTemplateButton",
+             "deletePurchaseRangeButton", "deletePurchaseHistoryRangeButton",
+             "refreshUsageHistoryButton", "importUsageHistoryButton", "downloadUsageHistoryTemplateButton", "deleteUsageHistoryRangeButton",
              "importMaterialsButton", "downloadMaterialTemplateButton", "importSalesButton", "downloadSalesTemplateButton",
              "deleteSalesRangeButton", "refreshSalesTableButton", "biRefreshStock"].forEach(id => {
                 const button = document.getElementById(id);
@@ -1666,7 +1726,7 @@
 
         async function loadApplicationData() {
             await Promise.all([loadDashboardData(), loadDeXuatMuaHang(), loadPurchaseHistory(),
-                loadLenhSanXuat(), loadDanhMucVatTu()]);
+                loadLenhSanXuat(), loadUsageHistory(), loadDanhMucVatTu()]);
         }
 
         // =================================================================
@@ -1896,10 +1956,8 @@
             const rows = [];
             for (const month of wanted) {
                 for (const r of byMonth[month] || []) {
-                    const d = String(r.thang || r.ngay_ct || "").slice(0, 10);
-                    const inRange = table === "lich_su_mua_hang"
-                        ? d.slice(0, 7) >= from.slice(0, 7) && d.slice(0, 7) <= to.slice(0, 7)
-                        : d >= from && d <= to;
+                    const d = String(r.ngay_ct || r.thang || "").slice(0, 10);
+                    const inRange = d >= from && d <= to;
                     if (inRange) rows.push(r);
                 }
             }
@@ -1909,6 +1967,7 @@
         function onPurchaseDateChange() { renderDateLabel("purFromDate"); renderDateLabel("purToDate"); loadDeXuatMuaHang(); }
         function onPurchaseHistoryDateChange() { loadPurchaseHistory(); }
         function onProductionDateChange() { renderDateLabel("proFromDate"); renderDateLabel("proToDate"); loadLenhSanXuat(); }
+        function onUsageHistoryDateChange() { loadUsageHistory(); }
 
         function getScreenRange(prefix) {
             const range = [getDateInput(prefix + "FromDate"), getDateInput(prefix + "ToDate")];
@@ -2834,12 +2893,63 @@
             }
         }
 
+        async function deletePurchaseRange() {
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được xóa dữ liệu."));
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            let from, to;
+            try {
+                [from, to] = [getDateInput("purFromDate"), getDateInput("purToDate")];
+                if (!from || !to || from > to) throw new Error("Khoảng ngày không hợp lệ.");
+            } catch (error) {
+                return reportDataError("Khoảng ngày không hợp lệ", error);
+            }
+            if (!confirm(`Xóa toàn bộ đề xuất mua hàng từ ${from} đến ${to}?\nThao tác áp dụng cho tất cả dòng trong khoảng ngày, không chỉ các dòng đang lọc trên màn hình.`)) return;
+            const button = document.getElementById("deletePurchaseRangeButton");
+            button.disabled = true;
+            try {
+                const result = await api("deleteSalesRange", token, from, to, "de_xuat_mua_hang");
+                if (!await loadDeXuatMuaHang()) return;
+                showAppSuccess(result.message || `Đã xóa ${result.deleted || 0} dòng từ ${from} đến ${to}.`);
+            } catch (error) {
+                reportDataError("Lỗi xóa dữ liệu đề xuất mua hàng", error);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
         function filterPurchaseHistoryTable() {
             const keyword = document.getElementById("searchPurchaseHistoryInput").value.trim().toLocaleLowerCase("vi");
             const rows = allPurchaseHistoryData.filter(row => !keyword ||
-                [row.ma_kh, row.ten_kh, row.ma_vt, row.ten_vt, row.dvt, row.nam, row.thang]
+                [row.ngay_ct, row.so_ct, row.ma_kh, row.ten_kh, row.ma_vt, row.ten_vt, row.dvt,
+                    row.sl_nhap, row.tien_nhap, row.ma_nt, row.ty_gia, row.ma_lo, row.stt_rec, row.stt_rec0]
                     .some(value => String(value ?? "").toLocaleLowerCase("vi").includes(keyword)));
             dtSet("purchaseHistory", rows);
+        }
+
+        async function deletePurchaseHistoryRange() {
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được xóa dữ liệu."));
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            let from, to;
+            try {
+                [from, to] = [getDateInput("historyFromDate"), getDateInput("historyToDate")];
+                if (!from || !to || from > to) throw new Error("Khoảng ngày không hợp lệ.");
+            } catch (error) {
+                return reportDataError("Khoảng ngày không hợp lệ", error);
+            }
+            if (!confirm(`Xóa toàn bộ lịch sử mua hàng từ ${from} đến ${to}?\nThao tác áp dụng cho tất cả dòng trong khoảng ngày, không chỉ các dòng đang lọc trên màn hình.`)) return;
+            const button = document.getElementById("deletePurchaseHistoryRangeButton");
+            button.disabled = true;
+            try {
+                const result = await api("deleteSalesRange", token, from, to, "lich_su_mua_hang");
+                if (!await loadPurchaseHistory()) return;
+                showAppSuccess(result.message || `Đã xóa ${result.deleted || 0} dòng từ ${from} đến ${to}.`);
+            } catch (error) {
+                reportDataError("Lỗi xóa dữ liệu lịch sử mua hàng", error);
+            } finally {
+                button.disabled = false;
+            }
         }
 
         async function refreshPurchaseHistoryFromSql() {
@@ -2908,24 +3018,36 @@
         });
         dtInit("purchaseHistory", {
             tbody: "purchaseHistoryTableBody",
-            defaultSort: (a, b) => String(b.thang || "").localeCompare(String(a.thang || ""))
-                || String(b.ma_vt || "").localeCompare(String(a.ma_vt || ""), "vi", { numeric: true }),
+            defaultSort: (a, b) => String(b.ngay_ct || "").localeCompare(String(a.ngay_ct || ""))
+                || String(b.so_ct || "").localeCompare(String(a.so_ct || ""), "vi", { numeric: true })
+                || String(a.stt_rec0 || "").localeCompare(String(b.stt_rec0 || ""), "vi", { numeric: true }),
             cols: [
-                r => r.ma_kh, r => r.ten_kh, r => r.ma_vt, r => r.ten_vt, r => r.dvt,
-                r => Number(r.nam || 0), r => r.thang, r => Number(r.sl_nhap || 0),
-                r => Number(r.tien_nhap || 0), r => Number(r.don_gia || 0)
+                r => r.ngay_ct, r => r.so_ct, r => r.ma_kh, r => r.ten_kh, r => r.ma_vt, r => r.ten_vt, r => r.dvt,
+                r => Number(r.sl_nhap || 0), r => Number(r.tien_nhap || 0), r => r.ma_nt, r => Number(r.ty_gia || 0),
+                r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0, r => r.cdate, r => r.ldate
+            ],
+            exportCols: [
+                r => r.ngay_ct, r => r.so_ct, r => r.ma_kh, r => r.ten_kh, r => r.ma_vt, r => r.ten_vt, r => r.dvt,
+                r => Number(r.sl_nhap || 0), r => Number(r.tien_nhap || 0), r => r.ma_nt, r => Number(r.ty_gia || 0),
+                r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0, r => r.cdate, r => r.ldate
             ],
             row: r => `<tr class="hover:bg-blue-50 transition">
+                <td class="p-3 whitespace-nowrap">${esc(r.ngay_ct)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.so_ct)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.ma_kh)}</td>
                 <td class="p-3">${esc(r.ten_kh)}</td>
                 <td class="p-3 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt)}</td>
                 <td class="p-3">${esc(r.ten_vt)}</td>
                 <td class="p-3 text-slate-500">${esc(r.dvt)}</td>
-                <td class="p-3 text-right">${esc(r.nam)}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.thang)}</td>
                 <td class="p-3 text-right">${Number(r.sl_nhap || 0).toLocaleString("vi-VN")}</td>
                 <td class="p-3 text-right">${Number(r.tien_nhap || 0).toLocaleString("vi-VN")}</td>
-                <td class="p-3 text-right">${Number(r.don_gia || 0).toLocaleString("vi-VN")}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.ma_nt)}</td>
+                <td class="p-3 text-right">${Number(r.ty_gia || 0).toLocaleString("vi-VN")}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.ma_lo)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.stt_rec)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.stt_rec0)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.cdate)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.ldate)}</td>
             </tr>`
         });
         dtInit("voucher", {
@@ -3077,6 +3199,76 @@
         function unapproveVoucher(soCt) { return updateVoucherStatus(soCt, "unapprove"); }
 
         // =================================================================
+        // LỊCH SỬ SỬ DỤNG
+        // =================================================================
+        async function loadUsageHistory() {
+            const token = getSessionToken();
+            if (!token) return false;
+            try {
+                const from = getDateInput("usageFromDate");
+                const to = getDateInput("usageToDate");
+                if (!from || !to || from > to) throw new Error("Khoảng ngày không hợp lệ.");
+                allUsageHistoryData = await loadPartitioned("lich_su_su_dung", from, to);
+                filterUsageHistoryTable();
+                return true;
+            } catch (error) {
+                reportDataError("Lỗi tải Lịch sử sử dụng", error);
+                return false;
+            }
+        }
+
+        function filterUsageHistoryTable() {
+            const keyword = document.getElementById("searchUsageHistoryInput").value.trim().toLocaleLowerCase("vi");
+            const rows = allUsageHistoryData.filter(row => !keyword ||
+                Object.values(row).some(value => String(value ?? "").toLocaleLowerCase("vi").includes(keyword)));
+            dtSet("usageHistory", rows);
+        }
+
+        async function deleteUsageHistoryRange() {
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được xóa dữ liệu."));
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            const from = getDateInput("usageFromDate");
+            const to = getDateInput("usageToDate");
+            if (!from || !to || from > to) return reportDataError("Khoảng ngày không hợp lệ", new Error("Khoảng ngày không hợp lệ."));
+            if (!confirm(`Xóa toàn bộ lịch sử sử dụng từ ${from} đến ${to}?`)) return;
+            const button = document.getElementById("deleteUsageHistoryRangeButton");
+            button.disabled = true;
+            try {
+                const result = await api("deleteSalesRange", token, from, to, "lich_su_su_dung");
+                if (!await loadUsageHistory()) return;
+                showAppSuccess(result.message || `Đã xóa ${result.deleted || 0} dòng từ ${from} đến ${to}.`);
+            } catch (error) {
+                reportDataError("Lỗi xóa dữ liệu lịch sử sử dụng", error);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function refreshUsageHistoryFromSql() {
+            if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được đồng bộ dữ liệu."));
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            const button = document.getElementById("refreshUsageHistoryButton");
+            const originalLabel = button.innerHTML;
+            const from = getDateInput("usageFromDate");
+            const to = getDateInput("usageToDate");
+            if (!from || !to || from > to) return reportDataError("Khoảng ngày không hợp lệ", new Error("Khoảng ngày không hợp lệ."));
+            button.disabled = true;
+            try {
+                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL...</span>';
+                const result = await api("refreshReferenceData", token, "lich_su_su_dung", from, to);
+                if (!await loadUsageHistory()) return;
+                showAppSuccess(`Lịch sử sử dụng ${from} → ${to}: đã đọc ${result.rowCount || 0} dòng từ SQL.`);
+            } catch (error) {
+                reportDataError("Lỗi đồng bộ Lịch sử sử dụng từ SQL", error);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalLabel;
+            }
+        }
+
+        // =================================================================
         // LỆNH SẢN XUẤT
         // =================================================================
         function productionBadge(r) {
@@ -3126,6 +3318,28 @@
             if (types.includes(selected)) select.value = selected;
         }
 
+        dtInit("usageHistory", {
+            tbody: "usageHistoryTableBody",
+            defaultSort: (a, b) => String(b.ngay_ct || "").localeCompare(String(a.ngay_ct || ""))
+                || String(b.so_ct || "").localeCompare(String(a.so_ct || ""), "vi", { numeric: true })
+                || String(a.stt_rec0 || "").localeCompare(String(b.stt_rec0 || ""), "vi", { numeric: true }),
+            cols: [
+                r => r.ngay_ct, r => r.so_ct, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.sl_xuat || 0),
+                r => r.ma_lo, r => r.ma_spct_inct, r => r.stt_rec_lsx, r => r.stt_rec0_lsx,
+                r => r.so_lsx, r => r.ma_spct, r => r.ten_spct, r => r.dvt_lsx, r => Number(r.so_luong_lsx || 0),
+                r => r.ma_lo_lsx, r => r.stt_rec, r => r.stt_rec0, r => r.ma_kh, r => r.ten_kh, r => r.cdate, r => r.ldate
+            ],
+            row: r => `<tr class="hover:bg-blue-50 transition">
+                <td class="p-3 whitespace-nowrap">${esc(r.ngay_ct)}</td><td class="p-3 whitespace-nowrap">${esc(r.so_ct)}</td>
+                <td class="p-3 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt)}</td><td class="p-3">${esc(r.ten_vt)}</td><td class="p-3">${esc(r.dvt)}</td>
+                <td class="p-3 text-right">${Number(r.sl_xuat || 0).toLocaleString("vi-VN")}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_lo)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.ma_spct_inct)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec_lsx)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec0_lsx)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.so_lsx)}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_spct)}</td><td class="p-3">${esc(r.ten_spct)}</td>
+                <td class="p-3">${esc(r.dvt_lsx)}</td><td class="p-3 text-right">${Number(r.so_luong_lsx || 0).toLocaleString("vi-VN")}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_lo_lsx)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.stt_rec)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec0)}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_kh)}</td><td class="p-3">${esc(r.ten_kh)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.cdate)}</td><td class="p-3 whitespace-nowrap">${esc(r.ldate)}</td>
+            </tr>`
+        });
         dtInit("production", {
             tbody: "productionTableBody",
             defaultSort: (a, b) => String(b.ngay_ct || "").localeCompare(String(a.ngay_ct || ""))
@@ -3566,14 +3780,24 @@
 
         const PURCHASE_IMPORT_COLUMNS = [
             "trang_thai", "ngay_ct", "so_ct", "ma_bp", "ten_bp", "ma_kh", "fullname", "muc_dich",
-            "ma_vt", "ten_vt", "dvt", "so_luong", "dien_giai", "ghi_chu", "stt_rec0", "stt_rec"
+            "ma_vt", "ten_vt", "dvt", "so_luong", "dien_giai", "ghi_chu", "stt_rec0", "stt_rec",
+            "cdate", "ldate"
         ];
         const PURCHASE_HISTORY_IMPORT_COLUMNS = [
-            "id", "ma_kh", "ten_kh", "ma_vt", "ten_vt", "dvt", "nam", "thang", "sl_nhap", "tien_nhap", "don_gia"
+            "ngay_ct", "so_ct", "ma_kh", "ten_kh", "ma_vt", "ten_vt", "dvt", "sl_nhap", "tien_nhap",
+            "stt_rec", "stt_rec0", "ma_nt", "ty_gia", "ma_lo", "cdate", "ldate"
         ];
-        const PURCHASE_HISTORY_IMPORT_KEY_COLUMNS = [];
-        const PURCHASE_HISTORY_IMPORT_REQUIRED_COLUMNS = ["ma_kh", "ma_vt", "nam", "thang"];
-        const PURCHASE_HISTORY_IMPORT_NUMBER_COLUMNS = new Set(["id", "nam", "sl_nhap", "tien_nhap", "don_gia"]);
+        const PURCHASE_HISTORY_IMPORT_KEY_COLUMNS = ["stt_rec", "stt_rec0"];
+        const PURCHASE_HISTORY_IMPORT_REQUIRED_COLUMNS = ["ngay_ct", "stt_rec", "stt_rec0"];
+        const PURCHASE_HISTORY_IMPORT_NUMBER_COLUMNS = new Set(["sl_nhap", "tien_nhap", "ty_gia"]);
+        const USAGE_HISTORY_IMPORT_COLUMNS = [
+            "ngay_ct", "so_ct", "ma_vt", "ten_vt", "dvt", "sl_xuat", "ma_lo", "ma_spct_inct",
+            "stt_rec_lsx", "stt_rec0_lsx", "so_lsx", "ma_spct", "ten_spct", "dvt_lsx",
+            "so_luong_lsx", "ma_lo_lsx", "stt_rec", "stt_rec0", "ma_kh", "ten_kh", "cdate", "ldate"
+        ];
+        const USAGE_HISTORY_IMPORT_KEY_COLUMNS = ["stt_rec", "stt_rec0"];
+        const USAGE_HISTORY_IMPORT_REQUIRED_COLUMNS = ["ngay_ct", "stt_rec", "stt_rec0"];
+        const USAGE_HISTORY_IMPORT_NUMBER_COLUMNS = new Set(["sl_xuat", "so_luong_lsx"]);
         const PURCHASE_IMPORT_KEY_COLUMNS = ["so_ct", "ma_vt", "stt_rec0", "stt_rec"];
         const PURCHASE_IMPORT_REQUIRED_COLUMNS = ["ngay_ct", ...PURCHASE_IMPORT_KEY_COLUMNS];
         const PURCHASE_IMPORT_NUMBER_COLUMNS = new Set(["trang_thai", "so_luong"]);
@@ -3636,21 +3860,40 @@
             }
         }
 
+        function downloadUsageHistoryTemplate() {
+            try {
+                downloadPartitionTemplate("lich_su_su_dung", "template_import_lich_su_su_dung.xlsx",
+                    USAGE_HISTORY_IMPORT_COLUMNS, [
+                        ["Cột", "Ý nghĩa", "Bắt buộc", "Lưu ý"],
+                        ["ngay_ct", "Ngày chứng từ", "Có", "Dùng YYYY-MM-DD hoặc ngày Excel hợp lệ."],
+                        ["stt_rec", "Mã chứng từ xuất", "Có", "Khóa dòng; giữ nguyên định dạng văn bản."],
+                        ["stt_rec0", "Mã dòng chi tiết xuất", "Có", "Khóa dòng; giữ nguyên định dạng văn bản."],
+                        ["sl_xuat", "Số lượng xuất", "Không", "Để trống được hiểu là 0."],
+                        ["so_luong_lsx", "Số lượng sản phẩm theo lệnh", "Không", "Để trống được hiểu là 0."],
+                        [],
+                        ["Lưu ý", "Không đổi tên cột ở sheet lich_su_su_dung. Dòng được cập nhật theo cặp khóa stt_rec + stt_rec0."]
+                    ]);
+            } catch (error) {
+                reportDataError("Lỗi tạo template lịch sử sử dụng", error);
+            }
+        }
+
         function downloadPurchaseHistoryTemplate() {
             try {
                 downloadPartitionTemplate("lich_su_mua_hang", "template_import_lich_su_mua_hang.xlsx",
                     PURCHASE_HISTORY_IMPORT_COLUMNS, [
                         ["Cột", "Ý nghĩa", "Bắt buộc", "Lưu ý"],
-                        ["id", "Khóa dữ liệu", "Không", "Để trống để tự sinh ID; nhập ID có sẵn để cập nhật dòng đó."],
-                        ["ma_kh", "Mã nhà cung cấp", "Có", ""],
-                        ["ma_vt", "Mã vật tư", "Có", "Giữ nguyên định dạng văn bản."],
-                        ["nam", "Năm", "Có", "Phải khớp năm trong cột thang."],
-                        ["thang", "Tháng", "Có", "Định dạng YYYY-MM; mỗi tháng được lưu thành một tệp JSON riêng."],
+                        ["ngay_ct", "Ngày chứng từ", "Có", "Dùng YYYY-MM-DD hoặc ngày Excel hợp lệ."],
+                        ["stt_rec", "Mã chứng từ", "Có", "Khóa dòng; giữ nguyên định dạng văn bản."],
+                        ["stt_rec0", "Mã dòng chi tiết", "Có", "Khóa dòng; giữ nguyên định dạng văn bản."],
+                        ["so_ct", "Số chứng từ", "Không", ""],
+                        ["ma_kh", "Mã nhà cung cấp", "Không", ""],
+                        ["ma_vt", "Mã vật tư", "Không", "Giữ nguyên định dạng văn bản."],
                         ["sl_nhap", "Số lượng nhập", "Không", "Để trống được hiểu là 0."],
                         ["tien_nhap", "Tiền nhập", "Không", "Để trống được hiểu là 0."],
-                        ["don_gia", "Đơn giá bình quân", "Không", "Để trống được hiểu là 0."],
+                        ["ty_gia", "Tỷ giá", "Không", "Để trống được hiểu là 0."],
                         [],
-                        ["Lưu ý", "Không đổi tên cột ở sheet lich_su_mua_hang. ID để trống sẽ được tự sinh; chỉ dòng có ID khớp mới được cập nhật."]
+                        ["Lưu ý", "Không đổi tên cột ở sheet lich_su_mua_hang. Dòng được cập nhật theo cặp khóa stt_rec + stt_rec0."]
                     ]);
             } catch (error) {
                 reportDataError("Lỗi tạo template lịch sử mua hàng", error);
@@ -3729,8 +3972,8 @@
                     file, config.tableName, config.columns, config.keyColumns, config.requiredColumns, config.numberColumns
                 );
                 const dates = rows.map(row => row.ngay_ct || row.thang).sort();
-                const importBehavior = config.tableName === "lich_su_mua_hang"
-                    ? "Dòng có ID sẽ cập nhật bản ghi tương ứng; ID để trống sẽ được tự sinh."
+                const importBehavior = config.tableName === "lich_su_mua_hang" || config.tableName === "lich_su_su_dung"
+                    ? "Dòng trùng cặp khóa stt_rec + stt_rec0 sẽ được cập nhật; dòng mới sẽ được thêm."
                     : "Dòng trùng khóa sẽ được cập nhật; dòng mới sẽ được thêm.";
                 if (!confirm(`Import ${rows.length} dòng từ "${file.name}" (${dates[0]} → ${dates[dates.length - 1]})?\n${importBehavior}`)) return;
                 let inserted = 0;
@@ -3765,6 +4008,20 @@
                 numberColumns: PURCHASE_IMPORT_NUMBER_COLUMNS,
                 reload: loadDeXuatMuaHang,
                 errorTitle: "Lỗi import đề xuất mua hàng"
+            });
+        }
+
+        function importUsageHistoryFromFile(input) {
+            return importPartitionDataFromFile(input, {
+                tableName: "lich_su_su_dung",
+                method: "importUsageHistory",
+                buttonId: "importUsageHistoryButton",
+                columns: USAGE_HISTORY_IMPORT_COLUMNS,
+                keyColumns: USAGE_HISTORY_IMPORT_KEY_COLUMNS,
+                requiredColumns: USAGE_HISTORY_IMPORT_REQUIRED_COLUMNS,
+                numberColumns: USAGE_HISTORY_IMPORT_NUMBER_COLUMNS,
+                reload: loadUsageHistory,
+                errorTitle: "Lỗi import lịch sử sử dụng"
             });
         }
 
@@ -4201,7 +4458,7 @@
         function exportCurrentScreen() {
             try {
                 requireXlsx();
-                const screen = ["dashboard", "sales", "purchase", "purchase-history", "production", "materials", "users"]
+                const screen = ["dashboard", "sales", "purchase", "purchase-history", "production", "usage-history", "materials", "users"]
                     .find(name => !document.getElementById(`screen-${name}`).classList.contains("hidden")) || "dashboard";
                 const range = prefix => `${getDateInput(prefix + "FromDate")} → ${getDateInput(prefix + "ToDate")}`;
                 let title, tableId, info = [];
@@ -4244,6 +4501,11 @@
                     info.push(["Khoảng ngày", range("pro")], ["Trạng thái", document.getElementById("productionStatusFilter").selectedOptions[0].textContent],
                         ["Hình thức sản xuất", document.getElementById("productionTypeFilter").selectedOptions[0].textContent],
                         ["Từ khóa", document.getElementById("searchProductionInput").value.trim()]);
+                    table = dtExportTable(tableId);
+                } else if (screen === "usage-history") {
+                    title = "Lịch sử sử dụng"; tableId = "usageHistory";
+                    info.push(["Khoảng ngày", `${getDateInput("usageFromDate")} → ${getDateInput("usageToDate")}`],
+                        ["Từ khóa", document.getElementById("searchUsageHistoryInput").value.trim()]);
                     table = dtExportTable(tableId);
                 } else if (screen === "materials") {
                     title = "Danh mục vật tư"; tableId = "materials";
