@@ -768,6 +768,14 @@
                             </tr>
                         </thead>
                         <tbody id="purchaseHistoryTableBody" class="divide-y divide-slate-100"></tbody>
+                        <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-300 text-xs">
+                            <tr>
+                                <td colspan="7" class="p-3 text-right uppercase">TỔNG CỘNG:</td>
+                                <td id="purchaseHistoryFootTotalQuantity" class="p-3 text-right text-slate-600">0</td>
+                                <td id="purchaseHistoryFootTotalAmount" class="p-3 text-right text-blue-600">0</td>
+                                <td colspan="9"></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -903,6 +911,15 @@
                             </tr>
                         </thead>
                         <tbody id="usageHistoryTableBody" class="divide-y divide-slate-100"></tbody>
+                        <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-300 text-xs">
+                            <tr>
+                                <td colspan="5" class="p-3 text-right uppercase">TỔNG CỘNG:</td>
+                                <td id="usageHistoryFootTotalQuantity" class="p-3 text-right text-slate-600">0</td>
+                                <td colspan="7"></td>
+                                <td id="usageHistoryFootTotalOrderQuantity" class="p-3 text-right text-slate-600">0</td>
+                                <td colspan="9"></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -1173,6 +1190,7 @@
         let purchaseHistoryRequestId = 0;
         let allProductionData = [];
         let allUsageHistoryData = [];
+        let usageHistoryRequestId = 0;
         let allMaterialData = [];
         let rawSalesData = [];
         let rawSalesReturnData = [];
@@ -2937,6 +2955,10 @@
                 [row.ngay_ct, row.so_ct, row.ma_kh, row.ten_kh, row.ma_vt, row.ten_vt, row.dvt,
                     row.sl_nhap, row.tien_nhap, row.ma_nt, row.ty_gia, row.ma_lo, row.stt_rec, row.stt_rec0]
                     .some(value => String(value ?? "").toLocaleLowerCase("vi").includes(keyword)));
+            document.getElementById("purchaseHistoryFootTotalQuantity").innerText =
+                formatPurchaseHistoryQuantity(sumBy(rows, row => Number(row.sl_nhap || 0)));
+            document.getElementById("purchaseHistoryFootTotalAmount").innerText =
+                sumBy(rows, row => Number(row.tien_nhap || 0)).toLocaleString("vi-VN");
             dtSet("purchaseHistory", rows);
         }
 
@@ -3286,16 +3308,30 @@
         // LỊCH SỬ SỬ DỤNG
         // =================================================================
         async function loadUsageHistory() {
+            const requestId = ++usageHistoryRequestId;
             const token = getSessionToken();
             if (!token) return false;
+            const from = getDateInput("usageFromDate");
+            const to = getDateInput("usageToDate");
+            if (!from || !to || from > to) return false;
+
             try {
-                const from = getDateInput("usageFromDate");
-                const to = getDateInput("usageToDate");
-                if (!from || !to || from > to) throw new Error("Khoảng ngày không hợp lệ.");
-                allUsageHistoryData = await loadPartitioned("lich_su_su_dung", from, to);
+                const rows = await loadPartitioned("lich_su_su_dung", from, to);
+                if (requestId !== usageHistoryRequestId ||
+                    from !== getDateInput("usageFromDate") || to !== getDateInput("usageToDate")) return false;
+
+                allUsageHistoryData = rows;
                 filterUsageHistoryTable();
+                const errorMessage = document.getElementById("appErrorMessage");
+                if (errorMessage.textContent === "Lỗi tải Lịch sử sử dụng: Khoảng ngày không hợp lệ.") {
+                    const error = document.getElementById("appError");
+                    error.classList.add("hidden");
+                    error.classList.remove("flex");
+                }
                 return true;
             } catch (error) {
+                if (requestId !== usageHistoryRequestId ||
+                    from !== getDateInput("usageFromDate") || to !== getDateInput("usageToDate")) return false;
                 reportDataError("Lỗi tải Lịch sử sử dụng", error);
                 return false;
             }
@@ -3305,6 +3341,10 @@
             const keyword = document.getElementById("searchUsageHistoryInput").value.trim().toLocaleLowerCase("vi");
             const rows = allUsageHistoryData.filter(row => !keyword ||
                 Object.values(row).some(value => String(value ?? "").toLocaleLowerCase("vi").includes(keyword)));
+            document.getElementById("usageHistoryFootTotalQuantity").innerText =
+                sumBy(rows, row => Number(row.sl_xuat || 0)).toLocaleString("vi-VN");
+            document.getElementById("usageHistoryFootTotalOrderQuantity").innerText =
+                sumBy(rows, row => Number(row.so_luong_lsx || 0)).toLocaleString("vi-VN");
             dtSet("usageHistory", rows);
         }
 
@@ -4583,6 +4623,8 @@
                     info.push(["Khoảng ngày", `${getDateInput("historyFromDate")} → ${getDateInput("historyToDate")}`],
                         ["Từ khóa", document.getElementById("searchPurchaseHistoryInput").value.trim()]);
                     table = dtExportTable(tableId);
+                    const sum = i => table.rows.reduce((total, row) => total + (Number(row[i]) || 0), 0);
+                    table.rows.push(["TỔNG CỘNG:", "", "", "", "", "", "", sum(7), sum(8), "", "", "", "", "", "", "", "", ""]);
                 } else if (screen === "production") {
                     title = "Lệnh sản xuất"; tableId = "production";
                     info.push(["Khoảng ngày", range("pro")], ["Trạng thái", document.getElementById("productionStatusFilter").selectedOptions[0].textContent],
@@ -4594,6 +4636,8 @@
                     info.push(["Khoảng ngày", `${getDateInput("usageFromDate")} → ${getDateInput("usageToDate")}`],
                         ["Từ khóa", document.getElementById("searchUsageHistoryInput").value.trim()]);
                     table = dtExportTable(tableId);
+                    const sum = i => table.rows.reduce((total, row) => total + (Number(row[i]) || 0), 0);
+                    table.rows.push(["TỔNG CỘNG:", "", "", "", "", sum(5), "", "", "", "", "", "", "", sum(13), "", "", "", "", "", "", "", "", ""]);
                 } else if (screen === "materials") {
                     title = "Danh mục vật tư"; tableId = "materials";
                     info.push(["Từ khóa", document.getElementById("searchMaterialInput").value.trim()]);
