@@ -759,9 +759,10 @@
                         <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
                             <tr>
                                 <th class="p-3">Ngày CT</th><th class="p-3">Số CT</th>
-                                <th class="p-3">Mã nhà cung cấp</th><th class="p-3">Tên nhà cung cấp</th>
-                                <th class="p-3">Mã vật tư</th><th class="p-3">Tên vật tư</th><th class="p-3">ĐVT</th>
+                                <th class="p-3" style="width: 90px; min-width: 90px">Mã NCC</th><th class="p-3">Tên nhà cung cấp</th>
+                                <th class="p-3">Mã vật tư</th><th class="p-3" style="width: 220px; min-width: 220px">Tên vật tư</th><th class="p-3">ĐVT</th>
                                 <th class="p-3 text-right">SL nhập</th><th class="p-3 text-right">Tiền nhập</th>
+                                <th class="p-3 text-right">Đơn giá VNĐ</th><th class="p-3 text-right">Đơn giá NT</th>
                                 <th class="p-3">Mã NT</th><th class="p-3 text-right">Tỷ giá</th><th class="p-3">Mã lô</th>
                                 <th class="p-3">STT_REC</th><th class="p-3">STT_REC0</th><th class="p-3">Ngày tạo</th><th class="p-3">Ngày sửa</th>
                             </tr>
@@ -3028,6 +3029,28 @@
                     <td class="px-2.5 py-2 text-center">${statusBadge(r.trang_thai)}</td>
                 </tr>`
         });
+        function purchaseHistoryUnitPriceVnd(row) {
+            const quantity = Number(row.sl_nhap);
+            const amount = Number(row.tien_nhap);
+            return Number.isFinite(quantity) && quantity !== 0 && Number.isFinite(amount)
+                ? amount / quantity
+                : null;
+        }
+
+        function purchaseHistoryUnitPriceForeign(row) {
+            const unitPriceVnd = purchaseHistoryUnitPriceVnd(row);
+            const exchangeRate = Number(row.ty_gia);
+            return unitPriceVnd !== null && Number.isFinite(exchangeRate) && exchangeRate !== 0
+                ? unitPriceVnd / exchangeRate
+                : null;
+        }
+
+        function formatPurchaseHistoryUnitPrice(value) {
+            return Number.isFinite(value)
+                ? value.toLocaleString("vi-VN", { maximumFractionDigits: 6 })
+                : "";
+        }
+
         dtInit("purchaseHistory", {
             tbody: "purchaseHistoryTableBody",
             defaultSort: (a, b) => String(b.ngay_ct || "").localeCompare(String(a.ngay_ct || ""))
@@ -3035,24 +3058,28 @@
                 || String(a.stt_rec0 || "").localeCompare(String(b.stt_rec0 || ""), "vi", { numeric: true }),
             cols: [
                 r => r.ngay_ct, r => r.so_ct, r => r.ma_kh, r => r.ten_kh, r => r.ma_vt, r => r.ten_vt, r => r.dvt,
-                r => Number(r.sl_nhap || 0), r => Number(r.tien_nhap || 0), r => r.ma_nt, r => Number(r.ty_gia || 0),
-                r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0, r => r.cdate, r => r.ldate
+                r => Number(r.sl_nhap || 0), r => Number(r.tien_nhap || 0),
+                r => purchaseHistoryUnitPriceVnd(r), r => purchaseHistoryUnitPriceForeign(r),
+                r => r.ma_nt, r => Number(r.ty_gia || 0), r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0, r => r.cdate, r => r.ldate
             ],
             exportCols: [
                 r => r.ngay_ct, r => r.so_ct, r => r.ma_kh, r => r.ten_kh, r => r.ma_vt, r => r.ten_vt, r => r.dvt,
-                r => Number(r.sl_nhap || 0), r => Number(r.tien_nhap || 0), r => r.ma_nt, r => Number(r.ty_gia || 0),
-                r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0, r => r.cdate, r => r.ldate
+                r => Number(r.sl_nhap || 0), r => Number(r.tien_nhap || 0),
+                r => purchaseHistoryUnitPriceVnd(r), r => purchaseHistoryUnitPriceForeign(r),
+                r => r.ma_nt, r => Number(r.ty_gia || 0), r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0, r => r.cdate, r => r.ldate
             ],
             row: r => `<tr class="hover:bg-blue-50 transition">
                 <td class="p-3 whitespace-nowrap">${esc(r.ngay_ct)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.so_ct)}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.ma_kh)}</td>
+                <td class="p-3 whitespace-nowrap" style="width: 90px; min-width: 90px">${esc(r.ma_kh)}</td>
                 <td class="p-3">${esc(r.ten_kh)}</td>
                 <td class="p-3 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt)}</td>
-                <td class="p-3">${esc(r.ten_vt)}</td>
+                <td class="p-3" style="width: 220px; min-width: 220px">${esc(r.ten_vt)}</td>
                 <td class="p-3 text-slate-500">${esc(r.dvt)}</td>
                 <td class="p-3 text-right">${Number(r.sl_nhap || 0).toLocaleString("vi-VN")}</td>
                 <td class="p-3 text-right">${Number(r.tien_nhap || 0).toLocaleString("vi-VN")}</td>
+                <td class="p-3 text-right">${formatPurchaseHistoryUnitPrice(purchaseHistoryUnitPriceVnd(r))}</td>
+                <td class="p-3 text-right">${formatPurchaseHistoryUnitPrice(purchaseHistoryUnitPriceForeign(r))}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.ma_nt)}</td>
                 <td class="p-3 text-right">${Number(r.ty_gia || 0).toLocaleString("vi-VN")}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.ma_lo)}</td>
