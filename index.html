@@ -1169,6 +1169,7 @@
         const DT = {};
         let allPurchaseData = [];
         let allPurchaseHistoryData = [];
+        let purchaseHistoryRequestId = 0;
         let allProductionData = [];
         let allUsageHistoryData = [];
         let allMaterialData = [];
@@ -2877,16 +2878,28 @@
         }
 
         async function loadPurchaseHistory() {
+            const requestId = ++purchaseHistoryRequestId;
             const token = getSessionToken();
             if (!token) return false;
+            const from = getDateInput("historyFromDate");
+            const to = getDateInput("historyToDate");
+            if (!from || !to || from > to) return false;
             try {
-                const from = getDateInput("historyFromDate");
-                const to = getDateInput("historyToDate");
-                if (!from || !to || from > to) throw new Error("Khoảng ngày không hợp lệ.");
-                allPurchaseHistoryData = await loadPartitioned("lich_su_mua_hang", from, to);
+                const rows = await loadPartitioned("lich_su_mua_hang", from, to);
+                if (requestId !== purchaseHistoryRequestId ||
+                    from !== getDateInput("historyFromDate") || to !== getDateInput("historyToDate")) return false;
+                allPurchaseHistoryData = rows;
                 filterPurchaseHistoryTable();
+                const errorMessage = document.getElementById("appErrorMessage");
+                if (errorMessage.textContent === "Lỗi tải Lịch sử mua hàng: Khoảng ngày không hợp lệ.") {
+                    const error = document.getElementById("appError");
+                    error.classList.add("hidden");
+                    error.classList.remove("flex");
+                }
                 return true;
             } catch (error) {
+                if (requestId !== purchaseHistoryRequestId ||
+                    from !== getDateInput("historyFromDate") || to !== getDateInput("historyToDate")) return false;
                 reportDataError("Lỗi tải Lịch sử mua hàng", error);
                 return false;
             }
