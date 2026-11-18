@@ -888,7 +888,7 @@
                         <span class="font-semibold text-slate-600">đến</span>
                         <input type="date" id="usageToDate" onchange="onUsageHistoryDateChange()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
                     </div>
-                    <input id="searchUsageHistoryInput" oninput="filterUsageHistoryTable()" type="search" placeholder="Tìm phiếu, vật tư, sản phẩm, mã lô, lệnh SX..." class="px-3 py-1.5 w-96 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <input id="searchUsageHistoryInput" oninput="filterUsageHistoryTable()" type="search" placeholder="Tìm phiếu, vật tư, diễn giải, sản phẩm, mã lô, lệnh SX..." class="px-3 py-1.5 w-96 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
                 <div class="tbl-wrap rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs text-slate-700">
@@ -896,7 +896,7 @@
                             <tr>
                                 <th class="p-3">Ngày CT</th><th class="p-3">Số CT</th>
                                 <th class="p-3">Mã VT</th><th class="p-3">Tên vật tư</th><th class="p-3">ĐVT</th><th class="p-3 text-right">SL xuất</th>
-                                <th class="p-3">Mã lô</th><th class="p-3">Mã SPCT trong phiếu</th>
+                                <th class="p-3">Diễn giải</th><th class="p-3">Mã lô</th><th class="p-3">Mã SPCT trong phiếu</th>
                                 <th class="p-3">STT_REC LSX</th><th class="p-3">STT_REC0 LSX</th>
                                 <th class="p-3">Số LSX</th><th class="p-3">Mã SPCT</th><th class="p-3">Tên SPCT</th><th class="p-3">ĐVT LSX</th><th class="p-3 text-right">SL LSX</th><th class="p-3">Mã lô LSX</th>
                                 <th class="p-3">STT_REC</th><th class="p-3">STT_REC0</th><th class="p-3">Mã đối tượng</th><th class="p-3">Tên đối tượng</th><th class="p-3">Ngày tạo</th><th class="p-3">Ngày sửa</th>
@@ -3070,6 +3070,25 @@
                 : "";
         }
 
+        function formatHistoryDateTime(value) {
+            if (value == null || value === "") return "";
+            const formatLocalDateTime = date => {
+                const pad = part => String(part).padStart(2, "0");
+                return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} `
+                    + `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+            };
+            if (value instanceof Date) {
+                return Number.isNaN(value.getTime()) ? "" : formatLocalDateTime(value);
+            }
+
+            const text = String(value).trim();
+            const localDateTime = text.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}:\d{2})(?:\.\d+)?)?$/);
+            if (localDateTime) return localDateTime[2] ? `${localDateTime[1]} ${localDateTime[2]}` : localDateTime[1];
+
+            const date = new Date(text);
+            return Number.isNaN(date.getTime()) ? text : formatLocalDateTime(date);
+        }
+
         dtInit("purchaseHistory", {
             tbody: "purchaseHistoryTableBody",
             defaultSort: (a, b) => String(b.ngay_ct || "").localeCompare(String(a.ngay_ct || ""))
@@ -3079,13 +3098,15 @@
                 r => r.ngay_ct, r => r.so_ct, r => r.ma_kh, r => r.ten_kh, r => r.ma_vt, r => r.ten_vt, r => r.dvt,
                 r => Number(r.sl_nhap || 0), r => Number(r.tien_nhap || 0),
                 r => purchaseHistoryUnitPriceVnd(r), r => purchaseHistoryUnitPriceForeign(r),
-                r => r.ma_nt, r => Number(r.ty_gia || 0), r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0, r => r.cdate, r => r.ldate
+                r => r.ma_nt, r => Number(r.ty_gia || 0), r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0,
+                r => formatHistoryDateTime(r.cdate), r => formatHistoryDateTime(r.ldate)
             ],
             exportCols: [
                 r => r.ngay_ct, r => r.so_ct, r => r.ma_kh, r => r.ten_kh, r => r.ma_vt, r => r.ten_vt, r => r.dvt,
                 r => Number(r.sl_nhap || 0), r => Number(r.tien_nhap || 0),
                 r => purchaseHistoryUnitPriceVnd(r), r => purchaseHistoryUnitPriceForeign(r),
-                r => r.ma_nt, r => Number(r.ty_gia || 0), r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0, r => r.cdate, r => r.ldate
+                r => r.ma_nt, r => Number(r.ty_gia || 0), r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0,
+                r => formatHistoryDateTime(r.cdate), r => formatHistoryDateTime(r.ldate)
             ],
             row: r => `<tr class="hover:bg-blue-50 transition">
                 <td class="p-3 whitespace-nowrap">${esc(r.ngay_ct)}</td>
@@ -3104,8 +3125,8 @@
                 <td class="p-3 whitespace-nowrap">${esc(r.ma_lo)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.stt_rec)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.stt_rec0)}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.cdate)}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.ldate)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(formatHistoryDateTime(r.cdate))}</td>
+                <td class="p-3 whitespace-nowrap">${esc(formatHistoryDateTime(r.ldate))}</td>
             </tr>`
         });
         dtInit("voucher", {
@@ -3383,19 +3404,20 @@
                 || String(a.stt_rec0 || "").localeCompare(String(b.stt_rec0 || ""), "vi", { numeric: true }),
             cols: [
                 r => r.ngay_ct, r => r.so_ct, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.sl_xuat || 0),
-                r => r.ma_lo, r => r.ma_spct_inct, r => r.stt_rec_lsx, r => r.stt_rec0_lsx,
+                r => r.dien_giai, r => r.ma_lo, r => r.ma_spct_inct, r => r.stt_rec_lsx, r => r.stt_rec0_lsx,
                 r => r.so_lsx, r => r.ma_spct, r => r.ten_spct, r => r.dvt_lsx, r => Number(r.so_luong_lsx || 0),
-                r => r.ma_lo_lsx, r => r.stt_rec, r => r.stt_rec0, r => r.ma_kh, r => r.ten_kh, r => r.cdate, r => r.ldate
+                r => r.ma_lo_lsx, r => r.stt_rec, r => r.stt_rec0, r => r.ma_kh, r => r.ten_kh,
+                r => formatHistoryDateTime(r.cdate), r => formatHistoryDateTime(r.ldate)
             ],
             row: r => `<tr class="hover:bg-blue-50 transition">
                 <td class="p-3 whitespace-nowrap">${esc(r.ngay_ct)}</td><td class="p-3 whitespace-nowrap">${esc(r.so_ct)}</td>
                 <td class="p-3 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt)}</td><td class="p-3">${esc(r.ten_vt)}</td><td class="p-3">${esc(r.dvt)}</td>
-                <td class="p-3 text-right">${Number(r.sl_xuat || 0).toLocaleString("vi-VN")}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_lo)}</td>
+                <td class="p-3 text-right">${Number(r.sl_xuat || 0).toLocaleString("vi-VN")}</td><td class="p-3">${esc(r.dien_giai)}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_lo)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.ma_spct_inct)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec_lsx)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec0_lsx)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.so_lsx)}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_spct)}</td><td class="p-3">${esc(r.ten_spct)}</td>
                 <td class="p-3">${esc(r.dvt_lsx)}</td><td class="p-3 text-right">${Number(r.so_luong_lsx || 0).toLocaleString("vi-VN")}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_lo_lsx)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.stt_rec)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec0)}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_kh)}</td><td class="p-3">${esc(r.ten_kh)}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.cdate)}</td><td class="p-3 whitespace-nowrap">${esc(r.ldate)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(formatHistoryDateTime(r.cdate))}</td><td class="p-3 whitespace-nowrap">${esc(formatHistoryDateTime(r.ldate))}</td>
             </tr>`
         });
         dtInit("production", {
@@ -3849,7 +3871,7 @@
         const PURCHASE_HISTORY_IMPORT_REQUIRED_COLUMNS = ["ngay_ct", "stt_rec", "stt_rec0"];
         const PURCHASE_HISTORY_IMPORT_NUMBER_COLUMNS = new Set(["sl_nhap", "tien_nhap", "ty_gia"]);
         const USAGE_HISTORY_IMPORT_COLUMNS = [
-            "ngay_ct", "so_ct", "ma_vt", "ten_vt", "dvt", "sl_xuat", "ma_lo", "ma_spct_inct",
+            "ngay_ct", "so_ct", "ma_vt", "ten_vt", "dvt", "sl_xuat", "dien_giai", "ma_lo", "ma_spct_inct",
             "stt_rec_lsx", "stt_rec0_lsx", "so_lsx", "ma_spct", "ten_spct", "dvt_lsx",
             "so_luong_lsx", "ma_lo_lsx", "stt_rec", "stt_rec0", "ma_kh", "ten_kh", "cdate", "ldate"
         ];
@@ -3927,6 +3949,7 @@
                         ["stt_rec", "Mã chứng từ xuất", "Có", "Khóa dòng; giữ nguyên định dạng văn bản."],
                         ["stt_rec0", "Mã dòng chi tiết xuất", "Có", "Khóa dòng; giữ nguyên định dạng văn bản."],
                         ["sl_xuat", "Số lượng xuất", "Không", "Để trống được hiểu là 0."],
+                        ["dien_giai", "Diễn giải", "Không", ""],
                         ["so_luong_lsx", "Số lượng sản phẩm theo lệnh", "Không", "Để trống được hiểu là 0."],
                         [],
                         ["Lưu ý", "Không đổi tên cột ở sheet lich_su_su_dung. Dòng được cập nhật theo cặp khóa stt_rec + stt_rec0."]
