@@ -3033,7 +3033,7 @@
             const quantity = Number(row.sl_nhap);
             const amount = Number(row.tien_nhap);
             return Number.isFinite(quantity) && quantity !== 0 && Number.isFinite(amount)
-                ? Math.round(amount / quantity)
+                ? amount / quantity
                 : null;
         }
 
@@ -3041,16 +3041,32 @@
             const unitPriceVnd = purchaseHistoryUnitPriceVnd(row);
             const exchangeRate = Number(row.ty_gia);
             return unitPriceVnd !== null && Number.isFinite(exchangeRate) && exchangeRate !== 0
-                ? Math.round((unitPriceVnd / exchangeRate) * 100) / 100
+                ? unitPriceVnd / exchangeRate
                 : null;
         }
 
-        function formatPurchaseHistoryUnitPrice(value, fractionDigits = 0) {
+        function purchaseHistoryQuantityFractionDigits(value) {
+            const magnitude = Math.abs(value);
+            if (magnitude < 1) return 4;
+            if (magnitude > 1 && !Number.isInteger(value)) return 2;
+            return 0;
+        }
+
+        function formatPurchaseHistoryQuantity(value) {
+            if (!Number.isFinite(value)) return "";
+            const fractionDigits = purchaseHistoryQuantityFractionDigits(value);
+            return fractionDigits
+                ? value.toLocaleString("vi-VN", { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits })
+                : value.toLocaleString("vi-VN");
+        }
+
+        function formatPurchaseHistoryUnitPriceVnd(value) {
+            return Number.isFinite(value) ? Math.round(value).toLocaleString("vi-VN") : "";
+        }
+
+        function formatPurchaseHistoryUnitPriceForeign(value) {
             return Number.isFinite(value)
-                ? value.toLocaleString("vi-VN", {
-                    minimumFractionDigits: fractionDigits,
-                    maximumFractionDigits: fractionDigits
-                })
+                ? value.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 : "";
         }
 
@@ -3079,10 +3095,10 @@
                 <td class="p-3 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt)}</td>
                 <td class="p-3" style="width: 220px; min-width: 220px">${esc(r.ten_vt)}</td>
                 <td class="p-3 text-slate-500">${esc(r.dvt)}</td>
-                <td class="p-3 text-right">${Number(r.sl_nhap || 0).toLocaleString("vi-VN")}</td>
+                <td class="p-3 text-right">${formatPurchaseHistoryQuantity(Number(r.sl_nhap || 0))}</td>
                 <td class="p-3 text-right">${Number(r.tien_nhap || 0).toLocaleString("vi-VN")}</td>
-                <td class="p-3 text-right">${formatPurchaseHistoryUnitPrice(purchaseHistoryUnitPriceVnd(r))}</td>
-                <td class="p-3 text-right">${formatPurchaseHistoryUnitPrice(purchaseHistoryUnitPriceForeign(r), 2)}</td>
+                <td class="p-3 text-right">${formatPurchaseHistoryUnitPriceVnd(purchaseHistoryUnitPriceVnd(r))}</td>
+                <td class="p-3 text-right">${formatPurchaseHistoryUnitPriceForeign(purchaseHistoryUnitPriceForeign(r))}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.ma_nt)}</td>
                 <td class="p-3 text-right">${Number(r.ty_gia || 0).toLocaleString("vi-VN")}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.ma_lo)}</td>
@@ -4563,6 +4579,18 @@
                 const exported = table.rows.length - (["dashboard", "sales"].includes(screen) && table.rows.length ? 1 : 0);
                 const wb = XLSX.utils.book_new();
                 const sheet = XLSX.utils.aoa_to_sheet([table.headers, ...table.rows]);
+                if (screen === "purchase-history") {
+                    table.rows.forEach((row, rowIndex) => {
+                        const quantity = Number(row[7]);
+                        const fractionDigits = purchaseHistoryQuantityFractionDigits(quantity);
+                        const quantityFormat = fractionDigits === 4 ? "0.0000"
+                            : fractionDigits === 2 ? "#,##0.00" : "#,##0";
+                        [[7, quantityFormat], [9, "#,##0"], [10, "#,##0.00"]].forEach(([column, numberFormat]) => {
+                            const cell = sheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: column })];
+                            if (cell && Number.isFinite(cell.v)) cell.z = numberFormat;
+                        });
+                    });
+                }
                 sheet["!cols"] = table.headers.map((h, i) => ({
                     wch: Math.min(60, Math.max(String(h).length, ...table.rows.slice(0, 200).map(r => String(r[i] ?? "").length)) + 2)
                 }));
