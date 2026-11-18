@@ -895,11 +895,11 @@
                         <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
                             <tr>
                                 <th class="p-3">Ngày CT</th><th class="p-3">Số CT</th>
-                                <th class="p-3">Mã VT</th><th class="p-3">Tên vật tư</th><th class="p-3">ĐVT</th><th class="p-3 text-right">SL xuất</th>
-                                <th class="p-3">Diễn giải</th><th class="p-3">Mã lô</th><th class="p-3">Mã SPCT trong phiếu</th>
-                                <th class="p-3">STT_REC LSX</th><th class="p-3">STT_REC0 LSX</th>
-                                <th class="p-3">Số LSX</th><th class="p-3">Mã SPCT</th><th class="p-3">Tên SPCT</th><th class="p-3">ĐVT LSX</th><th class="p-3 text-right">SL LSX</th><th class="p-3">Mã lô LSX</th>
-                                <th class="p-3">STT_REC</th><th class="p-3">STT_REC0</th><th class="p-3">Mã đối tượng</th><th class="p-3">Tên đối tượng</th><th class="p-3">Ngày tạo</th><th class="p-3">Ngày sửa</th>
+                                <th class="p-3">Mã VT</th><th class="p-3" style="width: 200px; min-width: 200px">Tên vật tư</th><th class="p-3">ĐVT</th><th class="p-3 text-right">SL xuất</th>
+                                <th class="p-3" style="width: 220px; min-width: 220px">Diễn giải</th><th class="p-3">Mã lô</th><th class="p-3">Mã SPCT trong phiếu</th>
+                                <th class="p-3">Số LSX</th><th class="p-3">Mã SPCT</th><th class="p-3" style="width: 200px; min-width: 200px">Tên SPCT</th><th class="p-3">ĐVT LSX</th><th class="p-3 text-right">SL LSX</th><th class="p-3">Mã lô LSX</th>
+                                <th class="p-3">Mã đối tượng</th><th class="p-3">Tên đối tượng</th><th class="p-3">Ngày tạo</th><th class="p-3">Ngày sửa</th>
+                                <th class="p-3">STT_REC LSX</th><th class="p-3">STT_REC0 LSX</th><th class="p-3">STT_REC</th><th class="p-3">STT_REC0</th>
                             </tr>
                         </thead>
                         <tbody id="usageHistoryTableBody" class="divide-y divide-slate-100"></tbody>
@@ -3404,20 +3404,21 @@
                 || String(a.stt_rec0 || "").localeCompare(String(b.stt_rec0 || ""), "vi", { numeric: true }),
             cols: [
                 r => r.ngay_ct, r => r.so_ct, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.sl_xuat || 0),
-                r => r.dien_giai, r => r.ma_lo, r => r.ma_spct_inct, r => r.stt_rec_lsx, r => r.stt_rec0_lsx,
-                r => r.so_lsx, r => r.ma_spct, r => r.ten_spct, r => r.dvt_lsx, r => Number(r.so_luong_lsx || 0),
-                r => r.ma_lo_lsx, r => r.stt_rec, r => r.stt_rec0, r => r.ma_kh, r => r.ten_kh,
-                r => formatHistoryDateTime(r.cdate), r => formatHistoryDateTime(r.ldate)
+                r => r.dien_giai, r => r.ma_lo, r => r.ma_spct_inct, r => r.so_lsx, r => r.ma_spct,
+                r => r.ten_spct, r => r.dvt_lsx, r => Number(r.so_luong_lsx || 0), r => r.ma_lo_lsx,
+                r => r.ma_kh, r => r.ten_kh, r => formatHistoryDateTime(r.cdate), r => formatHistoryDateTime(r.ldate),
+                r => r.stt_rec_lsx, r => r.stt_rec0_lsx, r => r.stt_rec, r => r.stt_rec0
             ],
             row: r => `<tr class="hover:bg-blue-50 transition">
                 <td class="p-3 whitespace-nowrap">${esc(r.ngay_ct)}</td><td class="p-3 whitespace-nowrap">${esc(r.so_ct)}</td>
                 <td class="p-3 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt)}</td><td class="p-3">${esc(r.ten_vt)}</td><td class="p-3">${esc(r.dvt)}</td>
                 <td class="p-3 text-right">${Number(r.sl_xuat || 0).toLocaleString("vi-VN")}</td><td class="p-3">${esc(r.dien_giai)}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_lo)}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.ma_spct_inct)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec_lsx)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec0_lsx)}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.so_lsx)}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_spct)}</td><td class="p-3">${esc(r.ten_spct)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.ma_spct_inct)}</td><td class="p-3 whitespace-nowrap">${esc(r.so_lsx)}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_spct)}</td><td class="p-3">${esc(r.ten_spct)}</td>
                 <td class="p-3">${esc(r.dvt_lsx)}</td><td class="p-3 text-right">${Number(r.so_luong_lsx || 0).toLocaleString("vi-VN")}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_lo_lsx)}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.stt_rec)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec0)}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_kh)}</td><td class="p-3">${esc(r.ten_kh)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.ma_kh)}</td><td class="p-3">${esc(r.ten_kh)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(formatHistoryDateTime(r.cdate))}</td><td class="p-3 whitespace-nowrap">${esc(formatHistoryDateTime(r.ldate))}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.stt_rec_lsx)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec0_lsx)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.stt_rec)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec0)}</td>
             </tr>`
         });
         dtInit("production", {
