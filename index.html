@@ -898,7 +898,7 @@
                                 <th class="p-3">Mã VT</th><th class="p-3" style="width: 200px; min-width: 200px">Tên vật tư</th><th class="p-3">ĐVT</th><th class="p-3 text-right">SL xuất</th>
                                 <th class="p-3" style="width: 220px; min-width: 220px">Diễn giải</th><th class="p-3">Mã lô</th><th class="p-3">Mã SPCT trong phiếu</th>
                                 <th class="p-3">Số LSX</th><th class="p-3">Mã SPCT</th><th class="p-3" style="width: 200px; min-width: 200px">Tên SPCT</th><th class="p-3">ĐVT LSX</th><th class="p-3 text-right">SL LSX</th><th class="p-3">Mã lô LSX</th>
-                                <th class="p-3">Mã đối tượng</th><th class="p-3">Tên đối tượng</th><th class="p-3">Ngày tạo</th><th class="p-3">Ngày sửa</th>
+                                <th class="p-3">Mã đối tượng</th><th class="p-3" style="width: 220px; min-width: 220px">Tên đối tượng</th><th class="p-3">Ngày tạo</th><th class="p-3">Ngày sửa</th>
                                 <th class="p-3">STT_REC LSX</th><th class="p-3">STT_REC0 LSX</th><th class="p-3">STT_REC</th><th class="p-3">STT_REC0</th>
                             </tr>
                         </thead>
@@ -3089,6 +3089,11 @@
             return Number.isNaN(date.getTime()) ? text : formatLocalDateTime(date);
         }
 
+        function formatUsageHistoryCustomerCode(value) {
+            const text = String(value ?? "").trim();
+            return /^\d+$/.test(text) ? text.padStart(5, "0") : text;
+        }
+
         dtInit("purchaseHistory", {
             tbody: "purchaseHistoryTableBody",
             defaultSort: (a, b) => String(b.ngay_ct || "").localeCompare(String(a.ngay_ct || ""))
@@ -3415,7 +3420,7 @@
                 <td class="p-3 text-right">${Number(r.sl_xuat || 0).toLocaleString("vi-VN")}</td><td class="p-3">${esc(r.dien_giai)}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_lo)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.ma_spct_inct)}</td><td class="p-3 whitespace-nowrap">${esc(r.so_lsx)}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_spct)}</td><td class="p-3">${esc(r.ten_spct)}</td>
                 <td class="p-3">${esc(r.dvt_lsx)}</td><td class="p-3 text-right">${Number(r.so_luong_lsx || 0).toLocaleString("vi-VN")}</td><td class="p-3 whitespace-nowrap">${esc(r.ma_lo_lsx)}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.ma_kh)}</td><td class="p-3">${esc(r.ten_kh)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(formatUsageHistoryCustomerCode(r.ma_kh))}</td><td class="p-3 whitespace-nowrap" style="width: 220px; min-width: 220px">${esc(r.ten_kh)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(formatHistoryDateTime(r.cdate))}</td><td class="p-3 whitespace-nowrap">${esc(formatHistoryDateTime(r.ldate))}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.stt_rec_lsx)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec0_lsx)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.stt_rec)}</td><td class="p-3 whitespace-nowrap">${esc(r.stt_rec0)}</td>
