@@ -1202,10 +1202,9 @@
             document.getElementById("historyFromDate").value =
                 toDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
             document.getElementById("historyToDate").value = toDateStr(now);
-            ["usage"].forEach(prefix => {
-                setDateInput(prefix + "FromDate", new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
-                setDateInput(prefix + "ToDate", now);
-            });
+            document.getElementById("usageFromDate").value =
+                toDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
+            document.getElementById("usageToDate").value = toDateStr(now);
             if (!APPS_SCRIPT_URL || !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(APPS_SCRIPT_URL)) {
                 document.getElementById("loginButton").disabled = true;
                 showAuthMessage("Chưa cấu hình URL triển khai Apps Script trong erp-dashboard/config.js.", true);
