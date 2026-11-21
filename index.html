@@ -93,14 +93,14 @@
                         <i class="fa-solid fa-receipt"></i><span>Bán hàng</span><i class="fa-solid fa-chevron-down text-[10px]"></i>
                     </button>
                     <div id="salesMenu" class="hidden fixed z-50 min-w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
+                        <button onclick="switchTab('sales-bookings')" id="nav-sales-bookings" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-clipboard-list w-4"></i><span>Đơn hàng bán</span>
+                        </button>
                         <button onclick="switchTab('sales-orders')" id="nav-sales-orders" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-file-invoice w-4"></i><span>Xuất bán hàng</span>
                         </button>
                         <button onclick="switchTab('sales-returns')" id="nav-sales-returns" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-rotate-left w-4"></i><span>Hàng bán trả lại</span>
-                        </button>
-                        <button onclick="switchTab('sales-bookings')" id="nav-sales-bookings" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
-                            <i class="fa-solid fa-clipboard-list w-4"></i><span>Đơn hàng bán</span>
                         </button>
                     </div>
                 </div>
@@ -2719,6 +2719,60 @@
             return value === "all" ? entries : entries.slice(0, Number(value));
         }
 
+        function dashboardReportYears() {
+            const fromYear = Number(getDateInput("fromDate").slice(0, 4));
+            const toYear = Number(getDateInput("toDate").slice(0, 4));
+            const available = selectedSalesYears.size ? [...selectedSalesYears] : salesAvailableYears;
+            return available.filter(year => year >= fromYear && year <= toYear)
+                .sort((a, b) => a - b).map(String);
+        }
+
+        function groupSumByYear(rows, keyFn, valueFn, years) {
+            const yearSet = new Set(years);
+            const groups = new Map();
+            rows.forEach(row => {
+                const year = String(row.ngay_ct || "").slice(0, 4);
+                if (!yearSet.has(year)) return;
+                const value = Number(valueFn(row));
+                if (!Number.isFinite(value)) return;
+                const key = keyFn(row) || "(Trống)";
+                let entry = groups.get(key);
+                if (!entry) {
+                    entry = { key, total: 0, byYear: Object.fromEntries(years.map(item => [item, 0])) };
+                    groups.set(key, entry);
+                }
+                entry.total += value;
+                entry.byYear[year] += value;
+            });
+            return [...groups.values()].sort((a, b) => b.total - a.total);
+        }
+
+        const dashboardYearColors = ["#243b9b", "#ed633d", "#800080", "#0ea5e9", "#059669", "#db2777"];
+
+        function dashboardYearDatasets(entries, years) {
+            return years.map((year, index) => {
+                const color = dashboardYearColors[index % dashboardYearColors.length];
+                return {
+                    label: year,
+                    data: entries.map(entry => entry.byYear[year] || 0),
+                    backgroundColor: color,
+                    borderColor: color,
+                    borderRadius: 2,
+                    stack: "year"
+                };
+            });
+        }
+
+        function dashboardYearStackOptions() {
+            return {
+                indexAxis: "y",
+                scales: {
+                    x: { stacked: true, beginAtZero: true },
+                    y: { stacked: true, ticks: { autoSkip: false } }
+                }
+            };
+        }
+
         function renderRankedCharts(id, entries, rowHeight, chartData, chartOptions, ariaLabel) {
             const container = document.getElementById(`${id}Container`);
             Object.keys(chartInstances).filter(key => key === id || key.startsWith(`${id}Part`)).forEach(key => {
@@ -2747,6 +2801,8 @@
         function renderPtnReports(rows) {
             const revenue = new Map();
             const quantity = new Map();
+            const years = dashboardReportYears();
+            const segmentedByYear = years.length > 1;
             let invalidQuantity = 0;
             rows.forEach(row => {
                 const code = ptnOf(row) || "(Không có mã PTN)";
@@ -2761,8 +2817,16 @@
                 quantity.set(code, entry);
             });
             const name = ptnName;
-            const topRevenue = limitTop([...revenue.entries()].sort((a, b) => b[1] - a[1]), "ptnRevenueTopLimit");
-            const topQuantity = limitTop([...quantity.values()].sort((a, b) => b.value - a.value), "ptnQuantityTopLimit")
+            const topRevenueEntries = segmentedByYear
+                ? groupSumByYear(rows, row => ptnOf(row) || "(Không có mã PTN)", netRevOf, years)
+                    .map(entry => ({ code: entry.key, value: entry.total, byYear: entry.byYear }))
+                : [...revenue.entries()].map(([code, value]) => ({ code, value }));
+            const topRevenue = limitTop(topRevenueEntries, "ptnRevenueTopLimit");
+            const topQuantityEntries = segmentedByYear
+                ? groupSumByYear(rows, row => ptnOf(row) || "(Không có mã PTN)", row => row.sl_ban_sau_tra_lai, years)
+                    .map(entry => ({ code: entry.key, value: entry.total, byYear: entry.byYear }))
+                : [...quantity.values()];
+            const topQuantity = limitTop(topQuantityEntries, "ptnQuantityTopLimit")
                 .map(entry => ({
                     ...entry,
                     unit: materialsLoaded && materialMap[entry.code] && String(materialMap[entry.code].dvt || "").trim()
@@ -2775,10 +2839,14 @@
                 };
                 renderRankedCharts(id, entries, 52, part => ({
                     labels: part.map(entry => [entry.unit ? `${entry.code} (${entry.unit})` : entry.code, shortName(entry.code)]),
-                    datasets: [{ label: datasetLabel, data: part.map(entry => entry.value), backgroundColor: color, borderRadius: 6 }]
+                    datasets: segmentedByYear
+                        ? dashboardYearDatasets(part, years)
+                        : [{ label: datasetLabel, data: part.map(entry => entry.value), backgroundColor: color, borderRadius: 6 }]
                 }), part => ({
-                    indexAxis: "y",
-                    scales: { y: { ticks: { autoSkip: false } } },
+                    ...(segmentedByYear ? dashboardYearStackOptions() : {
+                        indexAxis: "y",
+                        scales: { y: { ticks: { autoSkip: false } } }
+                    }),
                     plugins: {
                         legend: { position: "top" },
                         tooltip: { callbacks: {
@@ -2786,12 +2854,17 @@
                                 const entry = part[items[0].dataIndex];
                                 return [entry.unit ? `${entry.code} (${entry.unit})` : entry.code, name(entry.code)];
                             },
-                            label: item => `${datasetLabel}: ${valueLabel(part[item.dataIndex])}`
+                            label: item => {
+                                const entry = part[item.dataIndex];
+                                const year = segmentedByYear ? years[item.datasetIndex] : "";
+                                const value = segmentedByYear ? entry.byYear[year] : entry.value;
+                                return `${year || datasetLabel}: ${valueLabel({ ...entry, value })}`;
+                            }
                         } }
                     }
                 }), `Biểu đồ xếp hạng mã PTN theo ${datasetLabel.toLowerCase()}`);
             };
-            renderPtnChart("ptnRevenueChart", topRevenue.map(([code, value]) => ({ code, value })),
+            renderPtnChart("ptnRevenueChart", topRevenue,
                 "Doanh thu", "#0ea5e9", entry => formatVND(entry.value));
             renderPtnChart("ptnQuantityChart", topQuantity, "Sản lượng", "#6366f1",
                 entry => `${entry.value.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} ${entry.unit}`);
@@ -2973,17 +3046,33 @@
                 datasets: [{ data: cats.map(c => c[1]), backgroundColor: palette }]
             });
 
-            const staff = limitTop(groupSum(rows, r => r.ten_nvkd || r.ma_nhomkd), "staffTopLimit");
+            const years = dashboardReportYears();
+            const segmentedByYear = years.length > 1;
+            const staff = segmentedByYear
+                ? limitTop(groupSumByYear(rows, r => r.ten_nvkd || r.ma_nhomkd, netRevOf, years), "staffTopLimit")
+                : limitTop(groupSum(rows, r => r.ten_nvkd || r.ma_nhomkd), "staffTopLimit");
             renderRankedCharts("channelChart", staff, 36, part => ({
-                labels: part.map(s => s[0]),
-                datasets: [{ label: 'Doanh số', data: part.map(s => s[1]), backgroundColor: '#6366f1', borderRadius: 6 }]
-            }), () => ({ indexAxis: 'y', scales: { y: { ticks: { autoSkip: false } } } }), "Xếp hạng doanh thu theo nhân viên kinh doanh");
+                labels: segmentedByYear ? part.map(entry => entry.key) : part.map(entry => entry[0]),
+                datasets: segmentedByYear
+                    ? dashboardYearDatasets(part, years)
+                    : [{ label: 'Doanh số', data: part.map(entry => entry[1]), backgroundColor: '#6366f1', borderRadius: 6 }]
+            }), () => segmentedByYear
+                ? dashboardYearStackOptions()
+                : ({ indexAxis: 'y', scales: { y: { ticks: { autoSkip: false } } } }),
+            "Xếp hạng doanh thu theo nhân viên kinh doanh");
 
-            const cust = limitTop(groupSum(rows, r => r.ten_kh || r.ma_kh), "customerTopLimit");
+            const cust = segmentedByYear
+                ? limitTop(groupSumByYear(rows, r => r.ten_kh || r.ma_kh, netRevOf, years), "customerTopLimit")
+                : limitTop(groupSum(rows, r => r.ten_kh || r.ma_kh), "customerTopLimit");
             renderRankedCharts("customerBarChart", cust, 36, part => ({
-                labels: part.map(c => c[0]),
-                datasets: [{ label: 'Doanh số', data: part.map(c => c[1]), backgroundColor: '#0ea5e9', borderRadius: 6 }]
-            }), () => ({ indexAxis: 'y', scales: { y: { ticks: { autoSkip: false } } } }), "Xếp hạng doanh thu theo khách hàng");
+                labels: segmentedByYear ? part.map(entry => entry.key) : part.map(entry => entry[0]),
+                datasets: segmentedByYear
+                    ? dashboardYearDatasets(part, years)
+                    : [{ label: 'Doanh số', data: part.map(entry => entry[1]), backgroundColor: '#0ea5e9', borderRadius: 6 }]
+            }), () => segmentedByYear
+                ? dashboardYearStackOptions()
+                : ({ indexAxis: 'y', scales: { y: { ticks: { autoSkip: false } } } }),
+            "Xếp hạng doanh thu theo khách hàng");
         }
 
         // =================================================================
