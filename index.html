@@ -575,7 +575,8 @@
                             <tr>
                                 <th class="p-3">LOẠI PHIẾU</th><th class="p-3">MÃ CHỨNG TỪ</th>
                                 <th class="p-3">NGÀY LẬP</th><th class="p-3">TÊN KHÁCH HÀNG</th>
-                                <th class="p-3">DANH MỤC / VẬT TƯ</th><th class="p-3">MÃ PTN</th><th class="p-3">NVKD</th>
+                                <th class="p-3">MÃ VẬT TƯ</th><th class="p-3">TÊN VẬT TƯ</th>
+                                <th class="p-3">MÃ PTN</th><th class="p-3">NVKD</th>
                                 <th class="p-3 text-right">SỐ LƯỢNG</th><th class="p-3 text-right">DOANH THU THUẦN</th>
                                 <th class="p-3 text-right">CHIẾT KHẤU</th><th class="p-3 text-right">TRẢ LẠI</th>
                                 <th class="p-3 whitespace-nowrap">NGÀY TẠO</th><th class="p-3 whitespace-nowrap">NGÀY CẬP NHẬT</th>
@@ -584,7 +585,7 @@
                         <tbody id="dashboardSalesTableBody" class="divide-y divide-slate-100"></tbody>
                         <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-300 text-xs">
                             <tr>
-                                <td colspan="7" class="p-3 text-right uppercase">TỔNG CỘNG THEO ĐIỀU KIỆN LỌC:</td>
+                                <td colspan="8" class="p-3 text-right uppercase">TỔNG CỘNG THEO ĐIỀU KIỆN LỌC:</td>
                                 <td id="dashboardFootTotalQty" class="p-3 text-right text-slate-600">0</td>
                                 <td id="dashboardFootTotalRevenue" class="p-3 text-right text-blue-600">0 ₫</td>
                                 <td id="dashboardFootTotalCK" class="p-3 text-right text-emerald-600">0 ₫</td>
@@ -629,7 +630,7 @@
                         <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
                             <tr>
                                 <th class="p-3">MÃ CHỨNG TỪ</th><th class="p-3">NGÀY LẬP</th>
-                                <th class="p-3">TÊN KHÁCH HÀNG</th><th class="p-3">DANH MỤC / VẬT TƯ</th>
+                                <th class="p-3">TÊN KHÁCH HÀNG</th><th class="p-3">MÃ VẬT TƯ</th><th class="p-3">TÊN VẬT TƯ</th>
                                 <th class="p-3">MÃ PTN</th><th class="p-3">NVKD</th>
                                 <th class="p-3 text-right">SỐ LƯỢNG</th><th class="p-3 text-right">DOANH THU</th>
                                 <th class="p-3 text-right">CHIẾT KHẤU</th><th class="p-3 text-right">TRẢ LẠI</th>
@@ -639,7 +640,7 @@
                         <tbody id="tableBody" class="divide-y divide-slate-100"></tbody>
                         <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-300 text-xs">
                             <tr>
-                                <td colspan="6" class="p-3 text-right uppercase">TỔNG CỘNG:</td>
+                                <td colspan="7" class="p-3 text-right uppercase">TỔNG CỘNG:</td>
                                 <td id="footTotalQty" class="p-3 text-right text-slate-600">0</td>
                                 <td id="footTotalRevenue" class="p-3 text-right text-blue-600">0 ₫</td>
                                 <td id="footTotalCK" class="p-3 text-right text-emerald-600">0 ₫</td>
@@ -655,7 +656,7 @@
                             <tr>
                                 <th class="p-3">SỐ ĐƠN HÀNG</th><th class="p-3">NGÀY CHỨNG TỪ</th>
                                 <th class="p-3">NGÀY GIAO HÀNG</th><th class="p-3">KHÁCH HÀNG</th>
-                                <th class="p-3">MÃ VẬT TƯ</th><th class="p-3">VẬT TƯ</th>
+                                <th class="p-3">MÃ VẬT TƯ</th><th class="p-3">TÊN VẬT TƯ</th>
                                 <th class="p-3">MÃ PTN</th><th class="p-3">NVKD</th>
                                 <th class="p-3 text-right">SL ĐẶT</th><th class="p-3 text-right">SL ĐÃ XUẤT</th>
                                 <th class="p-3 text-right">SL CÒN</th><th class="p-3 text-right">SL HỦY</th>
@@ -2630,13 +2631,15 @@
 
         dtInit("sales", {
             tbody: "tableBody",
-            cols: [r => r.so_ct, r => r.ngay_ct, r => r.ten_kh || r.ma_kh, r => r.ten_vt || r.ma_vt, ptnOf, r => r.ten_nvkd || r.ma_nhomkd,
+            cols: [r => r.so_ct, r => r.ngay_ct, r => r.ten_kh || r.ma_kh, r => r.ma_vt, r => r.ten_vt || r.ma_vt,
+                   ptnOf, r => r.ten_nvkd || r.ma_nhomkd,
                    r => Number(r.so_luong || 0), revOf, r => Number(r.tien_ck || 0), r => Number(r.tien2_tra_lai || 0),
                    r => r.cdate || "", r => r.ldate || ""],
             row: r => `<tr class="hover:bg-slate-50 transition">
                     <td class="p-3 font-bold text-slate-900">${esc(r.so_ct)}</td>
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_ct)}</td>
                     <td class="p-3 font-medium text-slate-800">${esc(r.ten_kh || r.ma_kh)}</td>
+                    <td class="p-3 text-slate-600 whitespace-nowrap">${esc(r.ma_vt)}</td>
                     <td class="p-3 text-slate-600">${matLink(r.ma_vt, r.ten_vt || r.ma_vt)}</td>
                     <td class="p-3 text-slate-600">${esc(ptnOf(r))}</td>
                     <td class="p-3 text-slate-500">${esc(r.ten_nvkd || r.ma_nhomkd)}</td>
@@ -2680,7 +2683,7 @@
         dtInit("dashboardSales", {
             tbody: "dashboardSalesTableBody",
             cols: [r => r.__salesReturn ? "Hàng bán trả lại" : "Xuất bán hàng", r => r.so_ct,
-                r => r.ngay_ct, r => r.ten_kh || r.ma_kh, r => r.ten_vt || r.ma_vt, ptnOf,
+                r => r.ngay_ct, r => r.ten_kh || r.ma_kh, r => r.ma_vt, r => r.ten_vt || r.ma_vt, ptnOf,
                 r => r.ten_nvkd || r.ma_nhomkd, r => Number(r.so_luong || 0), revOf,
                 r => r.__salesReturn ? Number(r.tien_ck_tra_lai || 0) : Number(r.tien_ck || 0) + Number(r.ck_ds || 0),
                 r => Number(r.tien2_tra_lai || 0), r => r.cdate || "", r => r.ldate || ""],
@@ -2691,6 +2694,7 @@
                     <td class="p-3 font-bold text-slate-900">${esc(r.so_ct)}</td>
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_ct)}</td>
                     <td class="p-3 font-medium text-slate-800">${esc(r.ten_kh || r.ma_kh)}</td>
+                    <td class="p-3 text-slate-600 whitespace-nowrap">${esc(r.ma_vt)}</td>
                     <td class="p-3 text-slate-600">${matLink(r.ma_vt, r.ten_vt || r.ma_vt)}</td>
                     <td class="p-3 text-slate-600">${esc(ptnOf(r))}</td>
                     <td class="p-3 text-slate-500">${esc(r.ten_nvkd || r.ma_nhomkd)}</td>
@@ -2879,8 +2883,9 @@
         function renderCategoryMonthly(yearRows, chartId, statusId, categoryFn, options = {}) {
             const status = document.getElementById(statusId);
             const container = document.getElementById(`${chartId}Container`);
+            container.style.width = "100%";
+            container.style.minWidth = "";
             if (options.requiresMaterials !== false && !materialsLoaded) {
-                container.style.width = "100%";
                 createChart(chartId, "bar", { labels: [], datasets: [] });
                 status.textContent = "Chưa tải được danh mục vật tư; không thể phân tích theo nhóm.";
                 return;
@@ -2923,7 +2928,7 @@
                 });
                 datasets.push({ label: "Khác", data: dataFor(other), backgroundColor: "#64748b", borderRadius: 2 });
             }
-            container.style.width = `${Math.max(520, keys.length * 35 + 100)}px`;
+            container.style.minWidth = `${Math.max(520, keys.length * 35 + 100)}px`;
             container.parentElement.scrollLeft = 0;
             createChart(chartId, "bar", { labels, datasets }, {
                 scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: "Tỷ đồng" } } }
