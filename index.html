@@ -569,6 +569,7 @@
                                 <th class="p-3">DANH MỤC / VẬT TƯ</th><th class="p-3">MÃ PTN</th><th class="p-3">NVKD</th>
                                 <th class="p-3 text-right">SỐ LƯỢNG</th><th class="p-3 text-right">DOANH THU THUẦN</th>
                                 <th class="p-3 text-right">CHIẾT KHẤU</th><th class="p-3 text-right">TRẢ LẠI</th>
+                                <th class="p-3 whitespace-nowrap">NGÀY TẠO</th><th class="p-3 whitespace-nowrap">NGÀY CẬP NHẬT</th>
                             </tr>
                         </thead>
                         <tbody id="dashboardSalesTableBody" class="divide-y divide-slate-100"></tbody>
@@ -579,6 +580,7 @@
                                 <td id="dashboardFootTotalRevenue" class="p-3 text-right text-blue-600">0 ₫</td>
                                 <td id="dashboardFootTotalCK" class="p-3 text-right text-emerald-600">0 ₫</td>
                                 <td id="dashboardFootTotalReturn" class="p-3 text-right text-red-500">0 ₫</td>
+                                <td></td><td></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -621,6 +623,7 @@
                                 <th class="p-3">MÃ PTN</th><th class="p-3">NVKD</th>
                                 <th class="p-3 text-right">SỐ LƯỢNG</th><th class="p-3 text-right">DOANH THU</th>
                                 <th class="p-3 text-right">CHIẾT KHẤU</th><th class="p-3 text-right">TRẢ LẠI</th>
+                                <th class="p-3 whitespace-nowrap">NGÀY TẠO</th><th class="p-3 whitespace-nowrap">NGÀY CẬP NHẬT</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody" class="divide-y divide-slate-100"></tbody>
@@ -631,6 +634,7 @@
                                 <td id="footTotalRevenue" class="p-3 text-right text-blue-600">0 ₫</td>
                                 <td id="footTotalCK" class="p-3 text-right text-emerald-600">0 ₫</td>
                                 <td id="footTotalReturn" class="p-3 text-right text-red-500">0 ₫</td>
+                                <td></td><td></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1890,7 +1894,7 @@
             const rows = window.erpBuildSalesReportRows(
                 salesTableMode === "returns" ? [] : salesTableData,
                 salesTableMode === "returns" ? salesTableData : []
-            ).filter(row => !keyword || [row.so_ct, row.ten_kh, row.ma_kh, row.ten_vt, row.ma_vt, ptnOf(row)]
+            ).filter(row => !keyword || [row.so_ct, row.ten_kh, row.ma_kh, row.ten_vt, row.ma_vt, ptnOf(row), row.cdate, row.ldate]
                 .some(value => String(value ?? "").toLocaleLowerCase("vi").includes(keyword)));
             renderSalesTable(rows);
         }
@@ -2472,7 +2476,7 @@
                 (!staff || (r.ten_nvkd || r.ma_nhomkd) === staff) &&
                 (!ptn || JSON.stringify(ptnOf(r)) === ptn) &&
                 (!customer || JSON.stringify(customerIdentity(r)) === customer) &&
-                (!kw || [r.so_ct, r.ten_kh, r.ma_kh, r.ten_vt, r.ma_vt, ptnOf(r)]
+                (!kw || [r.so_ct, r.ten_kh, r.ma_kh, r.ten_vt, r.ma_vt, ptnOf(r), r.cdate, r.ldate]
                     .some(value => String(value ?? "").toLocaleLowerCase("vi").includes(kw)));
             const rows = window.erpBuildSalesReportRows(rawSalesData, rawSalesReturnData).filter(matchesFilters);
 
@@ -2556,7 +2560,8 @@
         dtInit("sales", {
             tbody: "tableBody",
             cols: [r => r.so_ct, r => r.ngay_ct, r => r.ten_kh || r.ma_kh, r => r.ten_vt || r.ma_vt, ptnOf, r => r.ten_nvkd || r.ma_nhomkd,
-                   r => Number(r.so_luong || 0), revOf, r => Number(r.tien_ck || 0), r => Number(r.tien2_tra_lai || 0)],
+                   r => Number(r.so_luong || 0), revOf, r => Number(r.tien_ck || 0), r => Number(r.tien2_tra_lai || 0),
+                   r => r.cdate || "", r => r.ldate || ""],
             row: r => `<tr class="hover:bg-slate-50 transition">
                     <td class="p-3 font-bold text-slate-900">${esc(r.so_ct)}</td>
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_ct)}</td>
@@ -2568,6 +2573,8 @@
                     <td class="p-3 text-right font-bold text-blue-600">${formatVND(revOf(r))}</td>
                     <td class="p-3 text-right text-emerald-600">${formatVND(r.tien_ck)}</td>
                     <td class="p-3 text-right text-red-500">${formatVND(r.tien2_tra_lai)}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.cdate || "")}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ldate || "")}</td>
                 </tr>`
         });
 
@@ -2577,7 +2584,7 @@
                 r => r.ngay_ct, r => r.ten_kh || r.ma_kh, r => r.ten_vt || r.ma_vt, ptnOf,
                 r => r.ten_nvkd || r.ma_nhomkd, r => Number(r.so_luong || 0), revOf,
                 r => r.__salesReturn ? Number(r.tien_ck_tra_lai || 0) : Number(r.tien_ck || 0) + Number(r.ck_ds || 0),
-                r => Number(r.tien2_tra_lai || 0)],
+                r => Number(r.tien2_tra_lai || 0), r => r.cdate || "", r => r.ldate || ""],
             row: r => `<tr class="hover:bg-slate-50 transition">
                     <td class="p-3">${r.__salesReturn
                         ? '<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Hàng bán trả lại</span>'
@@ -2592,6 +2599,8 @@
                     <td class="p-3 text-right font-bold text-blue-600">${formatVND(revOf(r))}</td>
                     <td class="p-3 text-right text-emerald-600">${formatVND(r.__salesReturn ? r.tien_ck_tra_lai : Number(r.tien_ck || 0) + Number(r.ck_ds || 0))}</td>
                     <td class="p-3 text-right text-red-500">${formatVND(r.tien2_tra_lai)}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.cdate || "")}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ldate || "")}</td>
                 </tr>`
         });
 
@@ -3652,12 +3661,14 @@
         const SALES_IMPORT_COLUMNS = [
             "ma_cty", "ma_ct", "stt_rec", "stt_rec0", "ngay_ct", "so_ct", "so_dh", "ma_kh",
             "ten_kh", "ma_nvkd", "ten_nvkd", "ma_nhomkd", "ma_vt", "ten_vt", "dvt", "so_luong",
-            "gia2", "tien2", "ck_ds", "tien_ck", "doanh_thu_ban", "ma_lo", "ma_tt", "ngay_tt"
+            "gia2", "tien2", "ck_ds", "tien_ck", "doanh_thu_ban", "ma_lo", "ma_tt", "ngay_tt",
+            "cdate", "ldate"
         ];
         const SALES_RETURN_IMPORT_COLUMNS = [
             "ma_cty", "ma_ct", "stt_rec", "stt_rec0", "stt_rec_hd", "stt_rec0_hd", "ngay_ct",
             "so_ct", "ma_kh", "ten_kh", "ma_nvkd", "ten_nvkd", "ma_nhomkd", "ma_vt", "ten_vt",
-            "dvt", "sl_tra_lai", "gia2_tra_lai", "tien2_tra_lai", "tien_ck_tra_lai", "ma_lo"
+            "dvt", "sl_tra_lai", "gia2_tra_lai", "tien2_tra_lai", "tien_ck_tra_lai", "ma_lo",
+            "cdate", "ldate"
         ];
         const SALES_IMPORT_NUMBER_COLUMNS = new Set([
             "so_luong", "gia2", "tien2", "ck_ds", "tien_ck", "doanh_thu_ban",
@@ -3688,6 +3699,8 @@
                     ["ngay_ct", "Ngày chứng từ", "Có", "Dùng YYYY-MM-DD hoặc ngày Excel hợp lệ."],
                     ["so_ct", "Số chứng từ", "Có", "Giữ nguyên định dạng văn bản."],
                     ["ma_vt", "Mã vật tư", "Có", "Giữ nguyên định dạng văn bản."],
+                    ["cdate", "Ngày tạo MSSQL", "Không", "Dùng YYYY-MM-DD HH:MM:SS hoặc ngày giờ Excel."],
+                    ["ldate", "Ngày cập nhật MSSQL", "Không", "Dùng YYYY-MM-DD HH:MM:SS hoặc ngày giờ Excel."],
                     [],
                     ["Lưu ý", `Không đổi tên cột ở sheet ${sheetName}. Giao dịch trùng khóa sẽ được cập nhật; giao dịch mới sẽ được thêm. Các cột số để trống được tính là 0.`]
                 ]);
@@ -3697,6 +3710,24 @@
             } catch (error) {
                 reportDataError("Lỗi tạo template giao dịch bán hàng", error);
             }
+        }
+
+        function parseSalesImportDatetime(value) {
+            if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                const pad = number => String(number).padStart(2, "0");
+                return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())} ` +
+                    `${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
+            }
+            if (typeof value === "number") {
+                const parsed = XLSX.SSF.parse_date_code(value);
+                if (parsed) {
+                    const pad = number => String(number).padStart(2, "0");
+                    return `${parsed.y}-${pad(parsed.m)}-${pad(parsed.d)} ` +
+                        `${pad(parsed.H || 0)}:${pad(parsed.M || 0)}:${pad(parsed.S || 0)}`;
+                }
+            }
+            const text = String(value ?? "").trim();
+            return /^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2})?$/.test(text) ? text : "";
         }
 
         function parseSalesImportDate(value, rowNumber, column) {
@@ -3752,6 +3783,8 @@
                     const value = index < 0 ? "" : cells[index];
                     if (column === "ngay_ct" || column === "ngay_tt") {
                         row[column] = String(value).trim() ? parseSalesImportDate(value, line, column) : "";
+                    } else if (column === "cdate" || column === "ldate") {
+                        row[column] = parseSalesImportDatetime(value);
                     } else if (SALES_IMPORT_NUMBER_COLUMNS.has(column)) {
                         row[column] = value === "" || value == null ? 0 : Number(value);
                         if (!Number.isFinite(row[column])) throw new Error(`Dòng ${line}: cột ${column} phải là số hợp lệ.`);
