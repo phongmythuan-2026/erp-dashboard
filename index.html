@@ -99,6 +99,9 @@
                         <button onclick="switchTab('sales-returns')" id="nav-sales-returns" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-rotate-left w-4"></i><span>Hàng bán trả lại</span>
                         </button>
+                        <button onclick="switchTab('sales-bookings')" id="nav-sales-bookings" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-clipboard-list w-4"></i><span>Đơn hàng bán</span>
+                        </button>
                     </div>
                 </div>
                 <div class="relative flex items-stretch">
@@ -614,7 +617,8 @@
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
                     </div>
                 </div>
-                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                <p class="text-[11px] text-slate-500">Xem và xóa theo ngày chứng từ; nút tải SQL dùng khoảng này để lọc LDATE.</p>
+                <div id="salesTableWrap" class="overflow-x-auto rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs text-slate-700">
                         <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
                             <tr>
@@ -635,6 +639,32 @@
                                 <td id="footTotalCK" class="p-3 text-right text-emerald-600">0 ₫</td>
                                 <td id="footTotalReturn" class="p-3 text-right text-red-500">0 ₫</td>
                                 <td></td><td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div id="salesOrderTableWrap" class="hidden overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="p-3">SỐ ĐƠN HÀNG</th><th class="p-3">NGÀY CHỨNG TỪ</th>
+                                <th class="p-3">NGÀY GIAO HÀNG</th><th class="p-3">KHÁCH HÀNG</th>
+                                <th class="p-3">VẬT TƯ</th><th class="p-3">MÃ PTN</th><th class="p-3">NVKD</th>
+                                <th class="p-3 text-right">SL ĐẶT</th><th class="p-3 text-right">SL ĐÃ XUẤT</th>
+                                <th class="p-3 text-right">SL CÒN</th><th class="p-3 text-right">SL HỦY</th>
+                                <th class="p-3">TRẠNG THÁI</th><th class="p-3">DUYỆT</th><th class="p-3">DIỄN GIẢI</th>
+                                <th class="p-3 whitespace-nowrap">NGÀY TẠO</th><th class="p-3 whitespace-nowrap">NGÀY CẬP NHẬT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesOrderTableBody" class="divide-y divide-slate-100"></tbody>
+                        <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-300 text-xs">
+                            <tr>
+                                <td colspan="7" class="p-3 text-right uppercase">TỔNG CỘNG:</td>
+                                <td id="salesOrderFootQty" class="p-3 text-right">0</td>
+                                <td id="salesOrderFootShipped" class="p-3 text-right">0</td>
+                                <td id="salesOrderFootRemaining" class="p-3 text-right">0</td>
+                                <td id="salesOrderFootCancelled" class="p-3 text-right">0</td>
+                                <td colspan="5"></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -695,6 +725,7 @@
                         <option value="3">Trạng thái = 3 (Thực hiện)</option>
                         <option value="4">Trạng thái = 4 (Hoàn thành)</option>
                     </select>
+                    <span class="text-[11px] text-slate-500">Xem và xóa theo ngày chứng từ; tải SQL dùng khoảng này để lọc LDATE.</span>
                 </div>
 
                 <div class="tbl-wrap rounded-xl border border-slate-200">
@@ -757,6 +788,7 @@
                         <input type="date" id="historyToDate" onchange="onPurchaseHistoryDateChange()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
                     </div>
                     <input id="searchPurchaseHistoryInput" oninput="filterPurchaseHistoryTable()" type="search" placeholder="Tìm chứng từ, nhà cung cấp, vật tư, mã lô..." class="px-3 py-1.5 w-72 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <span class="text-[11px] text-slate-500">Xem và xóa theo ngày chứng từ; tải SQL dùng khoảng này để lọc LDATE.</span>
                 </div>
                 <div class="tbl-wrap rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs text-slate-700">
@@ -841,6 +873,7 @@
                     <select id="productionTypeFilter" onchange="filterProductionTable()" class="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         <option value="ALL">-- Tất cả hình thức --</option>
                     </select>
+                    <span class="text-[11px] text-slate-500">Xem theo ngày chứng từ; tải SQL dùng khoảng này để lọc LDATE.</span>
                 </div>
 
                 <div class="tbl-wrap rounded-xl border border-slate-200">
@@ -901,6 +934,7 @@
                         <input type="date" id="usageToDate" onchange="onUsageHistoryDateChange()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
                     </div>
                     <input id="searchUsageHistoryInput" oninput="filterUsageHistoryTable()" type="search" placeholder="Tìm phiếu, vật tư, diễn giải, sản phẩm, mã lô, lệnh SX..." class="px-3 py-1.5 w-96 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <span class="text-[11px] text-slate-500">Xem và xóa theo ngày chứng từ; tải SQL dùng khoảng này để lọc LDATE.</span>
                 </div>
                 <div class="tbl-wrap rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs text-slate-700">
@@ -940,7 +974,7 @@
                             <i class="fa-solid fa-boxes-packing text-blue-600"></i>
                             <span>Danh Mục Vật Tư Phụ Tùng & Nguyên Liệu</span>
                         </h2>
-                        <p class="text-xs text-slate-500">Đã đồng bộ từ bảng danh_muc_vat_tu (indmvt & InDmNhVt)</p>
+                        <p class="text-xs text-slate-500">Đồng bộ từ SQL theo LDATE; bảng indmvt và InDmNhVt.</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <input type="file" id="materialImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importMaterialsFromFile(this)">
@@ -1006,7 +1040,7 @@
                     </div>
                     <div>
                         <label class="block mb-3 text-xs text-slate-600">Bán hàng và trả lại đọc lại
-                            <input id="syncSalesDays" type="number" min="1" max="60" value="7" class="w-16 mx-1 px-2 py-1 border border-slate-300 rounded text-sm"> ngày gần nhất mỗi lần chạy
+                            <input id="syncSalesDays" type="number" min="1" max="60" value="7" class="w-16 mx-1 px-2 py-1 border border-slate-300 rounded text-sm"> ngày LDATE gần nhất mỗi lần chạy
                         </label>
                         <div class="text-xs font-bold text-slate-500 mb-1.5">Dữ liệu được đồng bộ</div>
                         <div id="syncTables" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
@@ -1022,6 +1056,7 @@
                                 <div class="flex flex-col gap-1">
                                     <label><input type="checkbox" value="sales_orders" class="mr-1">Xuất bán hàng</label>
                                     <label><input type="checkbox" value="sales_returns" class="mr-1">Hàng bán trả lại</label>
+                                    <label><input type="checkbox" value="sales_order_bookings" class="mr-1">Đơn hàng bán</label>
                                 </div>
                             </div>
                             <div>
@@ -1271,6 +1306,7 @@
             const activeNav = {
                 "sales-orders": ["sales", "sales-orders"],
                 "sales-returns": ["sales", "sales-returns"],
+                "sales-bookings": ["sales", "sales-bookings"],
                 "purchase": ["purchase", "purchase-request"],
                 "purchase-history": ["purchase", "purchase-history"],
                 "production": ["production", "production-order"],
@@ -1285,9 +1321,12 @@
             });
             ["dashboard", "sales", "bi", "purchase", "purchase-history", "production", "usage-history", "materials", "users"]
                 .forEach(name => document.getElementById(`screen-${name}`).classList.add("hidden"));
-            const salesMode = tabName === "sales-returns" ? "returns" : "sales";
-            if (tabName === "sales-orders" || tabName === "sales-returns") setSalesTableMode(salesMode);
-            const screenName = tabName === "sales-orders" || tabName === "sales-returns" ? "sales" : tabName;
+            const salesMode = tabName === "sales-returns" ? "returns"
+                : tabName === "sales-bookings" ? "bookings" : "sales";
+            if (tabName === "sales-orders" || tabName === "sales-returns" || tabName === "sales-bookings") {
+                setSalesTableMode(salesMode);
+            }
+            const screenName = ["sales-orders", "sales-returns", "sales-bookings"].includes(tabName) ? "sales" : tabName;
             document.getElementById(`screen-${screenName}`).classList.remove("hidden");
             if (screenName === "sales") {
                 syncSalesDataDateInputs();
@@ -1814,19 +1853,23 @@
             return sales.concat(returns);
         };
         function salesTableName() {
-            return salesTableMode === "returns" ? "ban_hang_tra_lai_so4" : "ban_hang_so2";
+            return salesTableMode === "bookings" ? "don_hang_ban"
+                : salesTableMode === "returns" ? "ban_hang_tra_lai_so4" : "ban_hang_so2";
         }
         function setSalesTableMode(mode) {
-            salesTableMode = mode === "returns" ? "returns" : "sales";
+            salesTableMode = mode === "returns" || mode === "bookings" ? mode : "sales";
             const returns = salesTableMode === "returns";
+            const bookings = salesTableMode === "bookings";
             document.getElementById("salesDetailTitle").textContent =
-                returns ? "Hàng bán trả lại" : "Xuất bán hàng";
+                bookings ? "Đơn hàng bán" : returns ? "Hàng bán trả lại" : "Xuất bán hàng";
             document.getElementById("refreshSalesTableLabel").textContent =
-                returns ? "Tải phiếu trả lại từ SQL" : "Tải phiếu bán từ SQL";
+                bookings ? "Tải đơn hàng bán từ SQL" : returns ? "Tải phiếu trả lại từ SQL" : "Tải phiếu bán từ SQL";
             document.getElementById("downloadSalesTemplateButton").innerHTML =
-                `<i class="fa-solid fa-file-arrow-down mr-1"></i>${returns ? "Tải template trả lại" : "Tải template bán hàng"}`;
+                `<i class="fa-solid fa-file-arrow-down mr-1"></i>${bookings ? "Tải template đơn hàng" : returns ? "Tải template trả lại" : "Tải template bán hàng"}`;
             document.getElementById("importSalesButton").innerHTML =
-                `<i class="fa-solid fa-file-import mr-1"></i>${returns ? "Import phiếu trả lại" : "Import phiếu bán"}`;
+                `<i class="fa-solid fa-file-import mr-1"></i>${bookings ? "Import đơn hàng" : returns ? "Import phiếu trả lại" : "Import phiếu bán"}`;
+            document.getElementById("salesTableWrap").classList.toggle("hidden", bookings);
+            document.getElementById("salesOrderTableWrap").classList.toggle("hidden", !bookings);
             salesTableLoadedKey = "";
             applySalesTableFilters();
         }
@@ -1875,7 +1918,9 @@
                 }
                 const rows = await loadPartitioned(salesTableName(), from, to, false, true);
                 if (requestId !== salesTableRequestId) return false;
-                salesTableData = rows;
+                salesTableData = salesTableMode === "bookings"
+                    ? rows.map(row => ({ ...row, ma_ptn: ptnOf(row) }))
+                    : rows;
                 salesTableLoadedKey = key;
                 applySalesTableFilters();
                 return true;
@@ -1891,6 +1936,15 @@
         function applySalesTableFilters() {
             if (!document.getElementById("tableBody")) return;
             const keyword = document.getElementById("salesDataSearch").value.trim().toLocaleLowerCase("vi");
+            if (salesTableMode === "bookings") {
+                const rows = salesTableData.filter(row =>
+                    [row.so_ct, row.ngay_ct, row.ngay_giao_hang, row.ten_kh, row.ma_kh, row.ten_vt,
+                        row.ma_vt, ptnOf(row), row.ten_nvkd, row.ma_nvkd, row.ma_nhomkd,
+                        row.ten_trang_thai, row.ten_trang_thai_duyet, row.dien_giai, row.ly_do, row.cdate, row.ldate]
+                        .some(value => String(value ?? "").toLocaleLowerCase("vi").includes(keyword)));
+                renderSalesOrdersTable(rows);
+                return;
+            }
             const rows = window.erpBuildSalesReportRows(
                 salesTableMode === "returns" ? [] : salesTableData,
                 salesTableMode === "returns" ? salesTableData : []
@@ -2151,7 +2205,8 @@
                     const part = await api("refreshSalesData", token, chunks[i][0], chunks[i][1], table);
                     rowCount += part.rowCount || 0;
                 }
-                const tableLabel = salesTableMode === "returns" ? "Phiếu trả lại" : "Phiếu xuất bán";
+                const tableLabel = salesTableMode === "bookings" ? "Đơn hàng bán"
+                    : salesTableMode === "returns" ? "Phiếu trả lại" : "Phiếu xuất bán";
                 const result = { message: `${tableLabel} ${from} → ${to}: đã đọc ${rowCount} dòng từ SQL (${chunks.length} đợt).` };
                 salesTableLoadedKey = "";
                 dashboardLoadedRangeKey = "";
@@ -2512,6 +2567,27 @@
             document.getElementById("kpiKhachHang").innerText = cust.toLocaleString('vi-VN') + " KH";
         }
 
+        function salesOrderApprovalLabel(row) {
+            return Number(row.trang_thai_duyet) === 1 ? "Đã duyệt"
+                : Number(row.trang_thai_duyet) === 2 ? "Không đồng ý" : "Chưa duyệt";
+        }
+
+        function formatSalesOrderQuantity(value) {
+            return Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 4 });
+        }
+
+        function renderSalesOrdersTable(rows) {
+            document.getElementById("salesOrderFootQty").innerText =
+                formatSalesOrderQuantity(sumBy(rows, row => Number(row.so_luong || 0)));
+            document.getElementById("salesOrderFootShipped").innerText =
+                formatSalesOrderQuantity(sumBy(rows, row => Number(row.sl_so2 || 0)));
+            document.getElementById("salesOrderFootRemaining").innerText =
+                formatSalesOrderQuantity(sumBy(rows, row => Number(row.sl_cl || 0)));
+            document.getElementById("salesOrderFootCancelled").innerText =
+                formatSalesOrderQuantity(sumBy(rows, row => Number(row.sl_huy || 0)));
+            dtSet("salesOrders", rows);
+        }
+
         function renderSalesTable(rows) {
             document.getElementById("footTotalQty").innerText = sumBy(rows, r => Number(r.so_luong || 0)).toLocaleString('vi-VN');
             document.getElementById("footTotalRevenue").innerText = formatVND(sumBy(rows, revOf));
@@ -2538,7 +2614,8 @@
             try { [from, to] = salesTableRange(); }
             catch (error) { return reportDataError("Khoảng ngày không hợp lệ", error); }
             const table = salesTableName();
-            const tableLabel = salesTableMode === "returns" ? "phiếu trả lại" : "phiếu bán";
+            const tableLabel = salesTableMode === "bookings" ? "đơn hàng bán"
+                : salesTableMode === "returns" ? "phiếu trả lại" : "phiếu bán";
             if (!confirm(`Xóa toàn bộ ${tableLabel} từ ${from} đến ${to}?\nThao tác này áp dụng cho tất cả giao dịch trong khoảng ngày, không chỉ các dòng đang lọc trên màn hình.`)) return;
             const button = document.getElementById("deleteSalesRangeButton");
             button.disabled = true;
@@ -2573,6 +2650,33 @@
                     <td class="p-3 text-right font-bold text-blue-600">${formatVND(revOf(r))}</td>
                     <td class="p-3 text-right text-emerald-600">${formatVND(r.tien_ck)}</td>
                     <td class="p-3 text-right text-red-500">${formatVND(r.tien2_tra_lai)}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.cdate || "")}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ldate || "")}</td>
+                </tr>`
+        });
+
+        dtInit("salesOrders", {
+            tbody: "salesOrderTableBody",
+            cols: [r => r.so_ct, r => r.ngay_ct, r => r.ngay_giao_hang, r => r.ten_kh || r.ma_kh,
+                r => r.ten_vt || r.ma_vt, ptnOf, r => r.ten_nvkd || r.ma_nvkd, r => Number(r.so_luong || 0),
+                r => Number(r.sl_so2 || 0), r => Number(r.sl_cl || 0), r => Number(r.sl_huy || 0),
+                r => r.ten_trang_thai || r.trang_thai, salesOrderApprovalLabel, r => r.dien_giai,
+                r => r.cdate || "", r => r.ldate || ""],
+            row: r => `<tr class="hover:bg-slate-50 transition">
+                    <td class="p-3 font-bold text-slate-900">${esc(r.so_ct)}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_ct)}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_giao_hang)}</td>
+                    <td class="p-3 font-medium text-slate-800">${esc(r.ten_kh || r.ma_kh)}</td>
+                    <td class="p-3 text-slate-600">${matLink(r.ma_vt, r.ten_vt || r.ma_vt)}</td>
+                    <td class="p-3 text-slate-600">${esc(ptnOf(r))}</td>
+                    <td class="p-3 text-slate-500">${esc(r.ten_nvkd || r.ma_nvkd)}</td>
+                    <td class="p-3 text-right text-slate-700 whitespace-nowrap">${formatSalesOrderQuantity(r.so_luong)} ${esc(r.dvt)}</td>
+                    <td class="p-3 text-right text-slate-700 whitespace-nowrap">${formatSalesOrderQuantity(r.sl_so2)}</td>
+                    <td class="p-3 text-right text-slate-700 whitespace-nowrap">${formatSalesOrderQuantity(r.sl_cl)}</td>
+                    <td class="p-3 text-right text-slate-700 whitespace-nowrap">${formatSalesOrderQuantity(r.sl_huy)}</td>
+                    <td class="p-3 text-slate-500">${esc(r.ten_trang_thai || r.trang_thai)}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${esc(salesOrderApprovalLabel(r))}</td>
+                    <td class="p-3 text-slate-500">${esc(r.dien_giai)}</td>
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.cdate || "")}</td>
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ldate || "")}</td>
                 </tr>`
@@ -3671,8 +3775,15 @@
             "dvt", "sl_tra_lai", "gia2_tra_lai", "tien2_tra_lai", "tien_ck_tra_lai", "ma_lo",
             "cdate", "ldate"
         ];
+        const SALES_ORDER_IMPORT_COLUMNS = [
+            "ma_cty", "ma_ct", "stt_rec", "stt_rec0", "so_ct", "ngay_ct", "ngay_giao_hang",
+            "ma_kh", "ten_kh", "ma_nvkd", "ten_nvkd", "ma_nhomkd", "ma_vt", "ten_vt", "dvt",
+            "so_luong", "sl_so2", "sl_cl", "sl_huy", "trang_thai", "ten_trang_thai",
+            "trang_thai_duyet", "ten_trang_thai_duyet", "dien_giai", "ly_do", "cdate", "ldate"
+        ];
         const SALES_EXPORT_COLUMNS = [...SALES_IMPORT_COLUMNS, "ma_ptn", "doanh_thu_hien_thi"];
         const SALES_RETURN_EXPORT_COLUMNS = [...SALES_RETURN_IMPORT_COLUMNS, "ma_ptn", "doanh_thu_hien_thi"];
+        const SALES_ORDER_EXPORT_COLUMNS = [...SALES_ORDER_IMPORT_COLUMNS, "ma_ptn"];
         const DASHBOARD_SALES_EXPORT_COLUMNS = [
             "loai_phieu",
             ...new Set([...SALES_IMPORT_COLUMNS, ...SALES_RETURN_IMPORT_COLUMNS]),
@@ -3680,7 +3791,8 @@
         ];
         const SALES_IMPORT_NUMBER_COLUMNS = new Set([
             "so_luong", "gia2", "tien2", "ck_ds", "tien_ck", "doanh_thu_ban",
-            "sl_tra_lai", "gia2_tra_lai", "tien2_tra_lai", "tien_ck_tra_lai"
+            "sl_tra_lai", "gia2_tra_lai", "tien2_tra_lai", "tien_ck_tra_lai",
+            "sl_so2", "sl_cl", "sl_huy", "trang_thai", "trang_thai_duyet"
         ]);
         const SALES_IMPORT_KEY_COLUMNS = ["stt_rec", "stt_rec0", "ngay_ct", "so_ct", "ma_vt"];
         const SALES_RETURN_IMPORT_KEY_COLUMNS = ["stt_rec", "stt_rec0", "ngay_ct", "so_ct", "ma_vt"];
@@ -3690,8 +3802,11 @@
             try {
                 requireXlsx();
                 const returns = salesTableMode === "returns";
-                const columns = returns ? SALES_RETURN_IMPORT_COLUMNS : SALES_IMPORT_COLUMNS;
-                const sheetName = returns ? "ban_hang_tra_lai_so4" : "ban_hang_so2";
+                const bookings = salesTableMode === "bookings";
+                const columns = bookings ? SALES_ORDER_IMPORT_COLUMNS
+                    : returns ? SALES_RETURN_IMPORT_COLUMNS : SALES_IMPORT_COLUMNS;
+                const sheetName = bookings ? "don_hang_ban"
+                    : returns ? "ban_hang_tra_lai_so4" : "ban_hang_so2";
                 const wb = XLSX.utils.book_new();
                 const data = XLSX.utils.aoa_to_sheet([columns]);
                 data["!cols"] = columns.map(() => ({ wch: 20 }));
@@ -3707,6 +3822,9 @@
                     ["ngay_ct", "Ngày chứng từ", "Có", "Dùng YYYY-MM-DD hoặc ngày Excel hợp lệ."],
                     ["so_ct", "Số chứng từ", "Có", "Giữ nguyên định dạng văn bản."],
                     ["ma_vt", "Mã vật tư", "Có", "Giữ nguyên định dạng văn bản."],
+                    ...(bookings ? [
+                        ["trang_thai_duyet", "Trạng thái duyệt", "Không", "1 là đã duyệt; chỉ dòng đã duyệt được tính vào SL ĐH trong widget."]
+                    ] : []),
                     ["cdate", "Ngày tạo MSSQL", "Không", "Dùng YYYY-MM-DD HH:MM:SS hoặc ngày giờ Excel."],
                     ["ldate", "Ngày cập nhật MSSQL", "Không", "Dùng YYYY-MM-DD HH:MM:SS hoặc ngày giờ Excel."],
                     [],
@@ -3768,10 +3886,13 @@
         async function readSalesImportRows(file) {
             requireXlsx();
             const returns = salesTableMode === "returns";
-            const columns = returns ? SALES_RETURN_IMPORT_COLUMNS : SALES_IMPORT_COLUMNS;
+            const bookings = salesTableMode === "bookings";
+            const columns = bookings ? SALES_ORDER_IMPORT_COLUMNS
+                : returns ? SALES_RETURN_IMPORT_COLUMNS : SALES_IMPORT_COLUMNS;
             const requiredColumns = returns ? SALES_RETURN_IMPORT_KEY_COLUMNS : SALES_IMPORT_KEY_COLUMNS;
             const identityColumns = ["stt_rec", "stt_rec0"];
-            const expectedSheet = returns ? "ban_hang_tra_lai_so4" : "ban_hang_so2";
+            const expectedSheet = bookings ? "don_hang_ban"
+                : returns ? "ban_hang_tra_lai_so4" : "ban_hang_so2";
             const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
             const sheetName = wb.SheetNames.includes(expectedSheet) ? expectedSheet : wb.SheetNames[0];
             if (!sheetName) throw new Error("File không có sheet dữ liệu.");
@@ -3789,7 +3910,7 @@
                 columns.forEach(column => {
                     const index = indexes[column];
                     const value = index < 0 ? "" : cells[index];
-                    if (column === "ngay_ct" || column === "ngay_tt") {
+                    if (column === "ngay_ct" || column === "ngay_tt" || column === "ngay_giao_hang") {
                         row[column] = String(value).trim() ? parseSalesImportDate(value, line, column) : "";
                     } else if (column === "cdate" || column === "ldate") {
                         row[column] = parseSalesImportDatetime(value);
@@ -3834,7 +3955,9 @@
                 for (let i = 0; i < rows.length; i += SALES_IMPORT_CHUNK) {
                     const chunk = rows.slice(i, i + SALES_IMPORT_CHUNK);
                     button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang import ${Math.min(i + chunk.length, rows.length)}/${rows.length}...</span>`;
-                    const result = await api(salesTableMode === "returns" ? "importSalesReturns" : "importSales", token, chunk);
+                    const importMethod = salesTableMode === "bookings" ? "importSalesOrders"
+                        : salesTableMode === "returns" ? "importSalesReturns" : "importSales";
+                    const result = await api(importMethod, token, chunk);
                     imported += result.rowCount || chunk.length;
                     inserted += result.inserted || 0;
                     updated += result.updated || 0;
@@ -3842,7 +3965,9 @@
                 salesTableLoadedKey = "";
                 dashboardLoadedRangeKey = "";
                 if (!await loadSalesTableData(true)) return;
-                showAppSuccess(`Import thành công: ${imported} ${salesTableMode === "returns" ? "phiếu trả lại" : "phiếu bán"} (thêm ${inserted}, cập nhật ${updated}).`);
+                const label = salesTableMode === "bookings" ? "đơn hàng bán"
+                    : salesTableMode === "returns" ? "phiếu trả lại" : "phiếu bán";
+                showAppSuccess(`Import thành công: ${imported} ${label} (thêm ${inserted}, cập nhật ${updated}).`);
             } catch (error) {
                 const detail = imported ? `Đã import ${imported} dòng trước khi gặp lỗi: ${error.message}` : error.message;
                 reportDataError("Lỗi import giao dịch bán hàng", new Error(detail));
@@ -4725,14 +4850,17 @@
                 let title, tableId, info = [];
                 let table;
                 if (screen === "sales") {
-                    title = salesTableMode === "returns" ? "Phiếu trả lại bán hàng" : "Phiếu xuất bán hàng";
-                    tableId = "sales";
+                    const bookings = salesTableMode === "bookings";
+                    title = bookings ? "Đơn hàng bán"
+                        : salesTableMode === "returns" ? "Phiếu trả lại bán hàng" : "Phiếu xuất bán hàng";
+                    tableId = bookings ? "salesOrders" : "sales";
                     info.push(["Khoảng ngày", `${document.getElementById("salesDataFromDate").value} → ${document.getElementById("salesDataToDate").value}`],
                         ["Từ khóa", document.getElementById("salesDataSearch").value.trim()],
                         ["Nguồn dữ liệu", salesTableName()]);
-                    table = dtExportTable(tableId,
-                        salesTableMode === "returns" ? SALES_RETURN_EXPORT_COLUMNS : SALES_EXPORT_COLUMNS,
-                        (row, column) => column === "ma_ptn" ? ptnOf(row)
+                    const columns = bookings ? SALES_ORDER_EXPORT_COLUMNS
+                        : salesTableMode === "returns" ? SALES_RETURN_EXPORT_COLUMNS : SALES_EXPORT_COLUMNS;
+                    table = dtExportTable(tableId, columns, (row, column) =>
+                        column === "ma_ptn" ? row.ma_ptn || ptnOf(row)
                             : column === "doanh_thu_hien_thi" ? revOf(row) : row[column]);
                 } else if (screen === "dashboard") {
                     title = "Chi tiết bán hàng Dashboard"; tableId = "dashboardSales";
