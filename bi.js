@@ -473,6 +473,45 @@ function biProductionRemainingLabel(production) {
     return `SL SX còn lại: ${biProductionRemainingValue(production)}`;
 }
 
+function biAverageSalesPeriodCount(widget) {
+    const from = String(biBoard && biBoard.from || "").slice(0, 10);
+    const to = String(biBoard && biBoard.to || "").slice(0, 10);
+    if (!widget.timeGrain || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) return 0;
+    const [fromYear, fromMonth, fromDay] = from.split("-").map(Number);
+    const [toYear, toMonth, toDay] = to.split("-").map(Number);
+    if (widget.timeGrain === "day") {
+        const ms = Date.UTC(toYear, toMonth - 1, toDay) - Date.UTC(fromYear, fromMonth - 1, fromDay);
+        return Math.floor(ms / 86400000) + 1;
+    }
+    if (widget.timeGrain === "month") return (toYear - fromYear) * 12 + toMonth - fromMonth + 1;
+    if (widget.timeGrain === "quarter") {
+        return Math.floor(((toYear - fromYear) * 12 + toMonth - fromMonth) / 3) + 1;
+    }
+    return toYear - fromYear + 1;
+}
+
+function biAverageSalesSummary(result, widget) {
+    const empty = { average: 0, unit: "Chưa có ĐVT" };
+    if (widget.measure !== "quantity" || !widget.timeGrain || !result.length) return empty;
+    const periodCount = biAverageSalesPeriodCount(widget);
+    if (!periodCount) return empty;
+    const units = new Set(result.map(group => String(group.unit || "").trim()).filter(Boolean));
+    const total = result.reduce((sum, group) => sum + Number(group.value || 0), 0);
+    return {
+        average: total / periodCount,
+        unit: units.size === 1 ? [...units][0] : units.size ? "Nhiều ĐVT" : "Chưa có ĐVT"
+    };
+}
+
+function biAverageSalesValue(average) {
+    const value = average.average.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${value} (${average.unit})`;
+}
+
+function biAverageSalesLabel(average) {
+    return `SL BQ BH: ${biAverageSalesValue(average)}`;
+}
+
 function biRenderStackBreakdown(content, result, widget, periods = null, production = null, stockTotals = []) {
     const stackDimension = biStackableDimensions.includes(widget.dimension) &&
         widget.chart === "stack" && widget.stackDimension;
@@ -480,6 +519,7 @@ function biRenderStackBreakdown(content, result, widget, periods = null, product
 
     const colors = ["#2563eb", "#dc2626", "#059669", "#9333ea", "#d97706", "#0891b2", "#db2777", "#4d7c0f"];
     const hasProductionTotal = Boolean(periods && widget.measure === "quantity");
+    const average = biAverageSalesSummary(result, widget);
     const series = new Map();
     result.forEach(group => group.breakdowns.forEach(breakdown => {
         const key = periods ? JSON.stringify([group.key, breakdown.key]) : breakdown.key;
@@ -527,6 +567,14 @@ function biRenderStackBreakdown(content, result, widget, periods = null, product
             borderColor: "#059669", backgroundColor: "#059669", borderDash: [5, 3],
             pointRadius: 2, fill: false
         });
+        if (widget.measure === "quantity") {
+            if (average.average !== 0 || average.unit !== "Chưa có ĐVT") datasets.push({
+                type: "line", label: biAverageSalesLabel(average),
+                data: part.map(() => average.average),
+                borderColor: "#f97316", backgroundColor: "#f97316", borderDash: [4, 3],
+                pointRadius: 2, fill: false
+            });
+        }
         stockTotals.forEach((stock, index) => datasets.push({
             type: "line", label: biStockLabel(stock), data: part.map(() => stock.value),
             borderColor: ["#dc2626", "#d97706", "#7c3aed", "#0891b2"][index % 4],
@@ -546,7 +594,11 @@ function biRenderStackBreakdown(content, result, widget, periods = null, product
                     if (hasProductionTotal && item.datasetIndex === allSeries.length) {
                         return biProductionRemainingLabel(production);
                     }
-                    const firstStockIndex = allSeries.length + (hasProductionTotal ? 1 : 0);
+                    const averageIndex = allSeries.length + (hasProductionTotal ? 1 : 0);
+                    if (widget.measure === "quantity" && item.datasetIndex === averageIndex) {
+                        return biAverageSalesLabel(average);
+                    }
+                    const firstStockIndex = averageIndex + (widget.measure === "quantity" ? 1 : 0);
                     if (item.datasetIndex >= firstStockIndex) {
                         return biStockLabel(stockTotals[item.datasetIndex - firstStockIndex]);
                     }
@@ -560,6 +612,7 @@ function biRenderStackBreakdown(content, result, widget, periods = null, product
 
 function biRenderTime(content, result, widget) {
     const production = biProductionSummary(result, widget);
+    const average = biAverageSalesSummary(result, widget);
     const hasProductionTotal = widget.measure === "quantity";
     const stacked = widget.chart === "stack";
     const periods = [...new Set(result.flatMap(group => [...group.periods.keys()]))].sort();
@@ -585,6 +638,12 @@ function biRenderTime(content, result, widget) {
             const row = document.createElement("tr");
             row.className = "border-t font-semibold text-emerald-700";
             row.innerHTML = `<td class="p-2 whitespace-nowrap">Tổng kỳ</td><td class="p-2">SL SX còn lại</td><td class="p-2 text-right whitespace-nowrap">${esc(biProductionRemainingValue(production))}</td>${stockTotals.map(() => "<td></td>").join("")}`;
+            body.appendChild(row);
+        }
+        if (average.average !== 0 || average.unit !== "Chưa có ĐVT") {
+            const row = document.createElement("tr");
+            row.className = "border-t font-semibold text-orange-700";
+            row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(biBoard.from)} - ${esc(biBoard.to)}</td><td class="p-2">SL BQ BH</td><td class="p-2 text-right whitespace-nowrap">${esc(biAverageSalesValue(average))}</td>${stockTotals.map(() => "<td></td>").join("")}`;
             body.appendChild(row);
         }
         table.appendChild(body);
@@ -622,6 +681,14 @@ function biRenderTime(content, result, widget) {
                             pointRadius: 2, fill: false
                         }
                     ] : []),
+                    ...(widget.measure === "quantity" ? [
+                        {
+                            type: "line", label: biAverageSalesLabel(average),
+                            data: part.map(() => average.average),
+                            borderColor: "#f97316", backgroundColor: "#f97316", borderDash: [4, 3],
+                            pointRadius: 2, fill: false
+                        }
+                    ] : []),
                     ...stockTotals.map((stock, i) => ({
                         type: "line", label: biStockLabel(stock), data: part.map(() => stock.value),
                         borderColor: ["#dc2626", "#d97706", "#7c3aed", "#0891b2"][i % 4],
@@ -635,7 +702,9 @@ function biRenderTime(content, result, widget) {
                     },
                     plugins: { tooltip: { callbacks: { label: item => {
                         if (hasProductionTotal && item.datasetIndex === groups.length) return biProductionRemainingLabel(production);
-                        const firstStockIndex = groups.length + (hasProductionTotal ? 1 : 0);
+                        const averageIndex = groups.length + (hasProductionTotal ? 1 : 0);
+                        if (widget.measure === "quantity" && item.datasetIndex === averageIndex) return biAverageSalesLabel(average);
+                        const firstStockIndex = averageIndex + (widget.measure === "quantity" ? 1 : 0);
                         if (item.datasetIndex >= firstStockIndex) {
                             const stock = stockTotals[item.datasetIndex - firstStockIndex];
                             return biStockLabel(stock);
@@ -707,6 +776,7 @@ function biRender() {
             <button data-bi-action="delete" data-index="${index}" class="text-red-600">Xóa</button></div></div>
             <p class="text-xs text-slate-500 mt-1">${esc(biMeasures[widget.measure])}${widget.measure === "revenue" ? " (VND)" : ""} · ${esc(biDimensions[widget.dimension])}${widget.stackDimension && biStackableDimensions.includes(widget.dimension) && widget.chart === "stack" ? ` · Stack theo ${esc(biDimensions[widget.stackDimension])}` : ""}${widget.timeGrain ? ` · Theo ${esc(biTimeGrains[widget.timeGrain].toLowerCase())}` : ""}${widget.filter ? ` · Lọc: ${esc(widget.filter)}` : ""}</p>
             ${widget.measure === "quantity" ? '<p class="text-xs text-amber-700 mt-1">Cộng trực tiếp, không quy đổi; ĐVT theo từng mã PTN, xem ở bảng hoặc chú giải khi rê chuột.</p>' : ""}
+            ${widget.measure === "quantity" && widget.timeGrain ? '<p class="text-xs text-orange-700 mt-1">SL BQ BH: tổng sản lượng sau trả lại trong khoảng ngày chia cho số kỳ theo trục thời gian đã chọn.</p>' : ""}
             ${widget.measure === "quantity" && widget.timeGrain ? `<p class="text-xs text-emerald-700 mt-1">SL SX còn lại là tổng toàn kỳ theo ${widget.stockBy === "sku" ? "SKU" : "Mã PTN"}, kèm số lượng và ĐVT trong chú giải${biProductionRows.length ? "." : ". Chưa có dữ liệu lệnh sản xuất; hãy tải mới từ SQL trong Danh Sách Lệnh Sản Xuất."}</p>` : ""}
             ${biStockStatus(widget)}
             <p class="text-xs text-amber-700 mt-1">${invalid ? `Bỏ qua ${invalid} dòng thiếu hoặc sai chỉ tiêu.` : ""}</p>
