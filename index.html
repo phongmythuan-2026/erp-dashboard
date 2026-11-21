@@ -26,6 +26,12 @@
         #voucherModal .tbl-scroll { max-height: 48vh; }
         .tbl-scroll thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; box-shadow: 0 1px 0 #e2e8f0; }
         .tbl-scroll tfoot td { position: sticky; bottom: 0; background: #f8fafc; box-shadow: 0 -1px 0 #cbd5e1; }
+        .tbl-scroll .dt-pinned-cell { background-color: #fff; box-shadow: 1px 0 0 #e2e8f0; }
+        .tbl-scroll thead .dt-pinned-cell { background-color: #f8fafc; z-index: 4; }
+        .tbl-scroll tbody tr:hover .dt-pinned-cell { background-color: #f8fafc; }
+        .tbl-scroll tfoot .dt-pinned-cell { background-color: #f8fafc; z-index: 3; }
+        .dt-resize-handle { position: absolute; top: 0; right: -3px; z-index: 5; width: 7px; height: 100%; cursor: col-resize; touch-action: none; }
+        .dt-resize-handle:hover, .dt-resize-handle:active { background-color: rgba(37, 99, 235, .35); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
@@ -258,7 +264,7 @@
                 <div class="text-xs">
                     <span class="block font-bold text-slate-600 mb-1.5">Năm phân tích</span>
                     <div id="monthlyYears" role="group" aria-label="Chọn năm phân tích"></div>
-                    <p class="text-slate-400 mt-1">Không chọn năm: tất cả năm. Chọn năm sẽ điều chỉnh khoảng ngày; chọn nhanh sẽ bỏ chọn năm.</p>
+                    <p class="text-slate-400 mt-1">Không chọn năm: từ đầu năm hiện tại đến hôm nay; có thể chỉnh khoảng ngày. Chọn năm để so sánh; chọn nhanh sẽ bỏ chọn năm.</p>
                 </div>
 
                 <div class="tbl-wrap" role="region" aria-label="Điều kiện lọc báo cáo bán hàng" tabindex="0">
@@ -408,7 +414,7 @@
                 <div class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                     <div class="mb-4">
                         <h3 class="font-bold text-slate-900 text-sm">Cơ Cấu Doanh Thu Theo Nhóm Vật Tư</h3>
-                        <p class="text-xs text-slate-400">Tỷ trọng đóng góp dòng sản phẩm</p>
+                        <p class="text-xs text-slate-400">Một vòng cho mỗi năm; tỷ lệ trên doanh thu năm</p>
                     </div>
                     <div class="relative h-72">
                         <canvas id="categoryPieChart"></canvas>
@@ -416,8 +422,8 @@
                 </div>
 
                 <!-- Biểu đồ 3: Top nhân viên kinh doanh -->
-                <div class="xl:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="xl:col-span-3 min-w-0 w-full grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                    <section class="min-w-0 w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                         <div class="flex flex-wrap justify-between gap-2 mb-4">
                             <div>
                                 <h3 class="font-bold text-slate-900 text-sm">Top Nhân Viên Kinh Doanh Đóng Góp Doanh Số Cao Nhất</h3>
@@ -436,7 +442,7 @@
                         </div>
                     </section>
 
-                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <section class="min-w-0 w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                         <div class="flex flex-wrap justify-between gap-2 mb-4">
                             <div>
                                 <h3 class="font-bold text-slate-900 text-sm">Top Khách Hàng Đóng Góp Doanh Số Cao Nhất</h3>
@@ -457,8 +463,8 @@
                 </div>
 
                 <!-- Báo cáo doanh thu theo tháng và nhóm kinh doanh -->
-                <div class="xl:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="xl:col-span-3 min-w-0 w-full grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                    <section class="min-w-0 w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
                             <div>
                                 <h3 class="font-bold text-slate-900 text-sm">Doanh Thu Theo Tháng</h3>
@@ -471,7 +477,7 @@
                         </div>
                     </section>
 
-                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <section class="min-w-0 w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                         <div class="mb-2">
                             <h3 class="font-bold text-slate-900 text-sm">Doanh Thu Theo Nhóm Kinh Doanh</h3>
                             <p class="text-xs text-slate-400">Cột chồng theo tháng/năm (tỷ đồng); theo bộ lọc Dashboard</p>
@@ -485,8 +491,8 @@
                     </section>
                 </div>
 
-                <div class="xl:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="xl:col-span-3 min-w-0 w-full grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                    <section class="min-w-0 w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                         <div class="mb-2">
                             <h3 class="font-bold text-slate-900 text-sm">Phân Tích Doanh Thu Theo Nhóm Vật Tư</h3>
                             <p class="text-xs text-slate-400">Tối đa 6 nhóm lớn nhất + nhóm Khác, theo tháng/năm (tỷ đồng)</p>
@@ -498,7 +504,7 @@
                             </div>
                         </div>
                     </section>
-                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <section class="min-w-0 w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                         <div class="mb-2">
                             <h3 class="font-bold text-slate-900 text-sm">Phân Tích Doanh Thu Theo Nhóm Vật Tư 1</h3>
                             <p class="text-xs text-slate-400">Tối đa 6 nhóm lớn nhất + nhóm Khác, theo tháng/năm (tỷ đồng); theo bộ lọc Dashboard</p>
@@ -512,8 +518,8 @@
                     </section>
                 </div>
 
-                <div class="xl:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="xl:col-span-3 min-w-0 w-full grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                    <section class="min-w-0 w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                         <div class="flex flex-wrap justify-between gap-2">
                             <h3 class="font-bold text-slate-900 text-sm">Top Mã PTN Theo Doanh Thu</h3>
                             <label class="text-xs text-slate-500">Hiển thị
@@ -530,7 +536,7 @@
                             </div>
                         </div>
                     </section>
-                    <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <section class="min-w-0 w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                         <div class="flex flex-wrap justify-between gap-2">
                             <h3 class="font-bold text-slate-900 text-sm">Top Mã PTN Theo Sản Lượng</h3>
                             <label class="text-xs text-slate-500">Hiển thị
@@ -649,7 +655,8 @@
                             <tr>
                                 <th class="p-3">SỐ ĐƠN HÀNG</th><th class="p-3">NGÀY CHỨNG TỪ</th>
                                 <th class="p-3">NGÀY GIAO HÀNG</th><th class="p-3">KHÁCH HÀNG</th>
-                                <th class="p-3">VẬT TƯ</th><th class="p-3">MÃ PTN</th><th class="p-3">NVKD</th>
+                                <th class="p-3">MÃ VẬT TƯ</th><th class="p-3">VẬT TƯ</th>
+                                <th class="p-3">MÃ PTN</th><th class="p-3">NVKD</th>
                                 <th class="p-3 text-right">SL ĐẶT</th><th class="p-3 text-right">SL ĐÃ XUẤT</th>
                                 <th class="p-3 text-right">SL CÒN</th><th class="p-3 text-right">SL HỦY</th>
                                 <th class="p-3">TRẠNG THÁI</th><th class="p-3">DUYỆT</th><th class="p-3">DIỄN GIẢI</th>
@@ -659,7 +666,7 @@
                         <tbody id="salesOrderTableBody" class="divide-y divide-slate-100"></tbody>
                         <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-300 text-xs">
                             <tr>
-                                <td colspan="7" class="p-3 text-right uppercase">TỔNG CỘNG:</td>
+                                <td colspan="8" class="p-3 text-right uppercase">TỔNG CỘNG:</td>
                                 <td id="salesOrderFootQty" class="p-3 text-right">0</td>
                                 <td id="salesOrderFootShipped" class="p-3 text-right">0</td>
                                 <td id="salesOrderFootRemaining" class="p-3 text-right">0</td>
@@ -1598,24 +1605,7 @@
         }
 
         function renderManagedUsers() {
-            const body = document.getElementById("usersTableBody");
-            body.innerHTML = managedUsers.map(user => `
-                <tr>
-                    <td class="p-3">${esc(user.useremail)}</td>
-                    <td class="p-3">${esc(user.ho_ten)}</td>
-                    <td class="p-3">${esc(user.ma_bp || "")}</td>
-                    <td class="p-3">${user.role === "admin" ? "Admin" : "User - chỉ xem"}</td>
-                    <td class="p-3 text-right whitespace-nowrap">
-                        <button data-edit-user="${esc(user.useremail)}" class="px-2.5 py-1 text-blue-700 hover:bg-blue-50 rounded">Sửa</button>
-                        ${user.useremail === currentUser.useremail ? "" : `<button data-delete-user="${esc(user.useremail)}" class="px-2.5 py-1 text-red-600 hover:bg-red-50 rounded">Xóa</button>`}
-                    </td>
-                </tr>`).join("");
-            body.querySelectorAll("[data-edit-user]").forEach(button => {
-                button.addEventListener("click", () => editManagedUser(button.dataset.editUser));
-            });
-            body.querySelectorAll("[data-delete-user]").forEach(button => {
-                button.addEventListener("click", () => removeManagedUser(button.dataset.deleteUser));
-            });
+            dtSet("managedUsers", managedUsers);
         }
 
         let syncUiReady = false;
@@ -1816,6 +1806,10 @@
         function onDateInputChange() {
             renderDateLabel("fromDate");
             renderDateLabel("toDate");
+            if (selectedSalesYears.size) {
+                selectedSalesYears.clear();
+                renderYearFilter();
+            }
             loadDashboardData();
         }
         window.erpRevenueByRow = row => row.__salesReturn ? 0
@@ -2658,7 +2652,7 @@
         dtInit("salesOrders", {
             tbody: "salesOrderTableBody",
             cols: [r => r.so_ct, r => r.ngay_ct, r => r.ngay_giao_hang, r => r.ten_kh || r.ma_kh,
-                r => r.ten_vt || r.ma_vt, ptnOf, r => r.ten_nvkd || r.ma_nvkd, r => Number(r.so_luong || 0),
+                r => r.ma_vt, r => r.ten_vt || r.ma_vt, ptnOf, r => r.ten_nvkd || r.ma_nvkd, r => Number(r.so_luong || 0),
                 r => Number(r.sl_so2 || 0), r => Number(r.sl_cl || 0), r => Number(r.sl_huy || 0),
                 r => r.ten_trang_thai || r.trang_thai, salesOrderApprovalLabel, r => r.dien_giai,
                 r => r.cdate || "", r => r.ldate || ""],
@@ -2667,6 +2661,7 @@
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_ct)}</td>
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_giao_hang)}</td>
                     <td class="p-3 font-medium text-slate-800">${esc(r.ten_kh || r.ma_kh)}</td>
+                    <td class="p-3 text-slate-600 whitespace-nowrap">${esc(r.ma_vt)}</td>
                     <td class="p-3 text-slate-600">${matLink(r.ma_vt, r.ten_vt || r.ma_vt)}</td>
                     <td class="p-3 text-slate-600">${esc(ptnOf(r))}</td>
                     <td class="p-3 text-slate-500">${esc(r.ten_nvkd || r.ma_nvkd)}</td>
@@ -2821,11 +2816,13 @@
                 ? groupSumByYear(rows, row => ptnOf(row) || "(Không có mã PTN)", netRevOf, years)
                     .map(entry => ({ code: entry.key, value: entry.total, byYear: entry.byYear }))
                 : [...revenue.entries()].map(([code, value]) => ({ code, value }));
+            topRevenueEntries.sort((a, b) => b.value - a.value);
             const topRevenue = limitTop(topRevenueEntries, "ptnRevenueTopLimit");
             const topQuantityEntries = segmentedByYear
                 ? groupSumByYear(rows, row => ptnOf(row) || "(Không có mã PTN)", row => row.sl_ban_sau_tra_lai, years)
                     .map(entry => ({ code: entry.key, value: entry.total, byYear: entry.byYear }))
                 : [...quantity.values()];
+            topQuantityEntries.sort((a, b) => b.value - a.value);
             const topQuantity = limitTop(topQuantityEntries, "ptnQuantityTopLimit")
                 .map(entry => ({
                     ...entry,
@@ -2970,7 +2967,7 @@
             } else if (salesAvailableYears.length <= 3) {
                 years.innerHTML = `<div class="flex flex-wrap gap-2">${options}</div>`;
             } else {
-                const summary = selectedSalesYears.size ? `Đã chọn ${selectedSalesYears.size} năm` : "Tất cả năm";
+                const summary = selectedSalesYears.size ? `Đã chọn ${selectedSalesYears.size} năm` : "Không chọn năm";
                 years.innerHTML = `<details class="relative inline-block">
                     <summary class="cursor-pointer rounded-lg border border-slate-300 px-3 py-2 text-slate-600">${summary}</summary>
                     <div class="absolute z-30 mt-1 flex max-h-56 min-w-[180px] flex-col gap-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg">${options}</div>
@@ -2982,11 +2979,14 @@
             selectedSalesYears = new Set([...document.querySelectorAll("#monthlyYears input:checked")]
                 .map(input => Number(input.value)));
             const summary = document.querySelector("#monthlyYears summary");
-            if (summary) summary.textContent = selectedSalesYears.size ? `Đã chọn ${selectedSalesYears.size} năm` : "Tất cả năm";
-            const years = selectedSalesYears.size ? [...selectedSalesYears] : salesAvailableYears;
+            if (summary) summary.textContent = selectedSalesYears.size ? `Đã chọn ${selectedSalesYears.size} năm` : "Không chọn năm";
+            const now = new Date();
+            const years = selectedSalesYears.size ? [...selectedSalesYears] : [now.getFullYear()];
             if (!years.length) return;
-            setDateInput("fromDate", new Date(Math.min(...years), 0, 1));
-            setDateInput("toDate", new Date(Math.max(...years), 11, 31));
+            const fromYear = Math.min(...years);
+            const toYear = Math.max(...years);
+            setDateInput("fromDate", new Date(fromYear, 0, 1));
+            setDateInput("toDate", toYear === now.getFullYear() ? now : new Date(toYear, 11, 31));
             loadDashboardData();
         }
 
@@ -3022,6 +3022,39 @@
             document.getElementById("monthlyRevenueStatus").textContent = `Theo bộ lọc Dashboard; dữ liệu ${years.length} năm trong khoảng ngày.`;
         }
 
+        const doughnutPercentageLabels = {
+            id: "doughnutPercentageLabels",
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                chart.data.datasets.forEach((dataset, datasetIndex) => {
+                    if (!chart.isDatasetVisible(datasetIndex)) return;
+                    const values = dataset.data.map((value, index) =>
+                        chart.getDataVisibility(index) ? Math.abs(Number(value) || 0) : 0);
+                    const total = values.reduce((sum, value) => sum + value, 0);
+                    if (!total) return;
+                    chart.getDatasetMeta(datasetIndex).data.forEach((arc, index) => {
+                        const percentage = values[index] / total * 100;
+                        if (percentage < 6 || arc.outerRadius - arc.innerRadius < 12) return;
+                        const angle = (arc.startAngle + arc.endAngle) / 2;
+                        const radius = (arc.innerRadius + arc.outerRadius) / 2;
+                        ctx.save();
+                        ctx.fillStyle = "#fff";
+                        ctx.font = "bold 11px sans-serif";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+                        ctx.shadowBlur = 3;
+                        ctx.fillText(
+                            `${percentage.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%`,
+                            arc.x + Math.cos(angle) * radius,
+                            arc.y + Math.sin(angle) * radius
+                        );
+                        ctx.restore();
+                    });
+                });
+            }
+        };
+
         function renderCharts(rows) {
             const palette = ['#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6', '#14b8a6', '#ef4444', '#64748b'];
 
@@ -3036,18 +3069,74 @@
                 ]
             });
 
-            let cats = groupSum(rows, categoryOf);
-            if (cats.length > 7) {
-                const other = cats.slice(7).reduce((s, c) => s + c[1], 0);
-                cats = [...cats.slice(0, 7), ["Khác", other]];
-            }
-            createChart('categoryPieChart', 'doughnut', {
-                labels: cats.map(c => c[0]),
-                datasets: [{ data: cats.map(c => c[1]), backgroundColor: palette }]
-            });
-
             const years = dashboardReportYears();
             const segmentedByYear = years.length > 1;
+            let cats = segmentedByYear
+                ? groupSumByYear(rows, categoryOf, netRevOf, years)
+                : groupSum(rows, categoryOf).map(([key, total]) => ({ key, total, byYear: {} }));
+            if (cats.length > 7) {
+                const otherCats = cats.slice(7);
+                cats = [...cats.slice(0, 7), {
+                    key: "Khác",
+                    total: otherCats.reduce((sum, category) => sum + category.total, 0),
+                    byYear: Object.fromEntries(years.map(year => [
+                        year,
+                        otherCats.reduce((sum, category) => sum + Number(category.byYear[year] || 0), 0)
+                    ]))
+                }];
+            }
+            const categoryColors = cats.map((_, index) => palette[index % palette.length]);
+            const categoryDatasets = segmentedByYear
+                ? years.map(year => ({
+                    label: year,
+                    data: cats.map(category => category.byYear[year] || 0),
+                    backgroundColor: categoryColors,
+                    borderColor: "#fff",
+                    borderWidth: 1
+                }))
+                : [{
+                    data: cats.map(category => category.total),
+                    backgroundColor: categoryColors,
+                    borderColor: "#fff",
+                    borderWidth: 1
+                }];
+            createChart('categoryPieChart', 'doughnut', {
+                labels: cats.map(category => category.key),
+                datasets: categoryDatasets
+            }, {
+                cutout: segmentedByYear ? "30%" : "55%",
+                plugins: {
+                    legend: {
+                        position: "right",
+                        labels: {
+                            generateLabels: chart => cats.map((category, index) => ({
+                                text: category.key,
+                                fillStyle: categoryColors[index],
+                                strokeStyle: "#fff",
+                                lineWidth: 1,
+                                hidden: !chart.getDataVisibility(index),
+                                index
+                            }))
+                        },
+                        onClick: (event, item, legend) => {
+                            legend.chart.toggleDataVisibility(item.index);
+                            legend.chart.update();
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: items => `${items[0].dataset.label ? `${items[0].dataset.label} · ` : ""}${items[0].label}`,
+                            label: item => {
+                                const value = Number(item.raw) || 0;
+                                const total = item.dataset.data.reduce((sum, entry) => sum + Math.abs(Number(entry) || 0), 0);
+                                const percentage = total ? Math.abs(value) / total * 100 : 0;
+                                return `${formatVND(value)} (${percentage.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%)`;
+                            }
+                        }
+                    }
+                }
+            }, [doughnutPercentageLabels]);
+
             const staff = segmentedByYear
                 ? limitTop(groupSumByYear(rows, r => r.ten_nvkd || r.ma_nhomkd, netRevOf, years), "staffTopLimit")
                 : limitTop(groupSum(rows, r => r.ten_nvkd || r.ma_nhomkd), "staffTopLimit");
@@ -3844,6 +3933,31 @@
                     <td class="p-3 text-slate-600">${esc(r.ma_nhvt1)}</td>
                     <td class="p-3 text-slate-600">${esc(r.ma_msp)}</td>
                 </tr>`
+        });
+
+        dtInit("managedUsers", {
+            tbody: "usersTableBody",
+            sortableColumns: [0, 1, 2, 3],
+            cols: [user => user.useremail, user => user.ho_ten, user => user.ma_bp || "",
+                user => user.role === "admin" ? "Admin" : "User - chỉ xem", user => user.useremail],
+            row: user => `<tr>
+                    <td class="p-3">${esc(user.useremail)}</td>
+                    <td class="p-3">${esc(user.ho_ten)}</td>
+                    <td class="p-3">${esc(user.ma_bp || "")}</td>
+                    <td class="p-3">${user.role === "admin" ? "Admin" : "User - chỉ xem"}</td>
+                    <td class="p-3 text-right whitespace-nowrap">
+                        <button data-edit-user="${esc(user.useremail)}" class="px-2.5 py-1 text-blue-700 hover:bg-blue-50 rounded">Sửa</button>
+                        ${user.useremail === currentUser.useremail ? "" : `<button data-delete-user="${esc(user.useremail)}" class="px-2.5 py-1 text-red-600 hover:bg-red-50 rounded">Xóa</button>`}
+                    </td>
+                </tr>`,
+            onRendered: body => {
+                body.querySelectorAll("[data-edit-user]").forEach(button => {
+                    button.addEventListener("click", () => editManagedUser(button.dataset.editUser));
+                });
+                body.querySelectorAll("[data-delete-user]").forEach(button => {
+                    button.addEventListener("click", () => removeManagedUser(button.dataset.deleteUser));
+                });
+            }
         });
 
         // =================================================================
@@ -5065,21 +5179,132 @@
             const table = tbody.closest("table");
             const wrap = table.parentElement;
             wrap.classList.add("tbl-scroll");
+            const colgroup = document.createElement("colgroup");
+            colgroup.className = "dt-column-group";
+            table.insertBefore(colgroup, table.tHead);
 
             const pager = document.createElement("div");
             pager.className = "flex flex-wrap items-center justify-between gap-2 pt-3 text-xs text-slate-600";
             wrap.after(pager);
 
-            const s = DT[id] = { cfg, tbody, pager, rows: [], sortCol: -1, dir: 1, page: 1, size: 25 };
+            const s = DT[id] = {
+                cfg, tbody, pager, wrap, colgroup, rows: [], sortCol: -1, dir: 1, page: 1, size: 25,
+                widths: null, pinnedColumns: new Set()
+            };
             table.tHead.querySelectorAll("th").forEach((th, i) => {
-                th.classList.add("cursor-pointer", "select-none", "whitespace-nowrap");
-                th.insertAdjacentHTML("beforeend", ` <i class="fa-solid fa-sort text-slate-300 ml-1 sort-ico"></i>`);
-                th.addEventListener("click", () => {
+                const sortable = !Array.isArray(cfg.sortableColumns) || cfg.sortableColumns.includes(i);
+                th.classList.add("select-none", "whitespace-nowrap");
+                if (sortable) th.classList.add("cursor-pointer");
+                th.dataset.dtColumnLabel = th.textContent.trim();
+                if (sortable) {
+                    th.insertAdjacentHTML("beforeend", ` <i class="fa-solid fa-sort text-slate-300 ml-1 sort-ico"></i>`);
+                }
+                const pinButton = document.createElement("button");
+                pinButton.type = "button";
+                pinButton.className = "dt-pin-toggle inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600";
+                pinButton.innerHTML = '<i class="fa-solid fa-thumbtack" aria-hidden="true"></i>';
+                pinButton.addEventListener("click", event => {
+                    event.stopPropagation();
+                    if (s.pinnedColumns.has(i)) s.pinnedColumns.delete(i);
+                    else s.pinnedColumns.add(i);
+                    dtApplyColumnLayout(id);
+                });
+                th.appendChild(pinButton);
+                const resizeHandle = document.createElement("span");
+                resizeHandle.className = "dt-resize-handle";
+                resizeHandle.setAttribute("role", "separator");
+                resizeHandle.setAttribute("aria-orientation", "vertical");
+                resizeHandle.setAttribute("aria-label", `Thay đổi độ rộng cột ${th.dataset.dtColumnLabel}`);
+                resizeHandle.addEventListener("pointerdown", event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!s.widths) dtApplyColumnLayout(id);
+                    const startX = event.clientX;
+                    const startWidth = s.widths[i];
+                    const onPointerMove = moveEvent => {
+                        s.widths[i] = Math.max(72, startWidth + moveEvent.clientX - startX);
+                        dtApplyColumnLayout(id);
+                    };
+                    const onPointerUp = () => {
+                        window.removeEventListener("pointermove", onPointerMove);
+                        window.removeEventListener("pointerup", onPointerUp);
+                        window.removeEventListener("pointercancel", onPointerUp);
+                    };
+                    window.addEventListener("pointermove", onPointerMove);
+                    window.addEventListener("pointerup", onPointerUp);
+                    window.addEventListener("pointercancel", onPointerUp);
+                });
+                resizeHandle.addEventListener("click", event => event.stopPropagation());
+                th.appendChild(resizeHandle);
+                th.style.paddingRight = "2rem";
+                th.addEventListener("click", event => {
+                    if (!sortable || event.target.closest(".dt-pin-toggle, .dt-resize-handle")) return;
                     s.dir = s.sortCol === i ? -s.dir : 1;
                     s.sortCol = i;
                     s.page = 1;
                     dtRender(id);
                 });
+            });
+            s.resizeObserver = new ResizeObserver(() => {
+                if (!s.widths) dtApplyColumnLayout(id);
+            });
+            s.resizeObserver.observe(wrap);
+        }
+
+        function dtApplyColumnLayout(id) {
+            const s = DT[id];
+            const table = s.tbody.closest("table");
+            const headers = [...table.tHead.querySelectorAll("th")];
+            if (!s.widths) {
+                if (!s.wrap.getBoundingClientRect().width) return;
+                const measuredRows = [...s.tbody.rows].filter(row =>
+                    row.cells.length === headers.length && [...row.cells].every(cell => cell.colSpan === 1));
+                s.widths = headers.map((header, index) => {
+                    const widths = [header, ...measuredRows.map(row => row.cells[index])]
+                        .map(cell => cell.getBoundingClientRect().width);
+                    return Math.max(80, Math.ceil(Math.max(...widths)));
+                });
+                s.widths.forEach(() => s.colgroup.appendChild(document.createElement("col")));
+            }
+
+            const totalWidth = s.widths.reduce((sum, width) => sum + width, 0);
+            s.widths.forEach((width, index) => {
+                s.colgroup.children[index].style.width = `${width}px`;
+            });
+            table.style.tableLayout = "fixed";
+            table.style.width = `${totalWidth}px`;
+
+            const leftOffsets = new Map();
+            let pinnedWidth = 0;
+            s.widths.forEach((width, index) => {
+                if (!s.pinnedColumns.has(index)) return;
+                leftOffsets.set(index, pinnedWidth);
+                pinnedWidth += width;
+            });
+            const applyCell = (cell, index, zIndex) => {
+                const pinned = s.pinnedColumns.has(index);
+                cell.classList.toggle("dt-pinned-cell", pinned);
+                cell.style.left = pinned ? `${leftOffsets.get(index)}px` : "";
+                cell.style.zIndex = pinned ? String(zIndex) : "";
+                if (cell.tagName !== "TH") cell.style.position = pinned ? "sticky" : "";
+            };
+
+            headers.forEach((header, index) => {
+                applyCell(header, index, 4);
+                const pinButton = header.querySelector(".dt-pin-toggle");
+                const pinned = s.pinnedColumns.has(index);
+                pinButton.setAttribute("aria-pressed", String(pinned));
+                pinButton.setAttribute("aria-label", `${pinned ? "Bỏ ghim" : "Ghim"} cột ${header.dataset.dtColumnLabel}`);
+                pinButton.title = `${pinned ? "Bỏ ghim" : "Ghim"} cột`;
+                pinButton.classList.toggle("text-blue-600", pinned);
+                pinButton.classList.toggle("bg-blue-50", pinned);
+            });
+            [...s.tbody.rows].forEach(row => {
+                if (row.cells.length === headers.length) {
+                    [...row.cells].forEach((cell, index) => applyCell(cell, index, 1));
+                } else if (row.cells.length === 1 && row.cells[0].colSpan > 1) {
+                    applyCell(row.cells[0], 0, 1);
+                }
             });
         }
 
@@ -5133,6 +5358,7 @@
             s.tbody.innerHTML = slice.length
                 ? slice.map(s.cfg.row).join("")
                 : `<tr><td colspan="${cols}" class="p-4 text-center text-slate-400 italic">Không có dữ liệu</td></tr>`;
+            dtApplyColumnLayout(id);
 
             const from = total ? start + 1 : 0;
             const to = Math.min(start + s.size, total);
@@ -5153,18 +5379,20 @@
                 <div class="flex items-center gap-1">
                     ${btn("«", 1, s.page === 1)}${btn("‹", s.page - 1, s.page === 1)}${nums}${btn("›", s.page + 1, s.page === pages)}${btn("»", pages, s.page === pages)}
                 </div>`;
+            if (s.cfg.onRendered) s.cfg.onRendered(s.tbody);
         }
 
         // =================================================================
         // HÀM PHỤ TRỢ TIỆN ÍCH
         // =================================================================
-        function createChart(canvasId, type, data, extraOptions = {}) {
+        function createChart(canvasId, type, data, extraOptions = {}, plugins = []) {
             const ctx = document.getElementById(canvasId).getContext('2d');
             if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
 
             chartInstances[canvasId] = new Chart(ctx, {
                 type: type,
                 data: data,
+                plugins,
                 options: Object.assign({
                     responsive: true,
                     maintainAspectRatio: false,
