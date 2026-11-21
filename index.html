@@ -3657,6 +3657,7 @@
         // IMPORT DANH MỤC VẬT TƯ TỪ EXCEL (CÓ TEMPLATE)
         // =================================================================
         const MATERIAL_IMPORT_COLUMNS = ["ma_vt", "ten_vt", "dvt", "ma_nhvt", "ten_nhvt", "ma_nhvt1", "ten_nhvt1", "ma_msp", "ten_msp"];
+        const MATERIAL_EXPORT_COLUMNS = [...MATERIAL_IMPORT_COLUMNS, "cdate", "ldate"];
         const MATERIAL_IMPORT_CHUNK = 3000;
         const SALES_IMPORT_COLUMNS = [
             "ma_cty", "ma_ct", "stt_rec", "stt_rec0", "ngay_ct", "so_ct", "so_dh", "ma_kh",
@@ -3669,6 +3670,13 @@
             "so_ct", "ma_kh", "ten_kh", "ma_nvkd", "ten_nvkd", "ma_nhomkd", "ma_vt", "ten_vt",
             "dvt", "sl_tra_lai", "gia2_tra_lai", "tien2_tra_lai", "tien_ck_tra_lai", "ma_lo",
             "cdate", "ldate"
+        ];
+        const SALES_EXPORT_COLUMNS = [...SALES_IMPORT_COLUMNS, "ma_ptn", "doanh_thu_hien_thi"];
+        const SALES_RETURN_EXPORT_COLUMNS = [...SALES_RETURN_IMPORT_COLUMNS, "ma_ptn", "doanh_thu_hien_thi"];
+        const DASHBOARD_SALES_EXPORT_COLUMNS = [
+            "loai_phieu",
+            ...new Set([...SALES_IMPORT_COLUMNS, ...SALES_RETURN_IMPORT_COLUMNS]),
+            "ma_ptn", "doanh_thu_thuan", "sl_ban_sau_tra_lai"
         ];
         const SALES_IMPORT_NUMBER_COLUMNS = new Set([
             "so_luong", "gia2", "tien2", "ck_ds", "tien_ck", "doanh_thu_ban",
@@ -3768,7 +3776,7 @@
             const sheetName = wb.SheetNames.includes(expectedSheet) ? expectedSheet : wb.SheetNames[0];
             if (!sheetName) throw new Error("File không có sheet dữ liệu.");
             const table = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: "", raw: true });
-            const headers = (table[0] || []).map(h => String(h).trim().toLowerCase());
+            const headers = (table[0] || []).map(normalizeImportHeader);
             const indexes = Object.fromEntries(columns.map(column => [column, headers.indexOf(column)]));
             const missing = requiredColumns.filter(column => indexes[column] < 0);
             if (missing.length) throw new Error(`File thiếu cột bắt buộc ${missing.join(", ")}. Hãy dùng template.`);
@@ -3883,7 +3891,7 @@
             const sheetName = wb.SheetNames.includes("danh_muc_vat_tu") ? "danh_muc_vat_tu" : wb.SheetNames[0];
             if (!sheetName) throw new Error("File không có sheet dữ liệu.");
             const table = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: "", raw: false });
-            const headers = (table[0] || []).map(h => String(h).trim().toLowerCase());
+            const headers = (table[0] || []).map(normalizeImportHeader);
             const index = Object.fromEntries(MATERIAL_IMPORT_COLUMNS.map(c => [c, headers.indexOf(c)]));
             if (index.ma_vt < 0 || index.ten_vt < 0) {
                 throw new Error("File thiếu cột bắt buộc ma_vt/ten_vt ở dòng tiêu đề. Hãy dùng template.");
@@ -3942,6 +3950,7 @@
             "ma_vt", "ten_vt", "dvt", "so_luong", "dien_giai", "ghi_chu", "stt_rec0", "stt_rec",
             "cdate", "ldate"
         ];
+        const PURCHASE_EXPORT_COLUMNS = [...PURCHASE_IMPORT_COLUMNS, "trang_thai_hien_thi"];
         const PURCHASE_HISTORY_IMPORT_COLUMNS = [
             "ngay_ct", "so_ct", "ma_kh", "ten_kh", "ma_vt", "ten_vt", "dvt", "sl_nhap", "tien_nhap",
             "stt_rec", "stt_rec0", "ma_nt", "ty_gia", "ma_lo", "cdate", "ldate"
@@ -3963,6 +3972,12 @@
         const PRODUCTION_IMPORT_COLUMNS = [
             "ngay_ct", "so_ct", "ma_vt", "ten_vt", "dvt", "so_luong", "sl_thuc_te", "ma_lo",
             "trang_thai", "ten_trang_thai", "ma_ct", "Hinh_thuc_sx", "stt_rec", "stt_rec0"
+        ];
+        const PRODUCTION_EXPORT_COLUMNS = [
+            ...PRODUCTION_IMPORT_COLUMNS, "cdate", "ldate", "ma_ptn", "so_luong_con_lai", "trang_thai_hien_thi"
+        ];
+        const PURCHASE_HISTORY_EXPORT_COLUMNS = [
+            ...PURCHASE_HISTORY_IMPORT_COLUMNS, "don_gia_vnd", "don_gia_nt"
         ];
         const PRODUCTION_IMPORT_KEY_COLUMNS = ["stt_rec", "stt_rec0", "ma_ct", "so_ct", "ma_vt", "ma_lo"];
         const PRODUCTION_IMPORT_REQUIRED_COLUMNS = ["ngay_ct", "stt_rec", "stt_rec0", "ma_ct", "so_ct", "ma_vt"];
@@ -4066,7 +4081,7 @@
             const sheetName = wb.SheetNames.includes(tableName) ? tableName : wb.SheetNames[0];
             if (!sheetName) throw new Error("File không có sheet dữ liệu.");
             const table = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: "", raw: true });
-            const headers = (table[0] || []).map(header => String(header).trim().toLowerCase());
+            const headers = (table[0] || []).map(normalizeImportHeader);
             const indexes = Object.fromEntries(columns.map(column => [column, headers.indexOf(column.toLowerCase())]));
             const missing = [...new Set([...keyColumns, ...requiredColumns])].filter(column => indexes[column] < 0);
             if (missing.length) throw new Error(`File thiếu cột bắt buộc ${missing.join(", ")}. Hãy dùng template.`);
@@ -4218,11 +4233,97 @@
         // =================================================================
         const purchaseStatusText = st => ({ "1": "Chờ duyệt", "2": "Đã duyệt", "3": "Thực hiện", "4": "Hoàn thành" }[String(st).trim()] || `Trạng thái ${st}`);
 
-        function dtExportTable(id) {
-            const s = DT[id];
-            const headers = [...s.tbody.closest("table").tHead.querySelectorAll("th")].map(th => th.textContent.trim());
-            const getters = s.cfg.exportCols || s.cfg.cols;
-            return { headers, rows: dtSortedRows(id).map(r => getters.map(get => get(r) ?? "")) };
+        const EXPORT_COLUMN_LABELS = {
+            loai_phieu: "Loại phiếu",
+            ma_ptn: "Mã PTN",
+            doanh_thu_hien_thi: "Doanh thu hiển thị",
+            doanh_thu_thuan: "Doanh thu thuần",
+            sl_ban_sau_tra_lai: "Số lượng bán sau trả lại",
+            trang_thai_hien_thi: "Tên trạng thái hiển thị",
+            don_gia_vnd: "Đơn giá VND",
+            don_gia_nt: "Đơn giá ngoại tệ",
+            so_luong_con_lai: "Số lượng còn lại",
+            ma_cty: "Mã công ty",
+            ma_ct: "Loại chứng từ",
+            stt_rec: "Mã bản ghi",
+            stt_rec0: "Dòng bản ghi",
+            stt_rec_hd: "Mã phiếu bán gốc",
+            stt_rec0_hd: "Dòng phiếu bán gốc",
+            ngay_ct: "Ngày chứng từ",
+            so_ct: "Số chứng từ",
+            so_dh: "Số đơn hàng",
+            ma_kh: "Mã khách hàng",
+            ten_kh: "Tên khách hàng",
+            ma_nvkd: "Mã NVKD",
+            ten_nvkd: "Tên NVKD",
+            ma_nhomkd: "Nhóm kinh doanh",
+            ma_vt: "Mã vật tư",
+            ten_vt: "Tên vật tư",
+            dvt: "Đơn vị tính",
+            so_luong: "Số lượng",
+            gia2: "Đơn giá",
+            tien2: "Thành tiền",
+            ck_ds: "Chiết khấu doanh số",
+            tien_ck: "Chiết khấu",
+            doanh_thu_ban: "Doanh thu bán",
+            ma_lo: "Mã lô",
+            ma_tt: "Mã thanh toán",
+            ngay_tt: "Ngày thanh toán",
+            cdate: "Ngày tạo",
+            ldate: "Ngày cập nhật",
+            sl_tra_lai: "Số lượng trả lại",
+            gia2_tra_lai: "Đơn giá trả lại",
+            tien2_tra_lai: "Tiền trả lại",
+            tien_ck_tra_lai: "Chiết khấu trả lại",
+            trang_thai: "Trạng thái",
+            ten_trang_thai: "Tên trạng thái",
+            ma_bp: "Mã bộ phận",
+            ten_bp: "Tên bộ phận",
+            fullname: "Người đề xuất",
+            muc_dich: "Mục đích",
+            dien_giai: "Diễn giải",
+            ghi_chu: "Ghi chú",
+            sl_nhap: "Số lượng nhập",
+            tien_nhap: "Tiền nhập",
+            ma_nt: "Mã ngoại tệ",
+            ty_gia: "Tỷ giá",
+            sl_xuat: "Số lượng xuất",
+            sl_thuc_te: "Số lượng thực tế",
+            ma_spct_inct: "Mã sản phẩm chi tiết",
+            stt_rec_lsx: "Mã lệnh sản xuất",
+            stt_rec0_lsx: "Dòng lệnh sản xuất",
+            so_lsx: "Số lệnh sản xuất",
+            ma_spct: "Mã sản phẩm",
+            ten_spct: "Tên sản phẩm",
+            dvt_lsx: "Đơn vị tính theo lệnh",
+            so_luong_lsx: "Số lượng theo lệnh",
+            ma_lo_lsx: "Mã lô theo lệnh",
+            ma_nhvt: "Mã nhóm vật tư",
+            ten_nhvt: "Tên nhóm vật tư",
+            ma_nhvt1: "Mã nhóm vật tư 1",
+            ten_nhvt1: "Tên nhóm vật tư 1",
+            ma_msp: "Mã nhóm sản phẩm",
+            ten_msp: "Tên nhóm sản phẩm",
+            Hinh_thuc_sx: "Hình thức sản xuất"
+        };
+
+        function normalizeImportHeader(value) {
+            const header = String(value ?? "").trim().toLocaleLowerCase("vi");
+            const labelMatch = Object.entries(EXPORT_COLUMN_LABELS)
+                .find(([, label]) => label.toLocaleLowerCase("vi") === header);
+            if (labelMatch) return labelMatch[0].toLocaleLowerCase("vi");
+            const columnMatch = Object.keys(EXPORT_COLUMN_LABELS)
+                .find(column => column.toLocaleLowerCase("vi") === header);
+            return columnMatch ? columnMatch.toLocaleLowerCase("vi") : header;
+        }
+
+        function dtExportTable(id, columns, valueOf = (row, column) => row[column]) {
+            const rows = dtSortedRows(id);
+            return {
+                columns,
+                headers: columns.map(column => EXPORT_COLUMN_LABELS[column] || column),
+                rows: rows.map(row => columns.map(column => valueOf(row, column) ?? ""))
+            };
         }
 
         function dashboardPdfText(context, text, x, y, font, color, align = "left") {
@@ -4629,9 +4730,10 @@
                     info.push(["Khoảng ngày", `${document.getElementById("salesDataFromDate").value} → ${document.getElementById("salesDataToDate").value}`],
                         ["Từ khóa", document.getElementById("salesDataSearch").value.trim()],
                         ["Nguồn dữ liệu", salesTableName()]);
-                    table = dtExportTable(tableId);
-                    const sum = i => table.rows.reduce((total, row) => total + (Number(row[i]) || 0), 0);
-                    table.rows.push(["TỔNG CỘNG", "", "", "", "", "", sum(6), sum(7), sum(8), sum(9)]);
+                    table = dtExportTable(tableId,
+                        salesTableMode === "returns" ? SALES_RETURN_EXPORT_COLUMNS : SALES_EXPORT_COLUMNS,
+                        (row, column) => column === "ma_ptn" ? ptnOf(row)
+                            : column === "doanh_thu_hien_thi" ? revOf(row) : row[column]);
                 } else if (screen === "dashboard") {
                     title = "Chi tiết bán hàng Dashboard"; tableId = "dashboardSales";
                     info.push(["Khoảng ngày", `${getDateInput("fromDate")} → ${getDateInput("toDate")}`]);
@@ -4642,39 +4744,48 @@
                         ["Khách hàng", labelOf("filterCustomer")],
                         ["Năm phân tích", selectedSalesYears.size ? [...selectedSalesYears].sort((a, b) => a - b).join(", ") : "Tất cả năm"],
                         ["Từ khóa", document.getElementById("searchInput").value.trim()]);
-                    table = dtExportTable(tableId);
-                    const sum = i => table.rows.reduce((t, r) => t + (Number(r[i]) || 0), 0);
-                    table.rows.push(["TỔNG CỘNG", "", "", "", "", "", "", sum(7),
-                        sumBy(dtSortedRows(tableId), netRevOf), sum(9), sum(10)]);
+                    table = dtExportTable(tableId, DASHBOARD_SALES_EXPORT_COLUMNS, (row, column) =>
+                        column === "loai_phieu"
+                            ? (row.__salesReturn ? "Hàng bán trả lại" : "Xuất bán hàng")
+                            : column === "ma_ptn" ? ptnOf(row)
+                            : column === "doanh_thu_thuan" ? netRevOf(row)
+                            : column === "sl_ban_sau_tra_lai" ? row.sl_ban_sau_tra_lai
+                            : (column === "cdate" || column === "ldate"
+                                ? formatHistoryDateTime(row[column])
+                                : row[column]));
                 } else if (screen === "purchase") {
                     title = "Đề xuất mua hàng"; tableId = "purchase";
                     info.push(["Khoảng ngày", range("pur")], ["Trạng thái", document.getElementById("purchaseStatusFilter").selectedOptions[0].textContent],
                         ["Từ khóa", document.getElementById("searchPurchaseInput").value.trim()]);
-                    table = dtExportTable(tableId);
+                    table = dtExportTable(tableId, PURCHASE_EXPORT_COLUMNS, (row, column) =>
+                        column === "trang_thai_hien_thi" ? purchaseStatusText(row.trang_thai) : row[column]);
                 } else if (screen === "purchase-history") {
                     title = "Lịch sử mua hàng"; tableId = "purchaseHistory";
                     info.push(["Khoảng ngày", `${getDateInput("historyFromDate")} → ${getDateInput("historyToDate")}`],
                         ["Từ khóa", document.getElementById("searchPurchaseHistoryInput").value.trim()]);
-                    table = dtExportTable(tableId);
-                    const sum = i => table.rows.reduce((total, row) => total + (Number(row[i]) || 0), 0);
-                    table.rows.push(["TỔNG CỘNG:", "", "", "", "", "", "", sum(7), sum(8), "", "", "", "", "", "", "", "", ""]);
+                    table = dtExportTable(tableId, PURCHASE_HISTORY_EXPORT_COLUMNS, (row, column) =>
+                        column === "don_gia_vnd" ? purchaseHistoryUnitPriceVnd(row)
+                            : column === "don_gia_nt" ? purchaseHistoryUnitPriceForeign(row)
+                                : row[column]);
                 } else if (screen === "production") {
                     title = "Lệnh sản xuất"; tableId = "production";
                     info.push(["Khoảng ngày", range("pro")], ["Trạng thái", document.getElementById("productionStatusFilter").selectedOptions[0].textContent],
                         ["Hình thức sản xuất", document.getElementById("productionTypeFilter").selectedOptions[0].textContent],
                         ["Từ khóa", document.getElementById("searchProductionInput").value.trim()]);
-                    table = dtExportTable(tableId);
+                    table = dtExportTable(tableId, PRODUCTION_EXPORT_COLUMNS, (row, column) =>
+                        column === "ma_ptn" ? ptnOf(row)
+                            : column === "so_luong_con_lai" ? window.erpProductionRemaining(row)
+                                : column === "trang_thai_hien_thi" ? row.ten_trang_thai || `Trạng thái ${row.trang_thai}`
+                                    : row[column]);
                 } else if (screen === "usage-history") {
                     title = "Lịch sử sử dụng"; tableId = "usageHistory";
                     info.push(["Khoảng ngày", `${getDateInput("usageFromDate")} → ${getDateInput("usageToDate")}`],
                         ["Từ khóa", document.getElementById("searchUsageHistoryInput").value.trim()]);
-                    table = dtExportTable(tableId);
-                    const sum = i => table.rows.reduce((total, row) => total + (Number(row[i]) || 0), 0);
-                    table.rows.push(["TỔNG CỘNG:", "", "", "", "", sum(5), "", "", "", "", "", "", "", sum(13), "", "", "", "", "", "", "", "", ""]);
+                    table = dtExportTable(tableId, USAGE_HISTORY_IMPORT_COLUMNS);
                 } else if (screen === "materials") {
                     title = "Danh mục vật tư"; tableId = "materials";
                     info.push(["Từ khóa", document.getElementById("searchMaterialInput").value.trim()]);
-                    table = dtExportTable(tableId);
+                    table = dtExportTable(tableId, MATERIAL_EXPORT_COLUMNS);
                 } else {
                     title = "Người dùng";
                     table = {
@@ -4682,16 +4793,20 @@
                         rows: managedUsers.map(u => [u.useremail, u.ho_ten, u.ma_bp || "", u.role === "admin" ? "Admin" : "User - chỉ xem"])
                     };
                 }
-                const exported = table.rows.length - (["dashboard", "sales"].includes(screen) && table.rows.length ? 1 : 0);
+                const exported = table.rows.length;
                 const wb = XLSX.utils.book_new();
                 const sheet = XLSX.utils.aoa_to_sheet([table.headers, ...table.rows]);
-                if (screen === "purchase-history") {
+                if (screen === "purchase-history" && table.columns) {
+                    const quantityIndex = table.columns.indexOf("sl_nhap");
+                    const amountIndex = table.columns.indexOf("tien_nhap");
+                    const rateIndex = table.columns.indexOf("ty_gia");
                     table.rows.forEach((row, rowIndex) => {
-                        const quantity = Number(row[7]);
+                        const quantity = Number(row[quantityIndex]);
                         const fractionDigits = purchaseHistoryQuantityFractionDigits(quantity);
                         const quantityFormat = fractionDigits === 4 ? "0.0000"
                             : fractionDigits === 2 ? "#,##0.00" : "#,##0";
-                        [[7, quantityFormat], [9, "#,##0"], [10, "#,##0.00"]].forEach(([column, numberFormat]) => {
+                        [[quantityIndex, quantityFormat], [amountIndex, "#,##0.00"], [rateIndex, "#,##0.00"]]
+                            .forEach(([column, numberFormat]) => {
                             const cell = sheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: column })];
                             if (cell && Number.isFinite(cell.v)) cell.z = numberFormat;
                         });
