@@ -396,6 +396,47 @@ function biPeriod(row, grain, dateField = "ngay_ct") {
     throw new Error("Chiều thời gian không hợp lệ.");
 }
 
+function biPeriodsForRange(from, to, grain) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
+        throw new Error("Khoảng ngày B.I không hợp lệ.");
+    }
+    if (grain === "day") {
+        const date = new Date(`${from}T00:00:00Z`);
+        const end = new Date(`${to}T00:00:00Z`);
+        const periods = [];
+        while (date <= end) {
+            periods.push(date.toISOString().slice(0, 10));
+            date.setUTCDate(date.getUTCDate() + 1);
+        }
+        return periods;
+    }
+    const [fromYear, fromMonth] = from.split("-").map(Number);
+    const [toYear, toMonth] = to.split("-").map(Number);
+    const periods = [];
+    if (grain === "month") {
+        for (let year = fromYear, month = fromMonth; year < toYear || year === toYear && month <= toMonth;) {
+            periods.push(`${year}-${String(month).padStart(2, "0")}`);
+            if (++month > 12) { month = 1; year++; }
+        }
+        return periods;
+    }
+    if (grain === "quarter") {
+        let year = fromYear;
+        let month = Math.floor((fromMonth - 1) / 3) * 3 + 1;
+        while (year < toYear || year === toYear && month <= toMonth) {
+            periods.push(`${year}-Q${Math.ceil(month / 3)}`);
+            month += 3;
+            if (month > 12) { month -= 12; year++; }
+        }
+        return periods;
+    }
+    if (grain === "year") {
+        for (let year = fromYear; year <= toYear; year++) periods.push(String(year));
+        return periods;
+    }
+    throw new Error("Chiều thời gian không hợp lệ.");
+}
+
 function biAggregate(rows, widget) {
     const groups = new Map();
     const stackDimension = biStackableDimensions.includes(widget.dimension) && widget.chart === "stack" ? widget.stackDimension : "";
@@ -730,10 +771,7 @@ function biRenderTime(content, result, widget) {
     const orders = biOrderSummary(result, widget);
     const hasProductionTotal = widget.measure === "quantity";
     const stacked = widget.chart === "stack";
-    const periods = [...new Set([
-        ...result.flatMap(group => [...group.periods.keys()]),
-        ...orders.periods.keys()
-    ])].sort();
+    const periods = biPeriodsForRange(biBoard.from, biBoard.to, widget.timeGrain);
     const stockTotals = biStockTotals(widget);
     if (widget.chart === "table") {
         const table = document.createElement("table");
