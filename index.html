@@ -772,7 +772,6 @@
                         <h2 class="font-bold text-slate-900 text-base flex items-center gap-2">
                             <i class="fa-solid fa-file-invoice text-blue-600"></i><span>Danh sách Đơn hàng mua</span>
                         </h2>
-                        <p class="text-xs text-slate-500">Chi tiết từng mặt hàng trên đơn; xem và xóa theo ngày chứng từ, tải SQL theo LDATE.</p>
                     </div>
                     <div class="flex flex-wrap items-center justify-end gap-2">
                         <input type="file" id="purchaseOrdersImportFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="importPurchaseOrdersFromFile(this)">
@@ -873,8 +872,10 @@
                                 <th class="p-3">Mã vật tư</th><th class="p-3" style="width: 220px; min-width: 220px">Tên vật tư</th><th class="p-3">ĐVT</th>
                                 <th class="p-3 text-right">SL nhập</th><th class="p-3 text-right">Tiền nhập</th>
                                 <th class="p-3 text-right">Đơn giá VNĐ</th><th class="p-3 text-right">Đơn giá NT</th>
-                                <th class="p-3">Mã NT</th><th class="p-3 text-right">Tỷ giá</th><th class="p-3">Mã lô</th>
-                                <th class="p-3">STT_REC</th><th class="p-3">STT_REC0</th><th class="p-3">Ngày tạo</th><th class="p-3">Ngày sửa</th>
+                                <th class="p-3">Mã kho</th><th class="p-3">Mã lô</th><th class="p-3">Mã nhà sản xuất</th>
+                                <th class="p-3">Số đơn hàng liên kết</th><th class="p-3">Mã NV mua hàng</th><th class="p-3">Tên NV mua hàng</th>
+                                <th class="p-3">Mã NT</th><th class="p-3 text-right">Tỷ giá</th>
+                                <th class="p-3">Ngày tạo</th><th class="p-3">Ngày sửa</th><th class="p-3">STT_REC</th><th class="p-3">STT_REC0</th>
                             </tr>
                         </thead>
                         <tbody id="purchaseHistoryTableBody" class="divide-y divide-slate-100"></tbody>
@@ -883,7 +884,7 @@
                                 <td colspan="7" class="p-3 text-right uppercase">TỔNG CỘNG:</td>
                                 <td id="purchaseHistoryFootTotalQuantity" class="p-3 text-right text-slate-600">0</td>
                                 <td id="purchaseHistoryFootTotalAmount" class="p-3 text-right text-blue-600">0</td>
-                                <td colspan="9"></td>
+                                <td colspan="14"></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -3516,7 +3517,8 @@
             const keyword = document.getElementById("searchPurchaseHistoryInput").value.trim().toLocaleLowerCase("vi");
             const rows = allPurchaseHistoryData.filter(row => !keyword ||
                 [row.ngay_ct, row.so_ct, row.ma_kh, row.ten_kh, row.ma_vt, row.ten_vt, row.dvt,
-                    row.sl_nhap, row.tien_nhap, row.ma_nt, row.ty_gia, row.ma_lo, row.stt_rec, row.stt_rec0]
+                    row.sl_nhap, row.tien_nhap, row.ma_kho, row.ma_lo, row.ma_nsx, row.so_dh_lien_ket,
+                    row.ma_nvmh, row.ten_nv_mh, row.ma_nt, row.ty_gia, row.cdate, row.ldate, row.stt_rec, row.stt_rec0]
                     .some(value => String(value ?? "").toLocaleLowerCase("vi").includes(keyword)));
             document.getElementById("purchaseHistoryFootTotalQuantity").innerText =
                 formatPurchaseHistoryQuantity(sumBy(rows, row => Number(row.sl_nhap || 0)));
@@ -3747,15 +3749,17 @@
                 r => r.ngay_ct, r => r.so_ct, r => r.ma_kh, r => r.ten_kh, r => r.ma_vt, r => r.ten_vt, r => r.dvt,
                 r => Number(r.sl_nhap || 0), r => Number(r.tien_nhap || 0),
                 r => purchaseHistoryUnitPriceVnd(r), r => purchaseHistoryUnitPriceForeign(r),
-                r => r.ma_nt, r => Number(r.ty_gia || 0), r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0,
-                r => formatHistoryDateTime(r.cdate), r => formatHistoryDateTime(r.ldate)
+                r => r.ma_kho, r => r.ma_lo, r => r.ma_nsx, r => r.so_dh_lien_ket,
+                r => r.ma_nvmh, r => r.ten_nv_mh, r => r.ma_nt, r => Number(r.ty_gia || 0),
+                r => formatHistoryDateTime(r.cdate), r => formatHistoryDateTime(r.ldate), r => r.stt_rec, r => r.stt_rec0
             ],
             exportCols: [
                 r => r.ngay_ct, r => r.so_ct, r => r.ma_kh, r => r.ten_kh, r => r.ma_vt, r => r.ten_vt, r => r.dvt,
                 r => Number(r.sl_nhap || 0), r => Number(r.tien_nhap || 0),
                 r => purchaseHistoryUnitPriceVnd(r), r => purchaseHistoryUnitPriceForeign(r),
-                r => r.ma_nt, r => Number(r.ty_gia || 0), r => r.ma_lo, r => r.stt_rec, r => r.stt_rec0,
-                r => formatHistoryDateTime(r.cdate), r => formatHistoryDateTime(r.ldate)
+                r => r.ma_kho, r => r.ma_lo, r => r.ma_nsx, r => r.so_dh_lien_ket,
+                r => r.ma_nvmh, r => r.ten_nv_mh, r => r.ma_nt, r => Number(r.ty_gia || 0),
+                r => formatHistoryDateTime(r.cdate), r => formatHistoryDateTime(r.ldate), r => r.stt_rec, r => r.stt_rec0
             ],
             row: r => `<tr class="hover:bg-blue-50 transition">
                 <td class="p-3 whitespace-nowrap">${esc(r.ngay_ct)}</td>
@@ -3769,13 +3773,18 @@
                 <td class="p-3 text-right">${Number(r.tien_nhap || 0).toLocaleString("vi-VN")}</td>
                 <td class="p-3 text-right">${formatPurchaseHistoryUnitPriceVnd(purchaseHistoryUnitPriceVnd(r))}</td>
                 <td class="p-3 text-right">${formatPurchaseHistoryUnitPriceForeign(purchaseHistoryUnitPriceForeign(r))}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.ma_kho)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.ma_lo)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.ma_nsx)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.so_dh_lien_ket)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.ma_nvmh)}</td>
+                <td class="p-3">${esc(r.ten_nv_mh)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(r.ma_nt)}</td>
                 <td class="p-3 text-right">${Number(r.ty_gia || 0).toLocaleString("vi-VN")}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.ma_lo)}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.stt_rec)}</td>
-                <td class="p-3 whitespace-nowrap">${esc(r.stt_rec0)}</td>
                 <td class="p-3 whitespace-nowrap">${esc(formatHistoryDateTime(r.cdate))}</td>
                 <td class="p-3 whitespace-nowrap">${esc(formatHistoryDateTime(r.ldate))}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.stt_rec)}</td>
+                <td class="p-3 whitespace-nowrap">${esc(r.stt_rec0)}</td>
             </tr>`
         });
         dtInit("voucher", {
@@ -4635,7 +4644,8 @@
         const PURCHASE_ORDERS_IMPORT_NUMBER_COLUMNS = new Set(["so_luong", "tien", "ty_gia", "han_tt"]);
         const PURCHASE_HISTORY_IMPORT_COLUMNS = [
             "ngay_ct", "so_ct", "ma_kh", "ten_kh", "ma_vt", "ten_vt", "dvt", "sl_nhap", "tien_nhap",
-            "stt_rec", "stt_rec0", "ma_nt", "ty_gia", "ma_lo", "cdate", "ldate"
+            "ma_kho", "ma_lo", "ma_nsx", "so_dh_lien_ket", "ma_nvmh", "ten_nv_mh", "ma_nt", "ty_gia",
+            "cdate", "ldate", "stt_rec", "stt_rec0"
         ];
         const PURCHASE_HISTORY_IMPORT_KEY_COLUMNS = ["stt_rec", "stt_rec0"];
         const PURCHASE_HISTORY_IMPORT_REQUIRED_COLUMNS = ["ngay_ct", "stt_rec", "stt_rec0"];
@@ -4659,8 +4669,14 @@
             ...PRODUCTION_IMPORT_COLUMNS, "cdate", "ldate", "ma_ptn", "so_luong_con_lai", "trang_thai_hien_thi"
         ];
         const PURCHASE_HISTORY_EXPORT_COLUMNS = [
-            ...PURCHASE_HISTORY_IMPORT_COLUMNS, "don_gia_vnd", "don_gia_nt"
+            "ngay_ct", "so_ct", "ma_kh", "ten_kh", "ma_vt", "ten_vt", "dvt", "sl_nhap", "tien_nhap",
+            "don_gia_vnd", "don_gia_nt", "ma_kho", "ma_lo", "ma_nsx", "so_dh_lien_ket", "ma_nvmh",
+            "ten_nv_mh", "ma_nt", "ty_gia", "cdate", "ldate", "stt_rec", "stt_rec0"
         ];
+        const PURCHASE_HISTORY_EXPORT_LABELS = {
+            ma_kh: "Mã nhà cung cấp",
+            ten_kh: "Tên nhà cung cấp"
+        };
         const PRODUCTION_IMPORT_KEY_COLUMNS = ["stt_rec", "stt_rec0", "ma_ct", "so_ct", "ma_vt", "ma_lo"];
         const PRODUCTION_IMPORT_REQUIRED_COLUMNS = ["ngay_ct", "stt_rec", "stt_rec0", "ma_ct", "so_ct", "ma_vt"];
         const PRODUCTION_IMPORT_NUMBER_COLUMNS = new Set(["so_luong", "sl_thuc_te", "trang_thai"]);
@@ -4764,12 +4780,24 @@
                         ["stt_rec0", "Mã dòng chi tiết", "Có", "Khóa dòng; giữ nguyên định dạng văn bản."],
                         ["so_ct", "Số chứng từ", "Không", ""],
                         ["ma_kh", "Mã nhà cung cấp", "Không", ""],
+                        ["ten_kh", "Tên nhà cung cấp", "Không", ""],
                         ["ma_vt", "Mã vật tư", "Không", "Giữ nguyên định dạng văn bản."],
+                        ["ten_vt", "Tên vật tư", "Không", ""],
+                        ["dvt", "Đơn vị tính", "Không", ""],
                         ["sl_nhap", "Số lượng nhập", "Không", "Để trống được hiểu là 0."],
                         ["tien_nhap", "Tiền nhập", "Không", "Để trống được hiểu là 0."],
+                        ["ma_kho", "Mã kho", "Không", "Giữ nguyên định dạng văn bản."],
+                        ["ma_lo", "Mã lô", "Không", "Giữ nguyên định dạng văn bản."],
+                        ["ma_nsx", "Mã nhà sản xuất", "Không", "Giữ nguyên định dạng văn bản."],
+                        ["so_dh_lien_ket", "Số đơn hàng liên kết", "Không", "Giữ nguyên định dạng văn bản."],
+                        ["ma_nvmh", "Mã nhân viên mua hàng", "Không", "Giữ nguyên định dạng văn bản."],
+                        ["ten_nv_mh", "Tên nhân viên mua hàng", "Không", ""],
+                        ["ma_nt", "Mã ngoại tệ", "Không", "Giữ nguyên định dạng văn bản."],
                         ["ty_gia", "Tỷ giá", "Không", "Để trống được hiểu là 0."],
+                        ["cdate", "Ngày tạo", "Không", "Giữ nguyên định dạng ngày giờ."],
+                        ["ldate", "Ngày cập nhật", "Không", "Giữ nguyên định dạng ngày giờ."],
                         [],
-                        ["Lưu ý", "Không đổi tên cột ở sheet lich_su_mua_hang. Dòng được cập nhật theo cặp khóa stt_rec + stt_rec0."]
+                        ["Lưu ý", "Không đổi tên cột ở sheet lich_su_mua_hang. Dòng được cập nhật theo cặp khóa stt_rec + stt_rec0. Đơn giá VNĐ/NT chỉ là cột tính trên màn hình và báo cáo, không nằm trong template import."]
                     ]);
             } catch (error) {
                 reportDataError("Lỗi tạo template lịch sử mua hàng", error);
@@ -5000,6 +5028,11 @@
             ghi_chu: "Ghi chú",
             sl_nhap: "Số lượng nhập",
             tien_nhap: "Tiền nhập",
+            ma_kho: "Mã kho",
+            ma_nsx: "Mã nhà sản xuất",
+            so_dh_lien_ket: "Số đơn hàng liên kết",
+            ma_nvmh: "Mã NV mua hàng",
+            ten_nv_mh: "Tên NV mua hàng",
             ma_nt: "Mã ngoại tệ",
             ty_gia: "Tỷ giá",
             sl_xuat: "Số lượng xuất",
@@ -5025,18 +5058,20 @@
         function normalizeImportHeader(value) {
             const header = String(value ?? "").trim().toLocaleLowerCase("vi");
             const labelMatch = Object.entries(EXPORT_COLUMN_LABELS)
-                .find(([, label]) => label.toLocaleLowerCase("vi") === header);
+                .find(([, label]) => label.toLocaleLowerCase("vi") === header)
+                || Object.entries(PURCHASE_HISTORY_EXPORT_LABELS)
+                    .find(([, label]) => label.toLocaleLowerCase("vi") === header);
             if (labelMatch) return labelMatch[0].toLocaleLowerCase("vi");
             const columnMatch = Object.keys(EXPORT_COLUMN_LABELS)
                 .find(column => column.toLocaleLowerCase("vi") === header);
             return columnMatch ? columnMatch.toLocaleLowerCase("vi") : header;
         }
 
-        function dtExportTable(id, columns, valueOf = (row, column) => row[column]) {
+        function dtExportTable(id, columns, valueOf = (row, column) => row[column], labelOverrides = {}) {
             const rows = dtSortedRows(id);
             return {
                 columns,
-                headers: columns.map(column => EXPORT_COLUMN_LABELS[column] || column),
+                headers: columns.map(column => labelOverrides[column] || EXPORT_COLUMN_LABELS[column] || column),
                 rows: rows.map(row => columns.map(column => valueOf(row, column) ?? ""))
             };
         }
@@ -5492,7 +5527,7 @@
                     table = dtExportTable(tableId, PURCHASE_HISTORY_EXPORT_COLUMNS, (row, column) =>
                         column === "don_gia_vnd" ? purchaseHistoryUnitPriceVnd(row)
                             : column === "don_gia_nt" ? purchaseHistoryUnitPriceForeign(row)
-                                : row[column]);
+                                : row[column], PURCHASE_HISTORY_EXPORT_LABELS);
                 } else if (screen === "production") {
                     title = "Lệnh sản xuất"; tableId = "production";
                     info.push(["Khoảng ngày", range("pro")], ["Trạng thái", document.getElementById("productionStatusFilter").selectedOptions[0].textContent],
@@ -5526,12 +5561,15 @@
                     const quantityIndex = table.columns.indexOf("sl_nhap");
                     const amountIndex = table.columns.indexOf("tien_nhap");
                     const rateIndex = table.columns.indexOf("ty_gia");
+                    const priceVndIndex = table.columns.indexOf("don_gia_vnd");
+                    const priceNtIndex = table.columns.indexOf("don_gia_nt");
                     table.rows.forEach((row, rowIndex) => {
                         const quantity = Number(row[quantityIndex]);
                         const fractionDigits = purchaseHistoryQuantityFractionDigits(quantity);
                         const quantityFormat = fractionDigits === 4 ? "0.0000"
                             : fractionDigits === 2 ? "#,##0.00" : "#,##0";
-                        [[quantityIndex, quantityFormat], [amountIndex, "#,##0.00"], [rateIndex, "#,##0.00"]]
+                        [[quantityIndex, quantityFormat], [amountIndex, "#,##0.00"], [rateIndex, "#,##0.00"],
+                            [priceVndIndex, "#,##0.0000"], [priceNtIndex, "#,##0.0000"]]
                             .forEach(([column, numberFormat]) => {
                             const cell = sheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: column })];
                             if (cell && Number.isFinite(cell.v)) cell.z = numberFormat;
