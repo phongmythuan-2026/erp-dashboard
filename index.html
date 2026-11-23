@@ -1204,6 +1204,28 @@
         </div>
     </div>
 
+    <!-- Modal chi tiết đơn hàng bán (master-child) -->
+    <div id="salesOrderModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center sm:p-4" onclick="if(event.target===this)closeSalesOrderModal()">
+        <div class="bg-white w-full sm:max-w-5xl max-h-[92vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
+            <div class="flex items-center justify-between px-4 py-2 border-b border-slate-200">
+                <h3 class="font-bold text-slate-900 flex items-center space-x-2"><i class="fa-solid fa-file-invoice text-blue-600"></i><span id="somTitle">Đơn hàng bán</span></h3>
+                <button onclick="closeSalesOrderModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="overflow-y-auto p-3 sm:p-4 space-y-3">
+                <div id="somMaster" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5"></div>
+                <div class="tbl-wrap rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
+                            <tr><th class="px-2.5 py-1.5">#</th><th class="px-2.5 py-1.5">Mã VT</th><th class="px-2.5 py-1.5">Tên vật tư</th><th class="px-2.5 py-1.5">ĐVT</th><th class="px-2.5 py-1.5 text-right">SL đặt</th><th class="px-2.5 py-1.5 text-right">Đã xuất</th><th class="px-2.5 py-1.5 text-right">Còn</th><th class="px-2.5 py-1.5 text-right">Hủy</th><th class="px-2.5 py-1.5">Diễn giải</th></tr>
+                        </thead>
+                        <tbody id="somLines" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="somActions" class="px-4 py-2 border-t border-slate-200 flex justify-end gap-2"></div>
+        </div>
+    </div>
+
     <!-- Modal thông tin vật tư -->
     <div id="materialModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[60] hidden flex items-end sm:items-center justify-center sm:p-4" onclick="if(event.target===this)closeMaterialModal()">
         <div class="bg-white w-full sm:max-w-lg max-h-[92vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
@@ -2667,14 +2689,14 @@
                 r => Number(r.sl_so2 || 0), r => Number(r.sl_cl || 0), r => Number(r.sl_huy || 0),
                 r => r.ten_trang_thai || r.trang_thai, salesOrderApprovalLabel, r => r.dien_giai,
                 r => r.cdate || "", r => r.ldate || ""],
-            row: r => `<tr class="hover:bg-slate-50 transition">
+            row: r => `<tr data-stt-rec="${esc(r.stt_rec)}" data-so-ct="${esc(r.so_ct)}" class="hover:bg-blue-50 transition cursor-pointer">
                     <td class="p-3 font-bold text-slate-900">${esc(r.so_ct)}</td>
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_ct)}</td>
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ngay_giao_hang)}</td>
                     <td class="p-3 font-medium text-slate-800">${esc(r.ten_kh || r.ma_kh)}</td>
                     <td class="p-3 text-slate-600 whitespace-nowrap">${esc(r.ma_vt)}</td>
-                    <td class="p-3 text-slate-600">${matLink(r.ma_vt, r.ten_vt || r.ma_vt)}</td>
-                    <td class="p-3 text-slate-600">${esc(ptnOf(r))}</td>
+                    <td class="p-3 text-slate-600">${matLink(r.ma_vt, r.ten_vt || r.ma_vt, true)}</td>
+                    <td class="p-3 text-slate-600">${matLink(ptnOf(r), ptnOf(r), true)}</td>
                     <td class="p-3 text-slate-500">${esc(r.ten_nvkd || r.ma_nvkd)}</td>
                     <td class="p-3 text-right text-slate-700 whitespace-nowrap">${formatSalesOrderQuantity(r.so_luong)} ${esc(r.dvt)}</td>
                     <td class="p-3 text-right text-slate-700 whitespace-nowrap">${formatSalesOrderQuantity(r.sl_so2)}</td>
@@ -2687,6 +2709,109 @@
                     <td class="p-3 text-slate-500 whitespace-nowrap">${esc(r.ldate || "")}</td>
                 </tr>`
         });
+        document.getElementById("salesOrderTableBody").addEventListener("click", event => {
+            if (event.target.closest("a, button")) return;
+            const row = event.target.closest("tr[data-stt-rec]");
+            if (row) openSalesOrder(row.dataset.sttRec, row.dataset.soCt);
+        });
+
+        dtInit("salesOrderLines", {
+            tbody: "somLines",
+            cols: [r => r._i, r => r.ma_vt, r => r.ten_vt, r => r.dvt, r => Number(r.so_luong || 0),
+                r => Number(r.sl_so2 || 0), r => Number(r.sl_cl || 0), r => Number(r.sl_huy || 0), r => r.dien_giai],
+            row: r => `
+                <tr>
+                    <td class="px-2.5 py-1.5 text-slate-400">${r._i}</td>
+                    <td class="px-2.5 py-1.5 whitespace-nowrap">${matLink(r.ma_vt, r.ma_vt, true)}</td>
+                    <td class="px-2.5 py-1.5 font-semibold text-slate-800">${esc(r.ten_vt)}</td>
+                    <td class="px-2.5 py-1.5 text-slate-500">${esc(r.dvt)}</td>
+                    <td class="px-2.5 py-1.5 text-right font-bold">${formatSalesOrderQuantity(r.so_luong)}</td>
+                    <td class="px-2.5 py-1.5 text-right">${formatSalesOrderQuantity(r.sl_so2)}</td>
+                    <td class="px-2.5 py-1.5 text-right">${formatSalesOrderQuantity(r.sl_cl)}</td>
+                    <td class="px-2.5 py-1.5 text-right">${formatSalesOrderQuantity(r.sl_huy)}</td>
+                    <td class="px-2.5 py-1.5 text-slate-600">${esc(r.dien_giai)}</td>
+                </tr>`
+        });
+
+        function openSalesOrder(sttRec, soCt) {
+            const lines = salesTableData.filter(row =>
+                String(row.stt_rec || '').trim() === sttRec &&
+                String(row.so_ct || '').trim() === soCt
+            ).sort((a, b) => Number(a.stt_rec0) - Number(b.stt_rec0));
+            if (!lines.length) return;
+
+            const header = lines[0];
+            const field = (label, value) =>
+                `<div class="flex gap-1.5 min-w-0"><span class="text-slate-400 shrink-0">${label}:</span><span class="font-semibold text-slate-800 break-words min-w-0">${esc(value) || '-'}</span></div>`;
+            const deliveryDate = String(header.ngay_giao_hang || '').slice(0, 10);
+            const deliveryField = isAdmin()
+                ? `<label class="flex gap-1.5 items-center min-w-0"><span class="text-slate-400 shrink-0">Ngày giao hàng:</span><input id="somDeliveryDate" type="date" required value="${esc(deliveryDate)}" class="min-w-0 px-2 py-1 border border-slate-300 rounded text-xs"></label>`
+                : field("Ngày giao hàng", deliveryDate);
+            document.getElementById("somTitle").innerHTML =
+                `Đơn hàng ${esc(soCt)} <span class="ml-2 align-middle">${esc(header.ten_trang_thai || header.trang_thai || '')}</span>`;
+            document.getElementById("somMaster").innerHTML =
+                field("Ngày chứng từ", header.ngay_ct) + deliveryField +
+                field("Khách hàng", [header.ma_kh, header.ten_kh].filter(Boolean).join(' - ')) +
+                field("NVKD", [header.ma_nvkd, header.ten_nvkd].filter(Boolean).join(' - ')) +
+                field("Số dòng", lines.length) +
+                field("Tổng SL đặt", formatSalesOrderQuantity(sumBy(lines, row => Number(row.so_luong || 0)))) +
+                field("Trạng thái duyệt", salesOrderApprovalLabel(header)) +
+                `<div class="col-span-full">${field("Diễn giải", header.dien_giai)}</div>`;
+            dtSet("salesOrderLines", lines.map((row, index) => ({ ...row, _i: index + 1 })));
+
+            const modal = document.getElementById("salesOrderModal");
+            modal.dataset.sttRec = sttRec;
+            modal.dataset.soCt = soCt;
+            document.getElementById("somActions").innerHTML =
+                `${isAdmin() ? '<button id="saveSalesOrderDateButton" onclick="saveSalesOrderDeliveryDate()" class="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Lưu ngày giao hàng</button>' : ''}<button onclick="closeSalesOrderModal()" class="px-4 py-2 text-xs font-semibold bg-slate-100 rounded-lg hover:bg-slate-200">Đóng</button>`;
+            modal.classList.remove("hidden");
+        }
+
+        function closeSalesOrderModal() {
+            document.getElementById("salesOrderModal").classList.add("hidden");
+        }
+
+        async function saveSalesOrderDeliveryDate() {
+            if (!isAdmin()) return;
+            const modal = document.getElementById("salesOrderModal");
+            const sttRec = modal.dataset.sttRec || '';
+            const soCt = modal.dataset.soCt || '';
+            const input = document.getElementById("somDeliveryDate");
+            if (!sttRec || !soCt || !input || !input.reportValidity()) return;
+
+            const deliveryDate = input.value;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)) {
+                return reportDataError("Lỗi cập nhật ngày giao hàng", new Error("Ngày giao hàng không hợp lệ."));
+            }
+            if (!confirm(`Xác nhận cập nhật ngày giao hàng đơn ${soCt} thành ${deliveryDate}?`)) return;
+
+            const button = document.getElementById("saveSalesOrderDateButton");
+            button.disabled = true;
+            try {
+                const result = await api(
+                    "updateSalesOrderDeliveryDate",
+                    getSessionToken(),
+                    sttRec,
+                    soCt,
+                    deliveryDate
+                );
+                if (!await loadSalesTableData(true)) return;
+                if (salesTableData.some(row =>
+                    String(row.stt_rec || '').trim() === sttRec &&
+                    String(row.so_ct || '').trim() === soCt
+                )) {
+                    openSalesOrder(sttRec, soCt);
+                } else {
+                    closeSalesOrderModal();
+                }
+                showAppSuccess(result.message);
+            } catch (error) {
+                reportDataError("Lỗi cập nhật ngày giao hàng", error);
+            } finally {
+                const saveButton = document.getElementById("saveSalesOrderDateButton");
+                if (saveButton) saveButton.disabled = false;
+            }
+        }
 
         dtInit("dashboardSales", {
             tbody: "dashboardSalesTableBody",
@@ -3980,7 +4105,7 @@
         const MATERIAL_EXPORT_COLUMNS = [...MATERIAL_IMPORT_COLUMNS, "cdate", "ldate"];
         const MATERIAL_IMPORT_CHUNK = 3000;
         const SALES_IMPORT_COLUMNS = [
-            "ma_cty", "ma_ct", "stt_rec", "stt_rec0", "ngay_ct", "so_ct", "so_dh", "ma_kh",
+            "ma_cty", "ma_ct", "stt_rec", "stt_rec0", "ngay_ct", "ngay_giao_hang", "so_ct", "so_dh", "ma_kh",
             "ten_kh", "ma_nvkd", "ten_nvkd", "ma_nhomkd", "ma_vt", "ten_vt", "dvt", "so_luong",
             "gia2", "tien2", "ck_ds", "tien_ck", "doanh_thu_ban", "ma_lo", "ma_tt", "ngay_tt",
             "cdate", "ldate"
