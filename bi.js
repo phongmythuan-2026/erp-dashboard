@@ -190,7 +190,7 @@ async function biLoadRows(generation) {
         loadPartitioned("ban_hang_so2", from, to, false, true),
         loadPartitioned("ban_hang_tra_lai_so4", from, to, false, true),
         loadPartitioned("lenh_san_xuat", from, to, false, true),
-        loadPartitioned("don_hang_ban", from, to, false, true)
+        loadPartitioned("don_hang_ban", from, to, false, true, "ngay_giao_hang")
     ]);
     if (generation !== biGeneration) return;
     const rows = window.erpBuildSalesReportRows(salesRows, returnRows);
@@ -386,8 +386,8 @@ function biDimension(row, dimension) {
     }
 }
 
-function biPeriod(row, grain) {
-    const date = String(row.ngay_ct || "").slice(0, 10);
+function biPeriod(row, grain, dateField = "ngay_ct") {
+    const date = String(row[dateField] || "").slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
     if (grain === "day") return date;
     if (grain === "month") return date.slice(0, 7);
@@ -587,7 +587,7 @@ function biOrderSummary(result, widget) {
         const value = Number(row.so_luong);
         if (!Number.isFinite(value)) return;
         quantity += value;
-        const period = biPeriod(row, widget.timeGrain);
+        const period = biPeriod(row, widget.timeGrain, "ngay_giao_hang");
         if (period) periods.set(period, (periods.get(period) || 0) + value);
         const unit = String(row.dvt || "").trim();
         if (unit) units.add(unit);

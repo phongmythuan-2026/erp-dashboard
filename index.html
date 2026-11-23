@@ -1986,12 +1986,15 @@
             }
         };
 
-        async function loadPartitioned(table, from, to, updateSalesYears = true, strict = false) {
+        async function loadPartitioned(table, from, to, updateSalesYears = true, strict = false, dateField = "ngay_ct") {
             const token = getSessionToken();
             const user = (currentUser && currentUser.useremail) || "";
-            const wanted = [];
+            if (dateField !== "ngay_ct" && !(table === "don_hang_ban" && dateField === "ngay_giao_hang")) {
+                throw new Error("Trường ngày phân vùng không được hỗ trợ.");
+            }
+            const requestedMonths = [];
             for (let y = +from.slice(0, 4), m = +from.slice(5, 7); y < +to.slice(0, 4) || (y === +to.slice(0, 4) && m <= +to.slice(5, 7));) {
-                wanted.push(`${y}-${String(m).padStart(2, "0")}`);
+                requestedMonths.push(`${y}-${String(m).padStart(2, "0")}`);
                 if (++m > 12) { m = 1; y++; }
             }
             const manifest = await api("getPartitionManifest", token, table);
@@ -1999,6 +2002,10 @@
                 throw new Error("Danh sách phân vùng dữ liệu không hợp lệ.");
             }
             const versions = (manifest && manifest.months) || {};
+            // Order data is partitioned by document date, so delivery-date reports inspect every order partition.
+            const wanted = dateField === "ngay_giao_hang"
+                ? Object.keys(versions).sort()
+                : requestedMonths;
             if ((table === "ban_hang_so2" || table === "ban_hang_tra_lai_so4") && updateSalesYears) {
                 salesMonthsByTable.set(table, Object.keys(versions));
                 const availableMonths = [...new Set([...salesMonthsByTable.values()].flat())].sort();
@@ -2029,12 +2036,12 @@
             const rows = [];
             for (const month of wanted) {
                 for (const r of byMonth[month] || []) {
-                    const d = String(r.ngay_ct || r.thang || "").slice(0, 10);
+                    const d = String(r[dateField] || (dateField === "ngay_ct" ? r.thang : "") || "").slice(0, 10);
                     const inRange = d >= from && d <= to;
                     if (inRange) rows.push(r);
                 }
             }
-            return rows.sort((a, b) => String(b.ngay_ct).localeCompare(String(a.ngay_ct)) || String(b.so_ct || "").localeCompare(String(a.so_ct || "")));
+            return rows.sort((a, b) => String(b[dateField] || "").localeCompare(String(a[dateField] || "")) || String(b.so_ct || "").localeCompare(String(a.so_ct || "")));
         }
 
         function onPurchaseDateChange() { renderDateLabel("purFromDate"); renderDateLabel("purToDate"); loadDeXuatMuaHang(); }
