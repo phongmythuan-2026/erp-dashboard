@@ -34,6 +34,22 @@ function biToday() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
+function biDateAfterDays(days) {
+    if (!Number.isSafeInteger(days) || days < 0) throw new Error("Số ngày xem phải là số nguyên không âm.");
+    const date = new Date(`${biToday()}T00:00:00`);
+    date.setDate(date.getDate() + days);
+    if (!Number.isFinite(date.getTime())) throw new Error("Số ngày xem vượt quá phạm vi ngày hợp lệ.");
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function biReadDaysAhead() {
+    const value = document.getElementById("biDaysAhead").value.trim();
+    if (!/^\d+$/.test(value)) throw new Error("Số ngày xem phải là số nguyên không âm.");
+    const days = Number(value);
+    biDateAfterDays(days);
+    return days;
+}
+
 function biSetBusy(busy) {
     biBusy = busy;
     document.querySelectorAll("#screen-bi button, #screen-bi input").forEach(element => { element.disabled = busy; });
@@ -65,12 +81,15 @@ function biReset() {
     document.getElementById("biEditor").classList.add("hidden");
     document.getElementById("biFrom").value = "";
     document.getElementById("biTo").value = "";
+    document.getElementById("biDaysAhead").value = "0";
     biSetStatus("Chưa tải bảng.");
 }
 
 function biHasUnsavedChanges() {
     return !!biBoard && (biDirty || document.getElementById("biFrom").value !== biBoard.from ||
-        document.getElementById("biTo").value !== biBoard.to || !document.getElementById("biEditor").classList.contains("hidden"));
+        document.getElementById("biTo").value !== biBoard.to ||
+        document.getElementById("biDaysAhead").value !== String(biBoard.daysAhead) ||
+        !document.getElementById("biEditor").classList.contains("hidden"));
 }
 
 window.addEventListener("beforeunload", event => {
@@ -80,11 +99,12 @@ window.addEventListener("beforeunload", event => {
 async function biOpen() {
     if (!currentUser || !getSessionToken()) return openAuthModal();
     if (biBoard && biOwner === currentUser.useremail) {
-        if (biBoard.autoTo && biBoard.to !== biToday() &&
+        if (biBoard.autoTo && biBoard.to !== biDateAfterDays(biBoard.daysAhead) &&
             document.getElementById("biFrom").value === biBoard.from &&
-            document.getElementById("biTo").value === biBoard.to) {
-            document.getElementById("biTo").value = biToday();
-            await biApplyDates();
+            document.getElementById("biTo").value === biBoard.to &&
+            document.getElementById("biDaysAhead").value === String(biBoard.daysAhead)) {
+            document.getElementById("biTo").value = biDateAfterDays(biBoard.daysAhead);
+            await biApplyDates(true);
         }
         return;
     }
@@ -123,14 +143,18 @@ async function biLoadBoard() {
         const originalFrom = board.from;
         const originalTo = board.to;
         const originalAutoTo = board.autoTo;
+        const originalDaysAhead = board.daysAhead;
         if (!board.from) board.from = getDateInput("fromDate");
+        board.daysAhead = board.daysAhead === undefined ? 0 : board.daysAhead;
         board.autoTo = board.autoTo !== false || !board.to;
-        if (board.autoTo) board.to = biToday();
+        if (board.autoTo) board.to = biDateAfterDays(board.daysAhead);
         const needsAutoSave = board.revision === 0 || board.from !== originalFrom ||
-            board.to !== originalTo || board.autoTo !== originalAutoTo;
+            board.to !== originalTo || board.autoTo !== originalAutoTo || board.daysAhead !== originalDaysAhead;
         biBoard = board;
         document.getElementById("biFrom").value = board.from;
         document.getElementById("biTo").value = board.to;
+        document.getElementById("biDaysAhead").value = String(board.daysAhead);
+        document.getElementById("biDaysAhead").disabled = false;
         biDirty = false;
         await biLoadRows(generation);
         if (generation !== biGeneration) return;
@@ -261,27 +285,35 @@ async function biRefreshStock() {
     }
 }
 
-async function biApplyDates() {
+async function biApplyDates(autoSave = false) {
     if (!biBoard || biBusy) return;
     const generation = ++biGeneration;
     let rowsLoaded = false;
     biSetBusy(true);
     try {
+        const daysAhead = biReadDaysAhead();
+        const scheduledTo = biDateAfterDays(daysAhead);
+        const to = document.getElementById("biTo").value;
+        if (!to || !document.getElementById("biFrom").value || document.getElementById("biFrom").value > to) {
+            throw new Error("Khoảng ngày B.I không hợp lệ.");
+        }
         await biLoadRows(generation);
         if (generation !== biGeneration) return;
         rowsLoaded = true;
-        const autoTo = document.getElementById("biTo").value === biToday();
+        if (biBoard.daysAhead !== daysAhead) biDirty = true;
+        biBoard.daysAhead = daysAhead;
+        const autoTo = to === scheduledTo;
         if (biBoard.autoTo !== autoTo) {
             biBoard.autoTo = autoTo;
             biDirty = true;
         }
-        if (biDirty) {
+        if (autoSave && biDirty) {
             biSetStatus("Đang tự lưu khoảng ngày và cấu hình widget...");
             await biPersistBoard(generation);
             if (generation !== biGeneration) return;
             biSetStatus("Đã áp dụng và tự lưu khoảng ngày; các widget đã cập nhật.");
         } else {
-            biSetStatus("Đã áp dụng khoảng ngày; các widget đã cập nhật.");
+            biSetStatus(`Đã áp dụng khoảng ngày; ${biDirty ? "chọn Lưu bảng để lưu cấu hình." : "các widget đã cập nhật."}`);
         }
     } catch (error) {
         if (generation !== biGeneration) return;
@@ -292,6 +324,8 @@ async function biApplyDates() {
         } else {
             document.getElementById("biFrom").value = biBoard.from;
             document.getElementById("biTo").value = biBoard.to;
+            document.getElementById("biDaysAhead").value = String(biBoard.daysAhead);
+            document.getElementById("biDaysAhead").disabled = false;
             biSetStatus("Không tải được khoảng ngày mới; đang giữ dữ liệu khoảng ngày trước.");
             reportDataError("Lỗi tải dữ liệu B.I", error);
         }
@@ -312,6 +346,15 @@ async function biSaveBoard() {
     if (!biBoard || biBusy) return;
     if (document.getElementById("biFrom").value !== biBoard.from || document.getElementById("biTo").value !== biBoard.to) {
         biSetStatus("Hãy áp dụng khoảng ngày trước khi lưu.");
+        return;
+    }
+    try {
+        if (biReadDaysAhead() !== biBoard.daysAhead) {
+            biSetStatus("Hãy áp dụng số ngày xem trước khi lưu.");
+            return;
+        }
+    } catch (error) {
+        biSetStatus(error.message);
         return;
     }
     const generation = biGeneration;
@@ -519,7 +562,7 @@ function biAverageSalesLabel(average) {
 }
 
 function biOrderSummary(result, widget) {
-    const empty = { quantity: 0, unit: "Chưa có ĐVT" };
+    const empty = { quantity: 0, unit: "Chưa có ĐVT", periods: new Map() };
     if (widget.measure !== "quantity" || !widget.timeGrain || !result.length) return empty;
     const visibleDimensions = new Set(result.map(group => String(group.key)));
     const visibleSkus = new Set();
@@ -533,6 +576,7 @@ function biOrderSummary(result, widget) {
     const bySku = widget.stockBy === "sku";
     let quantity = 0;
     const units = new Set();
+    const periods = new Map();
     biOrderRows.forEach(row => {
         if (Number(row.trang_thai_duyet) !== 1) return;
         const [key, label, code = ""] = biDimension(row, widget.dimension);
@@ -543,12 +587,15 @@ function biOrderSummary(result, widget) {
         const value = Number(row.so_luong);
         if (!Number.isFinite(value)) return;
         quantity += value;
+        const period = biPeriod(row, widget.timeGrain);
+        if (period) periods.set(period, (periods.get(period) || 0) + value);
         const unit = String(row.dvt || "").trim();
         if (unit) units.add(unit);
     });
     return {
         quantity,
-        unit: units.size === 1 ? [...units][0] : units.size ? "Nhiều ĐVT" : "Chưa có ĐVT"
+        unit: units.size === 1 ? [...units][0] : units.size ? "Nhiều ĐVT" : "Chưa có ĐVT",
+        periods
     };
 }
 
@@ -559,6 +606,15 @@ function biOrderValue(orders) {
 
 function biOrderLabel(orders) {
     return `SL ĐH: ${biOrderValue(orders)}`;
+}
+
+function biOrderTrendLabel(orders, grain) {
+    return `SL ĐH theo ${biTimeGrains[grain]} (Tổng: ${biOrderValue(orders)})`;
+}
+
+function biOrderPeriodLabel(orders, period) {
+    const value = (orders.periods.get(period) || 0).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `SL ĐH ${period}: ${value} (${orders.unit}); ${biOrderLabel(orders)}`;
 }
 
 function biRenderStackBreakdown(content, result, widget, periods = null, production = null, stockTotals = []) {
@@ -583,9 +639,8 @@ function biRenderStackBreakdown(content, result, widget, periods = null, product
         const part = labels.slice(offset, offset + (periods ? 60 : 100));
         const partGroups = periods ? null : result.slice(offset, offset + 100);
         const wrap = document.createElement("div");
-        wrap.className = "relative";
-        wrap.style.width = `${Math.max(450, part.length * (periods ? 55 : 38))}px`;
-        wrap.style.height = `${Math.max(300, !periods && widget.chart === "bar" ? part.length * 38 : 300)}px`;
+        wrap.className = "relative w-full";
+        wrap.style.height = `${Math.max(288, !periods && widget.chart === "bar" ? part.length * 38 : 288)}px`;
         const canvas = document.createElement("canvas");
         canvas.setAttribute("role", "img");
         canvas.setAttribute("aria-label", widget.title);
@@ -620,10 +675,10 @@ function biRenderStackBreakdown(content, result, widget, periods = null, product
             pointRadius: 2, fill: false
         });
         if (hasProductionTotal) datasets.push({
-            type: "line", label: biOrderLabel(orders),
-            data: part.map(() => orders.quantity),
+            type: "line", label: biOrderTrendLabel(orders, widget.timeGrain),
+            data: part.map(period => orders.periods.get(period) || 0),
             borderColor: "#7c3aed", backgroundColor: "#7c3aed", borderDash: [3, 3],
-            pointRadius: 2, fill: false
+            pointRadius: 2, fill: false, spanGaps: false
         });
         if (hasAverage) datasets.push({
             type: "line", label: biAverageSalesLabel(average),
@@ -651,7 +706,7 @@ function biRenderStackBreakdown(content, result, widget, periods = null, product
                         return biProductionRemainingLabel(production);
                     }
                     if (hasProductionTotal && item.datasetIndex === allSeries.length + 1) {
-                        return biOrderLabel(orders);
+                        return biOrderPeriodLabel(orders, item.label);
                     }
                     const averageIndex = allSeries.length + (hasProductionTotal ? 2 : 0);
                     if (hasAverage && item.datasetIndex === averageIndex) {
@@ -675,7 +730,10 @@ function biRenderTime(content, result, widget) {
     const orders = biOrderSummary(result, widget);
     const hasProductionTotal = widget.measure === "quantity";
     const stacked = widget.chart === "stack";
-    const periods = [...new Set(result.flatMap(group => [...group.periods.keys()]))].sort();
+    const periods = [...new Set([
+        ...result.flatMap(group => [...group.periods.keys()]),
+        ...orders.periods.keys()
+    ])].sort();
     const stockTotals = biStockTotals(widget);
     if (widget.chart === "table") {
         const table = document.createElement("table");
@@ -693,6 +751,13 @@ function biRenderTime(content, result, widget) {
                 row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">${esc(group.label)}</td><td class="p-2 text-right whitespace-nowrap">${esc(biValue({ value: cell.value, unit: group.unit }, widget.measure))}</td>${stockTotals.map(stock => `<td class="p-2 text-right whitespace-nowrap">${esc(`${biStockValue(stock)} ${stock.unit}`)}</td>`).join("")}`;
                 body.appendChild(row);
             }
+            if (hasProductionTotal) {
+                const orderPeriodRow = document.createElement("tr");
+                orderPeriodRow.className = "border-t font-semibold text-violet-700";
+                const value = (orders.periods.get(period) || 0).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                orderPeriodRow.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">SL ĐH theo kỳ (đã duyệt)</td><td class="p-2 text-right whitespace-nowrap">${esc(`${value} (${orders.unit})`)}</td>${stockTotals.map(() => "<td></td>").join("")}`;
+                body.appendChild(orderPeriodRow);
+            }
         }
         if (hasProductionTotal) {
             const row = document.createElement("tr");
@@ -701,7 +766,7 @@ function biRenderTime(content, result, widget) {
             body.appendChild(row);
             const orderRow = document.createElement("tr");
             orderRow.className = "border-t font-semibold text-violet-700";
-            orderRow.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(biBoard.from)} - ${esc(biBoard.to)}</td><td class="p-2">SL ĐH (đã duyệt)</td><td class="p-2 text-right whitespace-nowrap">${esc(biOrderValue(orders))}</td>${stockTotals.map(() => "<td></td>").join("")}`;
+            orderRow.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(biBoard.from)} - ${esc(biBoard.to)}</td><td class="p-2">SL ĐH tổng (đã duyệt)</td><td class="p-2 text-right whitespace-nowrap">${esc(biOrderValue(orders))}</td>${stockTotals.map(() => "<td></td>").join("")}`;
             body.appendChild(orderRow);
         }
         if (average.average !== 0 || average.unit !== "Chưa có ĐVT") {
@@ -721,9 +786,7 @@ function biRenderTime(content, result, widget) {
         for (let offset = 0; offset < periods.length; offset += 60) {
             const part = periods.slice(offset, offset + 60);
             const wrap = document.createElement("div");
-            wrap.className = "relative";
-            wrap.style.width = `${Math.max(450, part.length * 55)}px`;
-            wrap.style.height = "350px";
+            wrap.className = "relative w-full h-72";
             const canvas = document.createElement("canvas");
             canvas.setAttribute("role", "img");
             canvas.setAttribute("aria-label", widget.title);
@@ -745,10 +808,10 @@ function biRenderTime(content, result, widget) {
                             pointRadius: 2, fill: false
                         },
                         {
-                            type: "line", label: biOrderLabel(orders),
-                            data: part.map(() => orders.quantity),
+                            type: "line", label: biOrderTrendLabel(orders, widget.timeGrain),
+                            data: part.map(period => orders.periods.get(period) || 0),
                             borderColor: "#7c3aed", backgroundColor: "#7c3aed", borderDash: [3, 3],
-                            pointRadius: 2, fill: false
+                            pointRadius: 2, fill: false, spanGaps: false
                         }
                     ] : []),
                     ...(widget.measure === "quantity" ? [
@@ -772,7 +835,7 @@ function biRenderTime(content, result, widget) {
                     },
                     plugins: { tooltip: { callbacks: { label: item => {
                         if (hasProductionTotal && item.datasetIndex === groups.length) return biProductionRemainingLabel(production);
-                        if (hasProductionTotal && item.datasetIndex === groups.length + 1) return biOrderLabel(orders);
+                        if (hasProductionTotal && item.datasetIndex === groups.length + 1) return biOrderPeriodLabel(orders, item.label);
                         const averageIndex = groups.length + (hasProductionTotal ? 2 : 0);
                         if (widget.measure === "quantity" && item.datasetIndex === averageIndex) return biAverageSalesLabel(average);
                         const firstStockIndex = averageIndex + (widget.measure === "quantity" ? 1 : 0);
@@ -844,10 +907,9 @@ function biRender() {
             <button type="button" data-bi-action="move-down" data-index="${index}" aria-label="Di chuyển xuống" title="Di chuyển xuống" class="text-slate-500 hover:text-blue-600 disabled:opacity-30" ${index === biBoard.widgets.length - 1 ? "disabled" : ""}><i class="fa-solid fa-arrow-down"></i></button>
             <button type="button" data-bi-action="edit" data-index="${index}" class="text-blue-600">Sửa</button>
             <button data-bi-action="delete" data-index="${index}" class="text-red-600">Xóa</button></div></div>
-            ${widget.measure === "quantity" && widget.timeGrain ? `<p class="text-xs text-violet-700 mt-1">SL ĐH là tổng so_luong của đơn hàng đã duyệt trong khoảng ngày chung; ghép theo ${widget.stockBy === "sku" ? "SKU" : "Mã PTN"}.</p>` : ""}
             ${biStockStatus(widget)}
             <p class="text-xs text-amber-700 mt-1">${invalid ? `Bỏ qua ${invalid} dòng thiếu hoặc sai chỉ tiêu.` : ""}</p>
-            <div class="bi-content mt-3 overflow-auto max-h-[360px]"></div>`;
+            <div class="bi-content mt-3 min-w-0 overflow-auto max-h-[360px]"></div>`;
         container.appendChild(card);
         const content = card.querySelector(".bi-content");
         if (!result.length) {
@@ -867,8 +929,8 @@ function biRender() {
         for (let offset = 0; offset < result.length; offset += 100) {
             const part = result.slice(offset, offset + 100);
             const wrap = document.createElement("div");
-            wrap.className = "relative min-w-[450px]";
-            wrap.style.height = `${Math.max(300, widget.chart === "bar" ? part.length * 38 : 300)}px`;
+            wrap.className = "relative w-full";
+            wrap.style.height = `${Math.max(288, widget.chart === "bar" ? part.length * 38 : 288)}px`;
             const canvas = document.createElement("canvas");
             canvas.setAttribute("role", "img");
             canvas.setAttribute("aria-label", widget.title);
@@ -1105,6 +1167,18 @@ document.getElementById("biCancel").addEventListener("click", () => {
 document.getElementById("biReload").addEventListener("click", biLoadBoard);
 document.getElementById("biSave").addEventListener("click", biSaveBoard);
 document.getElementById("biApply").addEventListener("click", biApplyDates);
+document.getElementById("biDaysAhead").addEventListener("input", event => {
+    try {
+        const days = biReadDaysAhead();
+        document.getElementById("biTo").value = biDateAfterDays(days);
+        if (biBoard && !biBoard.autoTo) {
+            biDirty = true;
+            biBoard.autoTo = true;
+        }
+    } catch (error) {
+        document.getElementById("biTo").value = "";
+    }
+});
 document.getElementById("biRefreshStock").addEventListener("click", biRefreshStock);
 document.getElementById("biEditorForm").addEventListener("submit", event => {
     event.preventDefault();
