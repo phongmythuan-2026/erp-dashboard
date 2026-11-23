@@ -625,8 +625,10 @@ function biOrderSummary(result, widget) {
         if (widget.filter && !searchableText(`${label} ${key} ${code}`).includes(searchableText(widget.filter))) return;
         if (bySku && !visibleSkus.has(String(row.ma_vt || "").trim())) return;
         if (!bySku && !visibleDimensions.has(String(row.ma_ptn || ""))) return;
-        const value = Number(row.so_luong);
-        if (!Number.isFinite(value)) return;
+        const orderedQuantity = Number(row.so_luong);
+        const cancelledQuantity = Number(row.sl_huy || 0);
+        if (!Number.isFinite(orderedQuantity) || !Number.isFinite(cancelledQuantity)) return;
+        const value = orderedQuantity - cancelledQuantity;
         quantity += value;
         const period = biPeriod(row, widget.timeGrain, "ngay_giao_hang");
         if (period) periods.set(period, (periods.get(period) || 0) + value);
