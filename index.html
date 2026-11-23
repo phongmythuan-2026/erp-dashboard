@@ -5055,6 +5055,7 @@
             ten_msp: "Tên nhóm sản phẩm",
             Hinh_thuc_sx: "Hình thức sản xuất"
         };
+        const EXPORT_DATETIME_FORMAT = "yyyy-mm-dd hh:mm:ss AM/PM";
 
         function normalizeImportHeader(value) {
             const header = String(value ?? "").trim().toLocaleLowerCase("vi");
@@ -5075,6 +5076,33 @@
                 headers: columns.map(column => labelOverrides[column] || EXPORT_COLUMN_LABELS[column] || column),
                 rows: rows.map(row => columns.map(column => valueOf(row, column) ?? ""))
             };
+        }
+
+        function excelDateTimeSerial(value) {
+            let parts;
+            if (value instanceof Date) {
+                if (Number.isNaN(value.getTime())) return null;
+                parts = [
+                    value.getFullYear(), value.getMonth() + 1, value.getDate(),
+                    value.getHours(), value.getMinutes(), value.getSeconds()
+                ];
+            } else {
+                const match = String(formatHistoryDateTime(value) || "").match(
+                    /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2}))?$/
+                );
+                if (!match) return null;
+                parts = [
+                    Number(match[1]), Number(match[2]), Number(match[3]),
+                    Number(match[4] || 0), Number(match[5] || 0), Number(match[6] || 0)
+                ];
+            }
+            const [year, month, day, hour, minute, second] = parts;
+            const localDate = new Date(year, month - 1, day, hour, minute, second);
+            if (localDate.getFullYear() !== year || localDate.getMonth() !== month - 1 || localDate.getDate() !== day
+                || localDate.getHours() !== hour || localDate.getMinutes() !== minute || localDate.getSeconds() !== second) {
+                return null;
+            }
+            return (Date.UTC(year, month - 1, day, hour, minute, second) - Date.UTC(1899, 11, 30)) / 86400000;
         }
 
         function dashboardPdfText(context, text, x, y, font, color, align = "left") {
@@ -5558,6 +5586,22 @@
                 const exported = table.rows.length;
                 const wb = XLSX.utils.book_new();
                 const sheet = XLSX.utils.aoa_to_sheet([table.headers, ...table.rows]);
+                if (table.columns) {
+                    const dateTimeIndexes = [];
+                    table.columns.forEach((column, index) => {
+                        if (column === "cdate" || column === "ldate") dateTimeIndexes.push(index);
+                    });
+                    table.rows.forEach((row, rowIndex) => {
+                        dateTimeIndexes.forEach(columnIndex => {
+                            const serial = excelDateTimeSerial(row[columnIndex]);
+                            const cell = sheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: columnIndex })];
+                            if (serial === null || !cell) return;
+                            cell.t = "n";
+                            cell.v = serial;
+                            cell.z = EXPORT_DATETIME_FORMAT;
+                        });
+                    });
+                }
                 if (screen === "purchase-history" && table.columns) {
                     const quantityIndex = table.columns.indexOf("sl_nhap");
                     const amountIndex = table.columns.indexOf("tien_nhap");
@@ -5595,9 +5639,14 @@
                             });
                     });
                 }
-                sheet["!cols"] = table.headers.map((h, i) => ({
-                    wch: Math.min(60, Math.max(String(h).length, ...table.rows.slice(0, 200).map(r => String(r[i] ?? "").length)) + 2)
-                }));
+                sheet["!cols"] = table.headers.map((h, i) => {
+                    const contentWidth = Math.max(
+                        String(h).length, ...table.rows.slice(0, 200).map(row => String(row[i] ?? "").length)
+                    ) + 2;
+                    const isDateTimeColumn = table.columns
+                        && (table.columns[i] === "cdate" || table.columns[i] === "ldate");
+                    return { wch: Math.min(60, Math.max(contentWidth, isDateTimeColumn ? 24 : 0)) };
+                });
                 XLSX.utils.book_append_sheet(wb, sheet, title.slice(0, 31));
                 const now = new Date();
                 const stamp = `${toDateStr(now).replace(/-/g, "")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
