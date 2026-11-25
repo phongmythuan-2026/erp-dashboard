@@ -24,6 +24,7 @@
         .tbl-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .tbl-scroll { max-height: 65vh; overflow: auto; }
         #voucherModal .tbl-scroll { max-height: 48vh; }
+        #usageReportDetailModal .tbl-scroll { max-height: 48vh; }
         .tbl-scroll thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; box-shadow: 0 1px 0 #e2e8f0; }
         .tbl-scroll tfoot td { position: sticky; bottom: 0; background: #f8fafc; box-shadow: 0 -1px 0 #cbd5e1; }
         .tbl-scroll .dt-pinned-cell { background-color: #fff; box-shadow: 1px 0 0 #e2e8f0; }
@@ -137,6 +138,9 @@
                         </button>
                         <button onclick="switchTab('usage-history')" id="nav-usage-history" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-clock-rotate-left w-4"></i><span>Lịch sử sử dụng</span>
+                        </button>
+                        <button onclick="switchTab('usage-report')" id="nav-usage-report" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-chart-line w-4"></i><span>Báo cáo lịch sử sử dụng</span>
                         </button>
                     </div>
                 </div>
@@ -1039,6 +1043,38 @@
             </div>
         </div>
 
+        <div id="screen-usage-report" class="space-y-6 hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <div class="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 gap-3">
+                    <div>
+                        <h2 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-blue-600"></i><span>Báo cáo lịch sử sử dụng</span>
+                        </h2>
+                        <p class="text-xs text-slate-500">Tổng hợp số lượng sử dụng theo vật tư, tháng và sản phẩm từ dữ liệu lịch sử.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="loadUsageReportButton" type="button" onclick="loadUsageReport()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-semibold text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i><span>Xem báo cáo</span>
+                        </button>
+                        <button id="exportUsageReportButton" type="button" onclick="exportCurrentScreen('usageMaterialReport')" disabled class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-semibold text-xs whitespace-nowrap">
+                            <i class="fa-solid fa-file-export mr-1"></i>Xuất báo cáo
+                        </button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <label class="flex items-center gap-1.5 font-semibold text-slate-600">
+                        Từ <input type="date" id="usageReportFromDate" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white font-normal">
+                    </label>
+                    <label class="flex items-center gap-1.5 font-semibold text-slate-600">
+                        đến <input type="date" id="usageReportToDate" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white font-normal">
+                    </label>
+                    <input id="searchUsageReportInput" oninput="filterUsageReport()" type="search" placeholder="Tìm mã vật tư, tên vật tư, ĐVT..." disabled class="px-3 py-1.5 w-80 max-w-full border border-slate-300 rounded-lg disabled:bg-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <span id="usageReportStatus" role="status" class="text-[11px] text-slate-500">Chọn khoảng ngày rồi bấm “Xem báo cáo”.</span>
+                </div>
+                <div id="usageReportMainHost"></div>
+            </div>
+        </div>
+
         <!-- ================================================================= -->
         <!-- MÀN HÌNH 3: DANH MỤC VẬT TƯ                                       -->
         <!-- ================================================================= -->
@@ -1271,6 +1307,29 @@
         </div>
     </div>
 
+    <div id="usageReportDetailModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[60] hidden flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="usageReportDetailTitle" onclick="if(event.target===this)closeUsageReportDetailModal()" onkeydown="if(event.key==='Escape')closeUsageReportDetailModal()">
+        <div class="bg-white w-full sm:max-w-6xl max-h-[92vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
+            <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200">
+                <div class="min-w-0">
+                    <h3 id="usageReportDetailTitle" class="font-bold text-slate-900 text-sm truncate"></h3>
+                    <p class="text-xs text-slate-500">Số lượng xuất sử dụng theo từng sản phẩm và tháng.</p>
+                </div>
+                <div class="flex shrink-0 items-center gap-2">
+                    <button id="exportUsageReportDetailButton" type="button" onclick="exportCurrentScreen('usageProductReport')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs whitespace-nowrap">
+                        <i class="fa-solid fa-file-export mr-1"></i>Xuất chi tiết
+                    </button>
+                    <button type="button" onclick="closeUsageReportDetailModal()" aria-label="Đóng" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-y-auto p-3 sm:p-4 space-y-3">
+                <input id="searchUsageReportDetailInput" oninput="filterUsageReportDetail()" type="search" placeholder="Tìm mã sản phẩm, tên sản phẩm..." class="px-3 py-1.5 w-80 max-w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <div id="usageReportDetailHost"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal chi tiết đơn hàng bán (master-child) -->
     <div id="salesOrderModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center sm:p-4" onclick="if(event.target===this)closeSalesOrderModal()">
         <div class="bg-white w-full sm:max-w-5xl max-h-[92vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
@@ -1329,6 +1388,13 @@
         let allProductionData = [];
         let allUsageHistoryData = [];
         let usageHistoryRequestId = 0;
+        let usageReportRequestId = 0;
+        let usageReportSourceRows = [];
+        let usageReportPeriods = [];
+        let usageReportMaterialRows = [];
+        let usageReportDetailRows = [];
+        let usageReportSelectedMaterial = "";
+        let usageReportDetailTriggerElement = null;
         let allMaterialData = [];
         let rawSalesData = [];
         let rawSalesReturnData = [];
@@ -1363,6 +1429,9 @@
             document.getElementById("usageFromDate").value =
                 toDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
             document.getElementById("usageToDate").value = toDateStr(now);
+            document.getElementById("usageReportFromDate").value =
+                toDateStr(new Date(now.getFullYear(), now.getMonth() - 11, 1));
+            document.getElementById("usageReportToDate").value = toDateStr(now);
             if (!APPS_SCRIPT_URL || !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(APPS_SCRIPT_URL)) {
                 document.getElementById("loginButton").disabled = true;
                 showAuthMessage("Chưa cấu hình URL triển khai Apps Script trong erp-dashboard/config.js.", true);
@@ -1410,7 +1479,8 @@
                 "purchase-orders": ["purchase", "purchase-orders"],
                 "purchase-history": ["purchase", "purchase-history"],
                 "production": ["production", "production-order"],
-                "usage-history": ["production", "usage-history"]
+                "usage-history": ["production", "usage-history"],
+                "usage-report": ["production", "usage-report"]
             }[tabName] || [tabName];
             activeNav.forEach(name => {
                 const button = document.getElementById(`nav-${name}`);
@@ -1419,7 +1489,7 @@
                     ["dashboard", "sales", "bi", "materials", "users"].includes(name) ? "active" : "bg-blue-50");
                 if (name.includes("-")) button.classList.add("text-blue-700", "font-semibold");
             });
-            ["dashboard", "sales", "bi", "purchase", "purchase-orders", "purchase-history", "production", "usage-history", "materials", "users"]
+            ["dashboard", "sales", "bi", "purchase", "purchase-orders", "purchase-history", "production", "usage-history", "usage-report", "materials", "users"]
                 .forEach(name => document.getElementById(`screen-${name}`).classList.add("hidden"));
             const salesMode = tabName === "sales-returns" ? "returns"
                 : tabName === "sales-bookings" ? "bookings" : "sales";
@@ -3972,6 +4042,305 @@
             }
         }
 
+        function usageReportMonthKeys(from, to) {
+            const months = [];
+            for (let year = Number(from.slice(0, 4)), month = Number(from.slice(5, 7));
+                year < Number(to.slice(0, 4)) || (year === Number(to.slice(0, 4)) && month <= Number(to.slice(5, 7)));) {
+                months.push(`${year}-${String(month).padStart(2, "0")}`);
+                if (++month > 12) { month = 1; year++; }
+            }
+            return months;
+        }
+
+        function usageReportMonthOf(row) {
+            const value = String(row.ngay_ct || row.thang || "");
+            const match = value.match(/^(\d{4})-?(\d{2})/);
+            return match ? `${match[1]}-${match[2]}` : "";
+        }
+
+        function usageReportNumber(value) {
+            const number = Number(value);
+            return (Number.isFinite(number) ? number : 0).toLocaleString("vi-VN", { maximumFractionDigits: 4 });
+        }
+
+        function usageReportAggregateRows(groups, periods) {
+            return [...groups.values()].map(group => {
+                const values = periods.map(period => Number(group[period] || 0));
+                const activeValues = values.filter(value => value > 0);
+                return {
+                    ...group,
+                    total: values.reduce((sum, value) => sum + value, 0),
+                    average: activeValues.length
+                        ? activeValues.reduce((sum, value) => sum + value, 0) / activeValues.length
+                        : 0
+                };
+            });
+        }
+
+        function aggregateUsageReportMaterials(rows, periods) {
+            const groups = new Map();
+            const periodSet = new Set(periods);
+            rows.forEach(row => {
+                const code = String(row.ma_vt || "").trim();
+                const period = usageReportMonthOf(row);
+                const quantity = Number(row.sl_xuat);
+                if (!code || !periodSet.has(period) || !Number.isFinite(quantity)) return;
+                let group = groups.get(code);
+                if (!group) {
+                    const material = materialMap[code] || {};
+                    group = {
+                        ma_vt: code,
+                        ten_vt: String(material.ten_vt || row.ten_vt || "").trim(),
+                        dvt: String(material.dvt || row.dvt || "").trim()
+                    };
+                    periods.forEach(month => { group[month] = 0; });
+                    groups.set(code, group);
+                }
+                group[period] += quantity;
+            });
+            return usageReportAggregateRows(groups, periods)
+                .sort((a, b) => b.total - a.total || a.ma_vt.localeCompare(b.ma_vt, "vi", { numeric: true }));
+        }
+
+        function aggregateUsageReportProducts(materialCode, rows, periods) {
+            const groups = new Map();
+            const periodSet = new Set(periods);
+            rows.forEach(row => {
+                if (String(row.ma_vt || "").trim() !== materialCode) return;
+                const period = usageReportMonthOf(row);
+                const quantity = Number(row.sl_xuat);
+                if (!periodSet.has(period) || !Number.isFinite(quantity)) return;
+                const code = String(row.ma_spct || "").trim();
+                const key = code || "(Chưa có mã SP)";
+                let group = groups.get(key);
+                if (!group) {
+                    const product = materialMap[code] || {};
+                    group = {
+                        ma_sp: key,
+                        ten_sp: String(row.ten_spct || product.ten_vt || "").trim()
+                    };
+                    periods.forEach(month => { group[month] = 0; });
+                    groups.set(key, group);
+                } else if (!group.ten_sp && row.ten_spct) {
+                    group.ten_sp = String(row.ten_spct).trim();
+                }
+                group[period] += quantity;
+            });
+            return usageReportAggregateRows(groups, periods)
+                .sort((a, b) => b.total - a.total || a.ma_sp.localeCompare(b.ma_sp, "vi", { numeric: true }));
+        }
+
+        function usageReportFooterMarkup(columns) {
+            return `<tr>${columns.map((column, index) => {
+                const key = index === 0 ? "label" : column;
+                const align = ["total", "average", ...usageReportPeriods].includes(column) ? "text-right" : "";
+                return `<td data-usage-report-footer="${esc(key)}" class="p-3 ${align}">${index === 0 ? "TỔNG CỘNG" : ""}</td>`;
+            }).join("")}</tr>`;
+        }
+
+        function renderUsageReportDataTable(options) {
+            dtDestroy(options.id);
+            const host = document.getElementById(options.hostId);
+            host.innerHTML = `<div class="tbl-wrap rounded-xl border border-slate-200">
+                <table class="w-full text-left text-xs text-slate-700">
+                    <thead class="bg-slate-50 uppercase text-[11px] font-bold text-slate-500 border-b border-slate-200">
+                        <tr>${options.headers.map(header => `<th class="p-3 ${header.align || ""}">${esc(header.label)}</th>`).join("")}</tr>
+                    </thead>
+                    <tbody id="${options.tbodyId}" class="divide-y divide-slate-100"></tbody>
+                    <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-300 text-xs">${usageReportFooterMarkup(options.columns)}</tfoot>
+                </table>
+            </div>`;
+            dtInit(options.id, {
+                tbody: options.tbodyId,
+                defaultSort: (a, b) => b.total - a.total
+                    || String(a[options.keyColumn] || "").localeCompare(String(b[options.keyColumn] || ""), "vi", { numeric: true }),
+                cols: options.columns.map(column => row => row[column]),
+                row: options.renderRow
+            });
+            DT[options.id].pinnedColumns.add(0);
+            dtSet(options.id, options.rows);
+            dtApplyColumnLayout(options.id);
+        }
+
+        function updateUsageReportFooter(hostId, rows, periods) {
+            const totals = Object.fromEntries(periods.map(period => [period, 0]));
+            rows.forEach(row => periods.forEach(period => { totals[period] += Number(row[period] || 0); }));
+            const total = periods.reduce((sum, period) => sum + totals[period], 0);
+            const activeTotals = periods.map(period => totals[period]).filter(value => value > 0);
+            const values = {
+                total,
+                average: activeTotals.length
+                    ? activeTotals.reduce((sum, value) => sum + value, 0) / activeTotals.length
+                    : 0,
+                ...totals
+            };
+            const host = document.getElementById(hostId);
+            host.querySelectorAll("[data-usage-report-footer]").forEach(cell => {
+                const key = cell.dataset.usageReportFooter;
+                if (key === "label") return;
+                cell.textContent = Object.prototype.hasOwnProperty.call(values, key) ? usageReportNumber(values[key]) : "";
+            });
+        }
+
+        function renderUsageReportMain(rows) {
+            const periods = usageReportPeriods;
+            const columns = ["ma_vt", "ten_vt", "dvt", "total", "average", ...periods];
+            const headers = [
+                { label: "Mã vật tư" }, { label: "Tên vật tư" }, { label: "ĐVT" },
+                { label: "Tổng cộng", align: "text-right" }, { label: "BQ sử dụng", align: "text-right" },
+                ...periods.map(period => ({ label: period, align: "text-right" }))
+            ];
+            renderUsageReportDataTable({
+                id: "usageMaterialReport",
+                hostId: "usageReportMainHost",
+                tbodyId: "usageReportMainBody",
+                columns,
+                headers,
+                rows,
+                keyColumn: "ma_vt",
+                renderRow: row => `<tr data-usage-report-material-row="${esc(row.ma_vt)}" class="hover:bg-blue-50 transition cursor-pointer">
+                    <td class="p-3 whitespace-nowrap"><button type="button" data-usage-report-material="${esc(row.ma_vt)}" class="font-bold text-blue-600 hover:underline">${esc(row.ma_vt)}</button></td>
+                    <td class="p-3">${esc(row.ten_vt)}</td><td class="p-3 whitespace-nowrap">${esc(row.dvt)}</td>
+                    <td class="p-3 text-right">${usageReportNumber(row.total)}</td><td class="p-3 text-right">${usageReportNumber(row.average)}</td>
+                    ${periods.map(period => `<td class="p-3 text-right">${usageReportNumber(row[period])}</td>`).join("")}
+                </tr>`
+            });
+            const tbody = DT.usageMaterialReport.tbody;
+            tbody.addEventListener("click", event => {
+                const target = event.target instanceof Element ? event.target.closest("[data-usage-report-material-row]") : null;
+                if (target && tbody.contains(target)) {
+                    toggleUsageReportDetail(target.dataset.usageReportMaterialRow, target.querySelector("button"));
+                }
+            });
+            updateUsageReportFooter("usageReportMainHost", rows, periods);
+        }
+
+        function renderUsageReportDetail(rows) {
+            const periods = usageReportPeriods;
+            const columns = ["ma_sp", "ten_sp", "total", "average", ...periods];
+            const headers = [
+                { label: "Mã SP" }, { label: "Tên SP" },
+                { label: "Tổng cộng", align: "text-right" }, { label: "BQ sử dụng", align: "text-right" },
+                ...periods.map(period => ({ label: period, align: "text-right" }))
+            ];
+            renderUsageReportDataTable({
+                id: "usageProductReport",
+                hostId: "usageReportDetailHost",
+                tbodyId: "usageReportDetailBody",
+                columns,
+                headers,
+                rows,
+                keyColumn: "ma_sp",
+                renderRow: row => `<tr class="hover:bg-blue-50 transition">
+                    <td class="p-3 whitespace-nowrap">${esc(row.ma_sp)}</td><td class="p-3">${esc(row.ten_sp)}</td>
+                    <td class="p-3 text-right">${usageReportNumber(row.total)}</td><td class="p-3 text-right">${usageReportNumber(row.average)}</td>
+                    ${periods.map(period => `<td class="p-3 text-right">${usageReportNumber(row[period])}</td>`).join("")}
+                </tr>`
+            });
+            updateUsageReportFooter("usageReportDetailHost", rows, periods);
+        }
+
+        async function loadUsageReport() {
+            const from = getDateInput("usageReportFromDate");
+            const to = getDateInput("usageReportToDate");
+            if (!from || !to || from > to) {
+                reportDataError("Khoảng ngày không hợp lệ", new Error("Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc hợp lệ."));
+                return false;
+            }
+            const token = getSessionToken();
+            if (!token) return openAuthModal();
+            const requestId = ++usageReportRequestId;
+            const button = document.getElementById("loadUsageReportButton");
+            const status = document.getElementById("usageReportStatus");
+            button.disabled = true;
+            status.textContent = "Đang tải dữ liệu lịch sử sử dụng...";
+            document.getElementById("searchUsageReportInput").disabled = true;
+            document.getElementById("exportUsageReportButton").disabled = true;
+            closeUsageReportDetailModal();
+            usageReportSourceRows = [];
+            usageReportPeriods = [];
+            usageReportMaterialRows = [];
+            usageReportDetailRows = [];
+            dtDestroy("usageMaterialReport");
+            dtDestroy("usageProductReport");
+            document.getElementById("usageReportMainHost").innerHTML = "";
+            document.getElementById("usageReportDetailHost").innerHTML = "";
+
+            try {
+                if (!materialsLoaded && !await loadDanhMucVatTu()) {
+                    status.textContent = "Không tải được danh mục vật tư.";
+                    return false;
+                }
+                const rows = await loadPartitioned("lich_su_su_dung", from, to);
+                if (requestId !== usageReportRequestId) return false;
+                if (from !== getDateInput("usageReportFromDate") || to !== getDateInput("usageReportToDate")) {
+                    status.textContent = "Khoảng ngày đã thay đổi. Bấm “Xem báo cáo” để tải lại.";
+                    return false;
+                }
+                usageReportSourceRows = rows;
+                usageReportPeriods = usageReportMonthKeys(from, to);
+                usageReportMaterialRows = aggregateUsageReportMaterials(rows, usageReportPeriods);
+                document.getElementById("searchUsageReportInput").value = "";
+                document.getElementById("searchUsageReportInput").disabled = false;
+                document.getElementById("exportUsageReportButton").disabled = false;
+                renderUsageReportMain(usageReportMaterialRows);
+                status.textContent = `Đã tải ${rows.length.toLocaleString("vi-VN")} dòng lịch sử, ${usageReportMaterialRows.length.toLocaleString("vi-VN")} mã vật tư (${from} → ${to}).`;
+                return true;
+            } catch (error) {
+                if (requestId === usageReportRequestId) {
+                    status.textContent = "Không tải được dữ liệu lịch sử sử dụng.";
+                    reportDataError("Lỗi tải Báo cáo lịch sử sử dụng", error);
+                }
+                return false;
+            } finally {
+                if (requestId === usageReportRequestId) button.disabled = false;
+            }
+        }
+
+        function filterUsageReport() {
+            if (!DT.usageMaterialReport) return;
+            const keyword = document.getElementById("searchUsageReportInput").value.trim().toLocaleLowerCase("vi");
+            const rows = usageReportMaterialRows.filter(row => !keyword ||
+                [row.ma_vt, row.ten_vt, row.dvt].some(value => String(value || "").toLocaleLowerCase("vi").includes(keyword)));
+            dtSet("usageMaterialReport", rows);
+            updateUsageReportFooter("usageReportMainHost", rows, usageReportPeriods);
+        }
+
+        function toggleUsageReportDetail(materialCode, triggerElement) {
+            const modal = document.getElementById("usageReportDetailModal");
+            if (!modal.classList.contains("hidden") && usageReportSelectedMaterial === materialCode) {
+                closeUsageReportDetailModal();
+                return;
+            }
+            usageReportSelectedMaterial = materialCode;
+            usageReportDetailTriggerElement = triggerElement || document.activeElement;
+            const material = materialMap[materialCode] || {};
+            document.getElementById("usageReportDetailTitle").textContent =
+                `Chi tiết sử dụng: ${materialCode}${material.ten_vt ? ` — ${material.ten_vt}` : ""}`;
+            document.getElementById("searchUsageReportDetailInput").value = "";
+            usageReportDetailRows = aggregateUsageReportProducts(materialCode, usageReportSourceRows, usageReportPeriods);
+            modal.classList.remove("hidden");
+            renderUsageReportDetail(usageReportDetailRows);
+            document.getElementById("searchUsageReportDetailInput").focus();
+        }
+
+        function closeUsageReportDetailModal() {
+            document.getElementById("usageReportDetailModal").classList.add("hidden");
+            usageReportSelectedMaterial = "";
+            const trigger = usageReportDetailTriggerElement;
+            usageReportDetailTriggerElement = null;
+            if (trigger && document.contains(trigger)) trigger.focus();
+        }
+
+        function filterUsageReportDetail() {
+            if (!DT.usageProductReport) return;
+            const keyword = document.getElementById("searchUsageReportDetailInput").value.trim().toLocaleLowerCase("vi");
+            const rows = usageReportDetailRows.filter(row => !keyword ||
+                [row.ma_sp, row.ten_sp].some(value => String(value || "").toLocaleLowerCase("vi").includes(keyword)));
+            dtSet("usageProductReport", rows);
+            updateUsageReportFooter("usageReportDetailHost", rows, usageReportPeriods);
+        }
+
         function filterUsageHistoryTable() {
             const keyword = document.getElementById("searchUsageHistoryInput").value.trim().toLocaleLowerCase("vi");
             const rows = allUsageHistoryData.filter(row => !keyword ||
@@ -5498,10 +5867,10 @@
             }
         }
 
-        function exportCurrentScreen() {
+        function exportCurrentScreen(tableIdOverride = "") {
             try {
                 requireXlsx();
-                const screen = ["dashboard", "sales", "purchase", "purchase-orders", "purchase-history", "production", "usage-history", "materials", "users"]
+                const screen = ["dashboard", "sales", "purchase", "purchase-orders", "purchase-history", "production", "usage-history", "usage-report", "materials", "users"]
                     .find(name => !document.getElementById(`screen-${name}`).classList.contains("hidden")) || "dashboard";
                 const range = prefix => `${getDateInput(prefix + "FromDate")} → ${getDateInput(prefix + "ToDate")}`;
                 let title, tableId, info = [];
@@ -5575,6 +5944,22 @@
                     info.push(["Khoảng ngày", `${getDateInput("usageFromDate")} → ${getDateInput("usageToDate")}`],
                         ["Từ khóa", document.getElementById("searchUsageHistoryInput").value.trim()]);
                     table = dtExportTable(tableId, USAGE_HISTORY_IMPORT_COLUMNS);
+                } else if (screen === "usage-report") {
+                    const isDetail = tableIdOverride === "usageProductReport";
+                    const periods = usageReportPeriods;
+                    const columns = isDetail
+                        ? ["ma_sp", "ten_sp", "total", "average", ...periods]
+                        : ["ma_vt", "ten_vt", "dvt", "total", "average", ...periods];
+                    const labels = isDetail
+                        ? { ma_sp: "Mã SP", ten_sp: "Tên SP", total: "Tổng cộng", average: "BQ sử dụng" }
+                        : { ma_vt: "Mã vật tư", ten_vt: "Tên vật tư", dvt: "ĐVT", total: "Tổng cộng", average: "BQ sử dụng" };
+                    periods.forEach(period => { labels[period] = period; });
+                    title = isDetail ? "Chi tiết sử dụng vật tư" : "Báo cáo lịch sử sử dụng";
+                    tableId = isDetail ? "usageProductReport" : "usageMaterialReport";
+                    info.push(["Khoảng ngày", `${getDateInput("usageReportFromDate")} → ${getDateInput("usageReportToDate")}`],
+                        ["Bảng dữ liệu", isDetail ? `Sản phẩm sử dụng ${usageReportSelectedMaterial}` : "Tổng hợp theo vật tư"],
+                        ["Từ khóa", document.getElementById(isDetail ? "searchUsageReportDetailInput" : "searchUsageReportInput").value.trim()]);
+                    table = dtExportTable(tableId, columns, (row, column) => row[column], labels);
                 } else if (screen === "materials") {
                     title = "Danh mục vật tư"; tableId = "materials";
                     info.push(["Từ khóa", document.getElementById("searchMaterialInput").value.trim()]);
@@ -5817,6 +6202,13 @@
                     applyCell(row.cells[0], 0, 1);
                 }
             });
+            if (table.tFoot) {
+                [...table.tFoot.rows].forEach(row => {
+                    if (row.cells.length === headers.length) {
+                        [...row.cells].forEach((cell, index) => applyCell(cell, index, 2));
+                    }
+                });
+            }
         }
 
         function dtSet(id, rows) {
