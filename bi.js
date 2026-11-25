@@ -689,37 +689,24 @@ function biProductionRemainingLabel(production) {
     return `SL SX còn lại: ${biProductionRemainingValue(production)}`;
 }
 
-function biAverageSalesPeriodCount(widget) {
-    const from = String(biBoard && biBoard.from || "").slice(0, 10);
-    const to = String(biBoard && biBoard.to || "").slice(0, 10);
-    if (!widget.timeGrain || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) return 0;
-    const [fromYear, fromMonth, fromDay] = from.split("-").map(Number);
-    const [toYear, toMonth, toDay] = to.split("-").map(Number);
-    if (widget.timeGrain === "day") {
-        const ms = Date.UTC(toYear, toMonth - 1, toDay) - Date.UTC(fromYear, fromMonth - 1, fromDay);
-        return Math.floor(ms / 86400000) + 1;
-    }
-    if (widget.timeGrain === "month") return (toYear - fromYear) * 12 + toMonth - fromMonth + 1;
-    if (widget.timeGrain === "quarter") {
-        return Math.floor(((toYear - fromYear) * 12 + toMonth - fromMonth) / 3) + 1;
-    }
-    return toYear - fromYear + 1;
-}
-
-function biAverageSalesSummary(result, widget, totalUsage = null) {
+function biAverageSalesSummary(result, widget, totalUsage = null, usageByPeriod = null) {
     const empty = { average: 0, unit: "Chưa có ĐVT" };
     const hasUsageTotal = widget.measure === "usage" && totalUsage;
     if (!["quantity", "usage"].includes(widget.measure) || !widget.timeGrain || (!result.length && !hasUsageTotal)) return empty;
-    const periodCount = biAverageSalesPeriodCount(widget);
-    if (!periodCount) return empty;
     const units = new Set(widget.measure === "usage" && totalUsage
         ? totalUsage.units
         : result.map(group => String(group.unit || "").trim()).filter(Boolean));
-    const total = widget.measure === "usage" && totalUsage
-        ? totalUsage.value
-        : result.reduce((sum, group) => sum + Number(group.value || 0), 0);
+    const periodTotals = new Map();
+    if (widget.measure === "usage" && usageByPeriod instanceof Map) {
+        usageByPeriod.forEach((value, period) => periodTotals.set(period, Number(value)));
+    } else {
+        result.forEach(group => group.periods.forEach((cell, period) => {
+            periodTotals.set(period, (periodTotals.get(period) || 0) + Number(cell.value || 0));
+        }));
+    }
+    const activePeriods = [...periodTotals.values()].filter(value => Number.isFinite(value) && value > 0);
     return {
-        average: total / periodCount,
+        average: activePeriods.length ? activePeriods.reduce((sum, value) => sum + value, 0) / activePeriods.length : 0,
         unit: units.size === 1 ? [...units][0] : units.size ? "Nhiều ĐVT" : "Chưa có ĐVT"
     };
 }
@@ -743,7 +730,7 @@ function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod,
     const periodValue = (values, period) => widget.timeGrain
         ? values.periods.get(period) || 0
         : values.quantity || 0;
-    const averageSummary = biAverageSalesSummary([], widget, totalUsage);
+    const averageSummary = biAverageSalesSummary([], widget, totalUsage, usageByPeriod);
     const average = {
         ...averageSummary,
         unit: averageSummary.unit === "Chưa có ĐVT" ? usageUnit : averageSummary.unit
