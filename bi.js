@@ -867,7 +867,13 @@ function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod,
         <th class="p-2 whitespace-nowrap">Thời gian</th><th class="p-2 whitespace-nowrap">Mã SP</th>
         <th class="p-2">Tên SP</th><th class="p-2 text-right whitespace-nowrap">SL TP SX (theo LSX)</th>
         <th class="p-2 text-right whitespace-nowrap">SL sử dụng NVL</th>
-    </tr></thead><tbody id="${tbodyId}"></tbody>`;
+    </tr></thead><tbody id="${tbodyId}"></tbody>
+    <tfoot class="border-t-2 border-slate-300 bg-slate-100 font-semibold">
+        <tr><td class="p-2" colspan="3">Tổng</td>
+            <td id="${tableId}-production-total" class="p-2 text-right whitespace-nowrap"></td>
+            <td id="${tableId}-usage-total" class="p-2 text-right whitespace-nowrap"></td>
+        </tr>
+    </tfoot>`;
     const tableWrap = document.createElement("div");
     tableWrap.className = "mt-4 max-h-80 overflow-auto rounded-lg border border-slate-200";
     tableWrap.appendChild(table);
@@ -897,11 +903,26 @@ function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod,
             <td class="p-2 text-right whitespace-nowrap">${esc(`${formatQuantity(row.usageQuantity)} (${row.usageUnit || fallbackUnit})`)}</td>
         </tr>`
     });
-    dtSet(tableId, rows);
+    const updateTotals = totalRows => {
+        const sum = field => totalRows.reduce((total, row) => total + (Number.isFinite(Number(row[field])) ? Number(row[field]) : 0), 0);
+        const unit = (field, fallback) => {
+            const units = [...new Set(totalRows.map(row => String(row[field] || "").trim()).filter(Boolean))];
+            return units.length === 1 ? units[0] : units.length ? "Nhiều ĐVT" : fallback;
+        };
+        document.getElementById(`${tableId}-production-total`).textContent =
+            `${formatQuantity(sum("productionQuantity"))} (${unit("productionUnit", "Chưa có ĐVT")})`;
+        document.getElementById(`${tableId}-usage-total`).textContent =
+            `${formatQuantity(sum("usageQuantity"))} (${unit("usageUnit", fallbackUnit)})`;
+    };
+    const setRows = visibleRows => {
+        updateTotals(visibleRows);
+        dtSet(tableId, visibleRows);
+    };
+    setRows(rows);
     biUsageTableIds.push(tableId);
     search.addEventListener("input", () => {
         const term = searchableText(search.value.trim());
-        dtSet(tableId, term ? rows.filter(row =>
+        setRows(term ? rows.filter(row =>
             searchableText([row.period, row.ptn, row.name, row.productionQuantity, row.usageQuantity]
                 .join(" ")).includes(term)) : rows);
     });
