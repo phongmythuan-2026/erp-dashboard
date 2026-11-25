@@ -1070,6 +1070,7 @@
                     </label>
                     <input id="searchUsageReportInput" oninput="filterUsageReport()" type="search" placeholder="Tìm mã vật tư, tên vật tư, ĐVT..." disabled class="px-3 py-1.5 w-80 max-w-full border border-slate-300 rounded-lg disabled:bg-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     <span id="usageReportStatus" role="status" class="text-[11px] text-slate-500">Chọn khoảng ngày rồi bấm “Xem báo cáo”.</span>
+                    <span class="text-[11px] text-slate-500">Nhấn biểu tượng ghim ở tiêu đề cột để cố định khi cuộn ngang; Mã vật tư được ghim sẵn.</span>
                 </div>
                 <div id="usageReportMainHost"></div>
             </div>
@@ -4060,7 +4061,7 @@
 
         function usageReportNumber(value) {
             const number = Number(value);
-            return (Number.isFinite(number) ? number : 0).toLocaleString("vi-VN", { maximumFractionDigits: 4 });
+            return (Number.isFinite(number) ? number : 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 });
         }
 
         function usageReportAggregateRows(groups, periods) {
@@ -4158,6 +4159,11 @@
                 row: options.renderRow
             });
             DT[options.id].pinnedColumns.add(0);
+            const totalColumnIndex = options.columns.indexOf("total");
+            if (totalColumnIndex >= 0) {
+                DT[options.id].sortCol = totalColumnIndex;
+                DT[options.id].dir = -1;
+            }
             dtSet(options.id, options.rows);
             dtApplyColumnLayout(options.id);
         }
@@ -6026,6 +6032,16 @@
                                 if (cell && Number.isFinite(cell.v)) cell.z = numberFormat;
                             });
                     });
+                } else if (screen === "usage-report" && table.columns) {
+                    const quantityIndexes = table.columns
+                        .map((column, index) => column === "total" || column === "average" || usageReportPeriods.includes(column) ? index : -1)
+                        .filter(index => index >= 0);
+                    table.rows.forEach((row, rowIndex) => {
+                        quantityIndexes.forEach(columnIndex => {
+                            const cell = sheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: columnIndex })];
+                            if (cell && Number.isFinite(cell.v)) cell.z = "#,##0.##";
+                        });
+                    });
                 }
                 sheet["!cols"] = table.headers.map((h, i) => {
                     const contentWidth = Math.max(
@@ -6090,7 +6106,7 @@
                 }
                 const pinButton = document.createElement("button");
                 pinButton.type = "button";
-                pinButton.className = "dt-pin-toggle inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600";
+                pinButton.className = "dt-pin-toggle inline-flex h-6 w-6 items-center justify-center rounded border border-transparent text-slate-400 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600";
                 pinButton.innerHTML = '<i class="fa-solid fa-thumbtack" aria-hidden="true"></i>';
                 pinButton.addEventListener("click", event => {
                     event.stopPropagation();
@@ -6192,8 +6208,9 @@
                 pinButton.setAttribute("aria-pressed", String(pinned));
                 pinButton.setAttribute("aria-label", `${pinned ? "Bỏ ghim" : "Ghim"} cột ${header.dataset.dtColumnLabel}`);
                 pinButton.title = `${pinned ? "Bỏ ghim" : "Ghim"} cột`;
-                pinButton.classList.toggle("text-blue-600", pinned);
-                pinButton.classList.toggle("bg-blue-50", pinned);
+                pinButton.classList.toggle("text-blue-700", pinned);
+                pinButton.classList.toggle("bg-blue-100", pinned);
+                pinButton.classList.toggle("border-blue-300", pinned);
             });
             [...s.tbody.rows].forEach(row => {
                 if (row.cells.length === headers.length) {
