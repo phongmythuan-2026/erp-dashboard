@@ -1,6 +1,6 @@
 const biDimensions = {
     month: "Tháng/năm", customer: "Khách hàng", staff: "Nhân viên kinh doanh",
-    business: "Nhóm kinh doanh", category: "Nhóm vật tư", category1: "Nhóm vật tư 1", ptn: "Sản phẩm PTN",
+    business: "Nhóm kinh doanh", category: "Nhóm vật tư", category1: "Nhóm vật tư 1", ptn: "Sản phẩm theo mã PTN",
     material: "Mã vật tư"
 };
 const biMeasures = { revenue: "Doanh thu thuần", quantity: "Sản lượng sau trả lại", orders: "Số đơn hàng", usage: "Số lượng sử dụng" };
@@ -250,7 +250,10 @@ function biLoadSupplyRows() {
                 typeof proposalResponse.available !== "boolean" || !Array.isArray(proposalResponse.data)) {
                 throw new Error("Đề xuất mua hàng trả về không hợp lệ.");
             }
-            biUsageRows = usageRows;
+            biUsageRows = usageRows.map(row => ({
+                ...row,
+                ma_ptn: ptnOf({ ma_vt: row.ma_spct })
+            }));
             biOutstandingPurchaseRows = purchaseResponse.data.map((row, index) => {
                 if (!row || typeof row.ma_vt !== "string" || typeof row.dvt !== "string" ||
                     !/^\d{4}-\d{2}-\d{2}$/.test(String(row.ngay_dk_ve || "")) ||
@@ -461,7 +464,15 @@ function biDimension(row, dimension) {
         case "business": { const code = businessGroupOf(row); return [code, businessGroupLabel(code)]; }
         case "category": { const m = biMaterials[row.ma_vt]; const label = m && (m.ten_nhvt || m.ma_nhvt) || "Chưa phân nhóm"; return [label, label, m && m.ma_nhvt || ""]; }
         case "category1": { const m = biMaterials[row.ma_vt]; const label = m && (m.ten_nhvt1 || m.ma_nhvt1) || "Chưa phân nhóm"; return [label, label, m && m.ma_nhvt1 || ""]; }
-        case "ptn": { const code = ptnOf(row); const material = biMaterials[code]; return [code, `${material && material.ten_vt || "Không tìm thấy tên trong danh mục"} — ${code || "(Không có mã PTN)"}`]; }
+        case "ptn": {
+            const code = row.ma_spct !== undefined
+                ? String(row.ma_ptn || ptnOf({ ma_vt: row.ma_spct })).trim()
+                : String(row.ma_ptn || ptnOf(row)).trim();
+            const productCode = code || "(Không có mã PTN)";
+            const material = biMaterials[code];
+            const name = row.ma_spct !== undefined ? row.ten_spct : material && material.ten_vt;
+            return [productCode, `${name || (material && material.ten_vt) || "Không tìm thấy tên trong danh mục"} — ${productCode}`];
+        }
         case "material": {
             const code = String(row.ma_vt || "").trim();
             const material = biMaterials[code];
@@ -469,6 +480,14 @@ function biDimension(row, dimension) {
         }
         default: throw new Error("Chiều phân tích không hợp lệ.");
     }
+}
+
+function biUsageMaterialMatches(row, filter) {
+    if (!filter) return true;
+    const code = String(row.ma_vt || "").trim();
+    const material = biMaterials[code];
+    return searchableText(`${material && material.ten_vt || row.ten_vt || ""} ${code}`)
+        .includes(searchableText(filter));
 }
 
 function biPeriod(row, grain, dateField = "ngay_ct") {
@@ -543,7 +562,9 @@ function biAggregate(rows, widget) {
     rows.forEach(row => {
         if (row.__salesReturn && (widget.measure === "orders" || widget.measure === "quantity")) return;
         const [key, label, code = ""] = biDimension(row, widget.dimension);
-        if (widget.filter && !searchableText(`${label} ${key} ${code}`).includes(searchableText(widget.filter))) return;
+        if (widget.measure === "usage"
+            ? !biUsageMaterialMatches(row, widget.filter)
+            : widget.filter && !searchableText(`${label} ${key} ${code}`).includes(searchableText(widget.filter))) return;
         const [stackKey, stackLabel] = stackDimension ? biDimension(row, stackDimension) : [];
         const value = widget.measure === "quantity" ? row.sl_ban_sau_tra_lai
             : widget.measure === "usage" ? row.sl_xuat : window.erpNetRevenue(row);
@@ -700,14 +721,11 @@ function biAverageLabel(average, widget) {
 function biOutstandingPurchaseSummary(result, widget) {
     const empty = { quantity: 0, unit: "Chưa có ĐVT", periods: new Map() };
     if (widget.measure !== "usage" || !widget.timeGrain || !result.length || !Array.isArray(biOutstandingPurchaseRows)) return empty;
-    const visibleDimensions = new Set(result.map(group => String(group.key)));
     const periods = new Map();
     const units = new Set();
     let quantity = 0;
     biOutstandingPurchaseRows.forEach(row => {
-        const [key, label, code = ""] = biDimension(row, "material");
-        if (!visibleDimensions.has(String(key))) return;
-        if (widget.filter && !searchableText(`${label} ${key} ${code}`).includes(searchableText(widget.filter))) return;
+        if (!biUsageMaterialMatches(row, widget.filter)) return;
         const value = Number(row.sl_con);
         if (!Number.isFinite(value)) return;
         const period = biPeriod(row, widget.timeGrain, "ngay_dk_ve");
@@ -728,12 +746,7 @@ function biPurchaseProposalSummary(result, widget) {
     const empty = { quantity: 0, unit: "Chưa có ĐVT", periods: new Map() };
     if (widget.measure !== "usage" || !widget.timeGrain || !result.length ||
         biPurchaseProposalAvailable !== true || !Array.isArray(biPurchaseProposalRows)) return empty;
-    const visibleDimensions = new Set(result.map(group => String(group.key)));
-    const selectedRows = biPurchaseProposalRows.filter(row => {
-        const [key, label, code = ""] = biDimension(row, "material");
-        return visibleDimensions.has(String(key)) &&
-            (!widget.filter || searchableText(`${label} ${key} ${code}`).includes(searchableText(widget.filter)));
-    });
+    const selectedRows = biPurchaseProposalRows.filter(row => biUsageMaterialMatches(row, widget.filter));
     const totalsByMaterialUnit = new Map();
     selectedRows.forEach(row => {
         const key = JSON.stringify([row.ma_vt, row.dvt]);
@@ -1173,7 +1186,9 @@ function biStockTotals(widget) {
     const filter = searchableText(widget.filter);
     const totals = new Map();
     biStockRows.forEach(row => {
-        if (filter && !searchableText(row[field]).includes(filter)) return;
+        if (widget.measure === "usage"
+            ? !biUsageMaterialMatches(row, widget.filter)
+            : filter && !searchableText(row[field]).includes(filter)) return;
         const unit = String(row.dvt || "").trim() || "Chưa có ĐVT";
         totals.set(unit, (totals.get(unit) || 0) + row.ton_cuoi);
     });
@@ -1317,10 +1332,14 @@ function biUpdateDimension() {
     if (usage) document.getElementById("biStockPtn").checked = false;
     const dimension = document.getElementById("biDimension");
     [...dimension.options].forEach(option => {
-        option.disabled = quantity && option.value !== "ptn" || usage && option.value !== "material";
+        option.disabled = (quantity || usage) && option.value !== "ptn";
+        option.hidden = usage && option.value !== "ptn";
     });
     if (quantity) dimension.value = "ptn";
-    if (usage) dimension.value = "material";
+    if (usage) dimension.value = "ptn";
+    document.getElementById("biFilterLabel").textContent = usage
+        ? "Lọc theo tên/mã vật tư (không bắt buộc)"
+        : "Lọc theo tên/mã chiều phân tích (không bắt buộc)";
     const time = document.getElementById("biTimeGrain");
     time.disabled = dimension.value === "month";
     if (time.disabled) time.value = "";
@@ -1333,21 +1352,24 @@ function biUpdateStackDimension() {
     const field = document.getElementById("biStackDimensionField");
     const select = document.getElementById("biStackDimension");
     const dimension = document.getElementById("biDimension").value;
+    const usage = document.getElementById("biMeasure").value === "usage";
     const visible = biStackableDimensions.includes(dimension) &&
         document.getElementById("biChart").value === "stack";
     field.classList.toggle("hidden", !visible);
-    [...select.options].forEach(option => { option.disabled = dimension === "material" && option.value === "business"; });
-    if (dimension === "material" && !["category", "category1"].includes(select.value)) select.value = "category";
+    [...select.options].forEach(option => { option.disabled = (usage || dimension === "material") && option.value === "business"; });
+    if ((usage || dimension === "material") && !["category", "category1"].includes(select.value)) select.value = "category";
     if (visible && !select.value) select.value = "category";
 }
 
 function biMaterialFilterOptions() {
     const dimension = document.getElementById("biDimension").value;
-    if (Object.hasOwn(biMaterialFilterOptionCache, dimension)) return biMaterialFilterOptionCache[dimension];
+    const usage = document.getElementById("biMeasure").value === "usage";
+    const cacheKey = usage ? "usage-material" : dimension;
+    if (Object.hasOwn(biMaterialFilterOptionCache, cacheKey)) return biMaterialFilterOptionCache[cacheKey];
     const options = new Map();
-    if (dimension === "ptn" || dimension === "material") {
+    if (usage || dimension === "ptn" || dimension === "material") {
         const codes = Object.keys(biMaterials);
-        (dimension === "ptn" ? codes.map(code => ptnOf({ ma_vt: code })).filter(Boolean) : codes).forEach(code => {
+        (usage || dimension === "material" ? codes : codes.map(code => ptnOf({ ma_vt: code })).filter(Boolean)).forEach(code => {
             const material = biMaterials[code];
             const name = material && String(material.ten_vt || "").trim();
             options.set(code, { value: code, label: `${name || "Không tìm thấy tên trong danh mục"} — ${code}` });
@@ -1363,13 +1385,14 @@ function biMaterialFilterOptions() {
             options.set(code, { value: code, label: `${name || code} — ${code}` });
         });
     }
-    biMaterialFilterOptionCache[dimension] = [...options.values()].sort((a, b) => a.label.localeCompare(b.label, "vi", { numeric: true }));
-    return biMaterialFilterOptionCache[dimension];
+    biMaterialFilterOptionCache[cacheKey] = [...options.values()].sort((a, b) => a.label.localeCompare(b.label, "vi", { numeric: true }));
+    return biMaterialFilterOptionCache[cacheKey];
 }
 
 function biSyncFilterSearch() {
     const value = document.getElementById("biFilter").value;
-    const option = biMaterialFilterDimensions.includes(document.getElementById("biDimension").value)
+    const option = document.getElementById("biMeasure").value === "usage" ||
+        biMaterialFilterDimensions.includes(document.getElementById("biDimension").value)
         ? biMaterialFilterOptions().find(item => item.value === value)
         : null;
     document.getElementById("biFilterSearch").value = option ? option.label : value;
@@ -1389,7 +1412,8 @@ function biCloseFilterSearch(restore = true) {
 function biRenderFilterSearch(query) {
     const input = document.getElementById("biFilterSearch");
     const menu = document.getElementById("biFilterResults");
-    if (!biMaterialFilterDimensions.includes(document.getElementById("biDimension").value)) {
+    if (document.getElementById("biMeasure").value !== "usage" &&
+        !biMaterialFilterDimensions.includes(document.getElementById("biDimension").value)) {
         biCloseFilterSearch(false);
         return;
     }
