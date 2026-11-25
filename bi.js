@@ -28,6 +28,7 @@ let biBusy = false;
 let biDirty = false;
 let biEditing = null;
 let biCharts = [];
+let biUsageTableIds = [];
 let biFilterMatches = [];
 let biFilterActive = -1;
 let biMaterialFilterOptionCache = {};
@@ -64,6 +65,7 @@ function biSetBusy(busy) {
 
 function biReset() {
     biGeneration++;
+    biDisposeUsageTables();
     biCharts.forEach(chart => chart.destroy());
     biCharts = [];
     biBoard = null;
@@ -722,7 +724,7 @@ function biAverageSalesSummary(result, widget, totalUsage = null) {
     };
 }
 
-function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod) {
+function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod, widgetIndex) {
     const periods = widget.timeGrain
         ? biPeriodsForRange(biBoard.from, biBoard.to, widget.timeGrain)
         : ["Toàn khoảng"];
@@ -734,18 +736,29 @@ function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod)
     const fallbackUnit = String(material && material.dvt || "").trim() || "Chưa có ĐVT";
     const usageUnit = totalUsage.units.length === 1 ? totalUsage.units[0]
         : totalUsage.units.length ? "Nhiều ĐVT" : fallbackUnit;
+    const formatQuantity = value => Number(value || 0).toLocaleString("vi-VN", {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
+    const totalLabel = (label, value, unit) => `${label} (Tổng: ${formatQuantity(value)} (${unit}))`;
     const periodValue = (values, period) => widget.timeGrain
         ? values.periods.get(period) || 0
         : values.quantity || 0;
+    const averageSummary = biAverageSalesSummary([], widget, totalUsage);
+    const average = {
+        ...averageSummary,
+        unit: averageSummary.unit === "Chưa có ĐVT" ? usageUnit : averageSummary.unit
+    };
     const datasets = [{
-        label: `Tổng sử dụng (${usageUnit})`,
+        label: totalLabel("Tổng sử dụng", totalUsage.value, usageUnit),
+        tooltipLabel: "Tổng sử dụng", unit: usageUnit,
         data: periods.map(period => widget.timeGrain ? usageByPeriod.get(period) || 0 : totalUsage.value),
         borderColor: "#2563eb", backgroundColor: "#2563eb", pointRadius: 2, tension: 0.15, fill: false
     }];
     if (biStockRows !== null) {
         const visibleStock = stockTotals.length ? stockTotals : [{ unit: fallbackUnit, value: 0 }];
         visibleStock.forEach((stock, index) => datasets.push({
-            label: `Tồn kho hiện tại (${stock.unit})`,
+            label: totalLabel("Tồn kho", stock.value, stock.unit),
+            tooltipLabel: "Tồn kho hiện tại", unit: stock.unit,
             data: periods.map(() => stock.value),
             borderColor: ["#dc2626", "#d97706", "#7c3aed", "#0891b2"][index % 4],
             backgroundColor: ["#dc2626", "#d97706", "#7c3aed", "#0891b2"][index % 4],
@@ -753,16 +766,30 @@ function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod)
         }));
     }
     if (biPurchaseProposalAvailable === true) datasets.push({
-        label: `Đề xuất mua · ngày chứng từ (${purchaseProposals.unit})`,
+        label: totalLabel("Đề xuất mua", purchaseProposals.quantity,
+            purchaseProposals.unit === "Chưa có ĐVT" ? fallbackUnit : purchaseProposals.unit),
+        tooltipLabel: "Đề xuất mua theo ngày chứng từ",
+        unit: purchaseProposals.unit === "Chưa có ĐVT" ? fallbackUnit : purchaseProposals.unit,
         data: periods.map(period => periodValue(purchaseProposals, period)),
         borderColor: "#0891b2", backgroundColor: "#0891b2", borderDash: [2, 4],
         pointRadius: 2, tension: 0.15, fill: false
     });
     datasets.push({
-        label: `PO còn lại · ngày dự kiến về (${purchaseOrders.unit})`,
+        label: totalLabel("Đơn hàng mua", purchaseOrders.quantity,
+            purchaseOrders.unit === "Chưa có ĐVT" ? fallbackUnit : purchaseOrders.unit),
+        tooltipLabel: "Đơn hàng mua theo ngày dự kiến về",
+        unit: purchaseOrders.unit === "Chưa có ĐVT" ? fallbackUnit : purchaseOrders.unit,
         data: periods.map(period => periodValue(purchaseOrders, period)),
         borderColor: "#7c3aed", backgroundColor: "#7c3aed", borderDash: [3, 3],
         pointRadius: 2, tension: 0.15, fill: false
+    });
+    if (widget.timeGrain) datasets.push({
+        label: `BQ sử dụng (${formatQuantity(average.average)} ${average.unit}/${biTimeGrains[widget.timeGrain].toLocaleLowerCase("vi")})`,
+        tooltipLabel: "BQ sử dụng",
+        unit: average.unit,
+        data: periods.map(() => average.average),
+        borderColor: "#f97316", backgroundColor: "#f97316", borderDash: [5, 3],
+        pointRadius: 0, tension: 0, fill: false
     });
     const chartHeading = document.createElement("h4");
     chartHeading.className = "mb-2 text-sm font-semibold text-slate-700";
@@ -788,8 +815,8 @@ function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod)
                 scales: { x: { title: { display: true, text: widget.timeGrain ? biTimeGrains[widget.timeGrain] : "Khoảng ngày" } } },
                 plugins: { tooltip: { callbacks: { label: item => {
                     const dataset = item.dataset;
-                    const value = Number(item.raw || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 });
-                    return `${dataset.label}: ${value}`;
+                    const value = formatQuantity(item.raw);
+                    return `${dataset.tooltipLabel}: ${value} (${dataset.unit})`;
                 } } } }
             }
         }));
@@ -833,19 +860,21 @@ function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod)
     const rows = [...detailRows.values()].sort((a, b) =>
         (periodOrder.get(a.period) || 0) - (periodOrder.get(b.period) || 0) ||
         a.ptn.localeCompare(b.ptn, "vi", { numeric: true }));
+    const tableId = `biUsageDetails-${widgetIndex}`;
+    const tbodyId = `${tableId}-body`;
+    const tableSection = document.createElement("section");
+    const search = document.createElement("input");
+    search.type = "search";
+    search.placeholder = "Tìm thời gian, mã hoặc tên sản phẩm...";
+    search.setAttribute("aria-label", "Tìm chi tiết sử dụng theo PTN");
+    search.className = "mb-2 w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-xs";
     const table = document.createElement("table");
     table.className = "min-w-full text-xs text-left";
-    const number = value => Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 });
     table.innerHTML = `<thead class="sticky top-0 bg-slate-50"><tr>
         <th class="p-2 whitespace-nowrap">Thời gian</th><th class="p-2 whitespace-nowrap">Mã SP</th>
         <th class="p-2">Tên SP</th><th class="p-2 text-right whitespace-nowrap">SL TP SX (theo LSX)</th>
         <th class="p-2 text-right whitespace-nowrap">SL sử dụng NVL</th>
-    </tr></thead><tbody>${rows.map(row => `<tr class="border-t">
-        <td class="p-2 whitespace-nowrap">${esc(row.period)}</td><td class="p-2 whitespace-nowrap">${esc(row.ptn)}</td>
-        <td class="p-2">${esc(row.name || "(Chưa có tên sản phẩm)")}</td>
-        <td class="p-2 text-right whitespace-nowrap">${esc(`${number(row.productionQuantity)} (${row.productionUnit || "Chưa có ĐVT"})`)}</td>
-        <td class="p-2 text-right whitespace-nowrap">${esc(`${number(row.usageQuantity)} (${row.usageUnit || fallbackUnit})`)}</td>
-    </tr>`).join("") || `<tr><td colspan="5" class="p-2 text-slate-500">Không có sản phẩm sử dụng vật tư này trong khoảng thời gian đã chọn.</td></tr>`}</tbody>`;
+    </tr></thead><tbody id="${tbodyId}"></tbody>`;
     const tableWrap = document.createElement("div");
     tableWrap.className = "mt-4 max-h-80 overflow-auto rounded-lg border border-slate-200";
     tableWrap.appendChild(table);
@@ -853,7 +882,41 @@ function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod)
     tableHeading.className = "mt-4 mb-2 text-sm font-semibold text-slate-700";
     tableHeading.textContent = "Chi tiết sử dụng theo PTN";
     content.appendChild(tableHeading);
-    content.appendChild(tableWrap);
+    tableSection.appendChild(search);
+    tableSection.appendChild(tableWrap);
+    content.appendChild(tableSection);
+    dtInit(tableId, {
+        tbody: tbodyId,
+        cols: [
+            row => row.period,
+            row => row.ptn,
+            row => row.name,
+            row => row.productionQuantity,
+            row => row.usageQuantity
+        ],
+        defaultSort: (a, b) => b.period.localeCompare(a.period, "vi", { numeric: true }) ||
+            b.usageQuantity - a.usageQuantity ||
+            a.ptn.localeCompare(b.ptn, "vi", { numeric: true }),
+        row: row => `<tr class="border-t">
+            <td class="p-2 whitespace-nowrap">${esc(row.period)}</td><td class="p-2 whitespace-nowrap">${esc(row.ptn)}</td>
+            <td class="p-2">${esc(row.name || "(Chưa có tên sản phẩm)")}</td>
+            <td class="p-2 text-right whitespace-nowrap">${esc(`${formatQuantity(row.productionQuantity)} (${row.productionUnit || "Chưa có ĐVT"})`)}</td>
+            <td class="p-2 text-right whitespace-nowrap">${esc(`${formatQuantity(row.usageQuantity)} (${row.usageUnit || fallbackUnit})`)}</td>
+        </tr>`
+    });
+    dtSet(tableId, rows);
+    biUsageTableIds.push(tableId);
+    search.addEventListener("input", () => {
+        const term = searchableText(search.value.trim());
+        dtSet(tableId, term ? rows.filter(row =>
+            searchableText([row.period, row.ptn, row.name, row.productionQuantity, row.usageQuantity]
+                .join(" ")).includes(term)) : rows);
+    });
+}
+
+function biDisposeUsageTables() {
+    biUsageTableIds.forEach(tableId => dtDestroy(tableId));
+    biUsageTableIds = [];
 }
 
 function biAverageSalesValue(average) {
@@ -1266,6 +1329,7 @@ function biPurchaseProposalStatus(widget) {
 }
 
 function biRender() {
+    biDisposeUsageTables();
     biCharts.forEach(chart => chart.destroy());
     biCharts = [];
     const container = document.getElementById("biWidgets");
@@ -1299,7 +1363,7 @@ function biRender() {
         const invalidStatus = card.querySelector(".bi-invalid-status");
         if (invalidStatus) invalidStatus.textContent = invalid ? `Bỏ qua ${invalid} dòng thiếu hoặc sai chỉ tiêu.` : "";
         if (widget.measure === "usage") {
-            biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod);
+            biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod, index);
             return;
         }
         if (!result.length) {
