@@ -13,6 +13,8 @@ let biProductionRows = [];
 let biOrderRows = [];
 let biUsageRows = null;
 let biOutstandingPurchaseRows = null;
+let biPurchaseProposalRows = null;
+let biPurchaseProposalAvailable = null;
 let biSupplyPromise = null;
 let biSupplyError = "";
 let biMaterials = {};
@@ -70,6 +72,8 @@ function biReset() {
     biOrderRows = [];
     biUsageRows = null;
     biOutstandingPurchaseRows = null;
+    biPurchaseProposalRows = null;
+    biPurchaseProposalAvailable = null;
     biSupplyPromise = null;
     biSupplyError = "";
     biMaterials = {};
@@ -133,6 +137,8 @@ async function biLoadBoard() {
     biOrderRows = [];
     biUsageRows = null;
     biOutstandingPurchaseRows = null;
+    biPurchaseProposalRows = null;
+    biPurchaseProposalAvailable = null;
     biSupplyPromise = null;
     biSupplyError = "";
     biStockRows = null;
@@ -212,6 +218,8 @@ async function biLoadRows(generation) {
     biOrderRows = orderRows.map(row => ({ ...row, ma_ptn: ptnOf(row) }));
     biUsageRows = null;
     biOutstandingPurchaseRows = null;
+    biPurchaseProposalRows = null;
+    biPurchaseProposalAvailable = null;
     biSupplyPromise = null;
     biSupplyError = "";
     if (biBoard.from !== from || biBoard.to !== to) biDirty = true;
@@ -228,14 +236,19 @@ function biLoadSupplyRows() {
     const to = biBoard.to;
     biSupplyPromise = (async () => {
         try {
-            const [usageRows, purchaseResponse] = await Promise.all([
+            const [usageRows, purchaseResponse, proposalResponse] = await Promise.all([
                 loadPartitioned("lich_su_su_dung", from, to, false, true),
-                api("getBiOutstandingPurchaseOrders", getSessionToken(), from, to)
+                api("getBiOutstandingPurchaseOrders", getSessionToken(), from, to),
+                api("getBiPurchaseProposalRows", getSessionToken(), from, to)
             ]);
             if (generation !== biGeneration) return;
             if (!Array.isArray(usageRows)) throw new Error("Lịch sử sử dụng trả về không hợp lệ.");
             if (!purchaseResponse || purchaseResponse.status !== "success" || !Array.isArray(purchaseResponse.data)) {
                 throw new Error("Lượng đơn hàng mua còn lại trả về không hợp lệ.");
+            }
+            if (!proposalResponse || proposalResponse.status !== "success" ||
+                typeof proposalResponse.available !== "boolean" || !Array.isArray(proposalResponse.data)) {
+                throw new Error("Đề xuất mua hàng trả về không hợp lệ.");
             }
             biUsageRows = usageRows;
             biOutstandingPurchaseRows = purchaseResponse.data.map((row, index) => {
@@ -246,9 +259,18 @@ function biLoadSupplyRows() {
                 }
                 return { ma_vt: row.ma_vt, dvt: row.dvt, sl_con: Number(row.sl_con), ngay_dk_ve: row.ngay_dk_ve };
             });
+            biPurchaseProposalAvailable = proposalResponse.available;
+            biPurchaseProposalRows = proposalResponse.data.map((row, index) => {
+                if (!row || typeof row.ma_vt !== "string" || typeof row.dvt !== "string" ||
+                    !/^\d{4}-\d{2}-\d{2}$/.test(String(row.ngay_ct || "")) ||
+                    !Number.isFinite(Number(row.so_luong))) {
+                    throw new Error(`Dòng đề xuất mua ${index + 1} không hợp lệ.`);
+                }
+                return { ma_vt: row.ma_vt, dvt: row.dvt, so_luong: Number(row.so_luong), ngay_ct: row.ngay_ct };
+            });
             biSupplyError = "";
             biRender();
-            biSetStatus(`${biUsageRows.length.toLocaleString("vi-VN")} dòng lịch sử sử dụng, ${biOutstandingPurchaseRows.length.toLocaleString("vi-VN")} dòng đơn hàng mua còn lại; dữ liệu cung ứng đã tải.`);
+            biSetStatus(`${biUsageRows.length.toLocaleString("vi-VN")} dòng lịch sử sử dụng, ${biOutstandingPurchaseRows.length.toLocaleString("vi-VN")} dòng đơn hàng mua còn lại, ${biPurchaseProposalRows.length.toLocaleString("vi-VN")} dòng đề xuất mua; dữ liệu cung ứng đã tải.`);
         } catch (error) {
             if (generation !== biGeneration) return;
             biSupplyError = error && error.message ? error.message : String(error);
@@ -702,6 +724,45 @@ function biOutstandingPurchaseSummary(result, widget) {
     };
 }
 
+function biPurchaseProposalSummary(result, widget) {
+    const empty = { quantity: 0, unit: "Chưa có ĐVT", periods: new Map() };
+    if (widget.measure !== "usage" || !widget.timeGrain || !result.length ||
+        biPurchaseProposalAvailable !== true || !Array.isArray(biPurchaseProposalRows)) return empty;
+    const visibleDimensions = new Set(result.map(group => String(group.key)));
+    const selectedRows = biPurchaseProposalRows.filter(row => {
+        const [key, label, code = ""] = biDimension(row, "material");
+        return visibleDimensions.has(String(key)) &&
+            (!widget.filter || searchableText(`${label} ${key} ${code}`).includes(searchableText(widget.filter)));
+    });
+    const totalsByMaterialUnit = new Map();
+    selectedRows.forEach(row => {
+        const key = JSON.stringify([row.ma_vt, row.dvt]);
+        totalsByMaterialUnit.set(key, (totalsByMaterialUnit.get(key) || 0) + Number(row.so_luong));
+    });
+    const positiveMaterialUnits = new Set([...totalsByMaterialUnit.entries()]
+        .filter(([, total]) => total > 0)
+        .map(([key]) => key));
+    const periods = new Map();
+    const units = new Set();
+    let quantity = 0;
+    selectedRows.forEach(row => {
+        const materialUnit = JSON.stringify([row.ma_vt, row.dvt]);
+        if (!positiveMaterialUnits.has(materialUnit)) return;
+        const value = Number(row.so_luong);
+        const period = biPeriod(row, widget.timeGrain, "ngay_ct");
+        if (!Number.isFinite(value) || !period) return;
+        quantity += value;
+        periods.set(period, (periods.get(period) || 0) + value);
+        const unit = String(row.dvt || "").trim();
+        if (unit) units.add(unit);
+    });
+    return {
+        quantity,
+        unit: units.size === 1 ? [...units][0] : units.size ? "Nhiều ĐVT" : "Chưa có ĐVT",
+        periods
+    };
+}
+
 function biOrderSummary(result, widget) {
     const empty = { quantity: 0, unit: "Chưa có ĐVT", periods: new Map() };
     if (widget.measure !== "quantity" || !widget.timeGrain || !result.length) return empty;
@@ -760,6 +821,15 @@ function biOutstandingPurchaseLabel(orders, grain) {
     return `SL ĐH mua còn lại theo ${biTimeGrains[grain]} (Tổng: ${biOutstandingPurchaseValue(orders)})`;
 }
 
+function biPurchaseProposalValue(proposals) {
+    const value = proposals.quantity.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${value} (${proposals.unit})`;
+}
+
+function biPurchaseProposalLabel(proposals, grain) {
+    return `SL đề xuất mua theo ${biTimeGrains[grain]} (Tổng: ${biPurchaseProposalValue(proposals)})`;
+}
+
 function biOrderTrendLabel(orders, grain) {
     return `SL ĐH theo ${biTimeGrains[grain]} (Tổng: ${biOrderValue(orders)})`;
 }
@@ -779,7 +849,9 @@ function biRenderStackBreakdown(content, result, widget, periods = null, product
     const average = biAverageSalesSummary(result, widget);
     const orders = biOrderSummary(result, widget);
     const purchaseOrders = biOutstandingPurchaseSummary(result, widget);
+    const purchaseProposals = biPurchaseProposalSummary(result, widget);
     const hasPurchaseOrders = Boolean(periods && widget.measure === "usage");
+    const hasPurchaseProposals = Boolean(periods && widget.measure === "usage" && biPurchaseProposalAvailable === true);
     const hasAverage = ["quantity", "usage"].includes(widget.measure) &&
         (average.average !== 0 || average.unit !== "Chưa có ĐVT");
     const series = new Map();
@@ -840,6 +912,12 @@ function biRenderStackBreakdown(content, result, widget, periods = null, product
             borderColor: "#7c3aed", backgroundColor: "#7c3aed", borderDash: [3, 3],
             pointRadius: 2, fill: false, spanGaps: false
         });
+        if (hasPurchaseProposals) datasets.push({
+            type: "line", label: biPurchaseProposalLabel(purchaseProposals, widget.timeGrain),
+            data: part.map(period => purchaseProposals.periods.get(period) || 0),
+            borderColor: "#0891b2", backgroundColor: "#0891b2", borderDash: [2, 4],
+            pointRadius: 2, fill: false, spanGaps: false
+        });
         if (hasAverage) datasets.push({
             type: "line", label: biAverageLabel(average, widget),
             data: part.map(() => average.average),
@@ -873,7 +951,12 @@ function biRenderStackBreakdown(content, result, widget, periods = null, product
                         const value = (purchaseOrders.periods.get(item.label) || 0).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         return `SL ĐH mua còn lại ${item.label}: ${value} (${purchaseOrders.unit})`;
                     }
-                    const averageIndex = purchaseIndex + (hasPurchaseOrders ? 1 : 0);
+                    const proposalIndex = purchaseIndex + (hasPurchaseOrders ? 1 : 0);
+                    if (hasPurchaseProposals && item.datasetIndex === proposalIndex) {
+                        const value = (purchaseProposals.periods.get(item.label) || 0).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        return `SL đề xuất mua ${item.label}: ${value} (${purchaseProposals.unit})`;
+                    }
+                    const averageIndex = proposalIndex + (hasPurchaseProposals ? 1 : 0);
                     if (hasAverage && item.datasetIndex === averageIndex) {
                         return biAverageLabel(average, widget);
                     }
@@ -894,8 +977,10 @@ function biRenderTime(content, result, widget) {
     const average = biAverageSalesSummary(result, widget);
     const orders = biOrderSummary(result, widget);
     const purchaseOrders = biOutstandingPurchaseSummary(result, widget);
+    const purchaseProposals = biPurchaseProposalSummary(result, widget);
     const hasProductionTotal = widget.measure === "quantity";
     const hasPurchaseOrders = widget.measure === "usage";
+    const hasPurchaseProposals = widget.measure === "usage" && biPurchaseProposalAvailable === true;
     const stacked = widget.chart === "stack";
     const periods = biPeriodsForRange(biBoard.from, biBoard.to, widget.timeGrain);
     const stockTotals = biStockTotals(widget);
@@ -929,6 +1014,13 @@ function biRenderTime(content, result, widget) {
                 purchasePeriodRow.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">SL đơn hàng mua còn lại theo ngày dự kiến</td><td class="p-2 text-right whitespace-nowrap">${esc(`${value} (${purchaseOrders.unit})`)}</td>${stockTotals.map(() => "<td></td>").join("")}`;
                 body.appendChild(purchasePeriodRow);
             }
+            if (hasPurchaseProposals) {
+                const proposalPeriodRow = document.createElement("tr");
+                proposalPeriodRow.className = "border-t font-semibold text-cyan-700";
+                const value = (purchaseProposals.periods.get(period) || 0).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                proposalPeriodRow.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(period)}</td><td class="p-2">SL đề xuất mua theo ngày chứng từ</td><td class="p-2 text-right whitespace-nowrap">${esc(`${value} (${purchaseProposals.unit})`)}</td>${stockTotals.map(() => "<td></td>").join("")}`;
+                body.appendChild(proposalPeriodRow);
+            }
         }
         if (hasProductionTotal) {
             const row = document.createElement("tr");
@@ -944,6 +1036,12 @@ function biRenderTime(content, result, widget) {
             const row = document.createElement("tr");
             row.className = "border-t font-semibold text-violet-700";
             row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(biBoard.from)} - ${esc(biBoard.to)}</td><td class="p-2">SL đơn hàng mua còn lại</td><td class="p-2 text-right whitespace-nowrap">${esc(biOutstandingPurchaseValue(purchaseOrders))}</td>${stockTotals.map(() => "<td></td>").join("")}`;
+            body.appendChild(row);
+        }
+        if (hasPurchaseProposals) {
+            const row = document.createElement("tr");
+            row.className = "border-t font-semibold text-cyan-700";
+            row.innerHTML = `<td class="p-2 whitespace-nowrap">${esc(biBoard.from)} - ${esc(biBoard.to)}</td><td class="p-2">SL đề xuất mua</td><td class="p-2 text-right whitespace-nowrap">${esc(biPurchaseProposalValue(purchaseProposals))}</td>${stockTotals.map(() => "<td></td>").join("")}`;
             body.appendChild(row);
         }
         if (average.average !== 0 || average.unit !== "Chưa có ĐVT") {
@@ -999,6 +1097,14 @@ function biRenderTime(content, result, widget) {
                             pointRadius: 2, fill: false, spanGaps: false
                         }
                     ] : []),
+                    ...(hasPurchaseProposals ? [
+                        {
+                            type: "line", label: biPurchaseProposalLabel(purchaseProposals, widget.timeGrain),
+                            data: part.map(period => purchaseProposals.periods.get(period) || 0),
+                            borderColor: "#0891b2", backgroundColor: "#0891b2", borderDash: [2, 4],
+                            pointRadius: 2, fill: false, spanGaps: false
+                        }
+                    ] : []),
                     ...(["quantity", "usage"].includes(widget.measure) ? [
                         {
                             type: "line", label: biAverageLabel(average, widget),
@@ -1026,7 +1132,12 @@ function biRenderTime(content, result, widget) {
                             const value = (purchaseOrders.periods.get(item.label) || 0).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                             return `SL ĐH mua còn lại ${item.label}: ${value} (${purchaseOrders.unit})`;
                         }
-                        const averageIndex = purchaseIndex + (hasPurchaseOrders ? 1 : 0);
+                        const proposalIndex = purchaseIndex + (hasPurchaseOrders ? 1 : 0);
+                        if (hasPurchaseProposals && item.datasetIndex === proposalIndex) {
+                            const value = (purchaseProposals.periods.get(item.label) || 0).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return `SL đề xuất mua ${item.label}: ${value} (${purchaseProposals.unit})`;
+                        }
+                        const averageIndex = proposalIndex + (hasPurchaseProposals ? 1 : 0);
                         if (["quantity", "usage"].includes(widget.measure) && item.datasetIndex === averageIndex) return biAverageLabel(average, widget);
                         const firstStockIndex = averageIndex + (["quantity", "usage"].includes(widget.measure) ? 1 : 0);
                         if (item.datasetIndex >= firstStockIndex) {
@@ -1082,6 +1193,11 @@ function biStockStatus(widget) {
     return "";
 }
 
+function biPurchaseProposalStatus(widget) {
+    if (widget.measure !== "usage" || biPurchaseProposalAvailable !== false) return "";
+    return '<p class="text-xs text-amber-700 mt-1">Đề xuất mua chỉ hiển thị cho bộ phận CUSX/KHSX; tài khoản hiện tại không thuộc hai bộ phận này.</p>';
+}
+
 function biRender() {
     biCharts.forEach(chart => chart.destroy());
     biCharts = [];
@@ -1097,6 +1213,7 @@ function biRender() {
             <button type="button" data-bi-action="edit" data-index="${index}" class="text-blue-600">Sửa</button>
             <button data-bi-action="delete" data-index="${index}" class="text-red-600">Xóa</button></div></div>
             ${biStockStatus(widget)}
+            ${biPurchaseProposalStatus(widget)}
             <p class="bi-invalid-status text-xs text-amber-700 mt-1"></p>
             <div class="bi-content mt-3 min-w-0 overflow-auto max-h-[360px]"></div>`;
         container.appendChild(card);
@@ -1104,7 +1221,7 @@ function biRender() {
         if (widget.measure === "usage" && biUsageRows === null) {
             content.textContent = biSupplyError
                 ? `Không tải được dữ liệu cung ứng: ${biSupplyError}`
-                : "Đang tải lịch sử sử dụng và đơn hàng mua còn lại...";
+                : "Đang tải lịch sử sử dụng, đơn hàng mua còn lại và đề xuất mua...";
             return;
         }
         const { result, invalid } = biAggregate(widget.measure === "usage" ? biUsageRows : biRows, widget);
