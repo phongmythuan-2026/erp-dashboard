@@ -824,7 +824,7 @@ function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod,
 
     const selectedPtns = new Set(result.map(group => String(group.key)));
     const detailRows = new Map();
-    const productionKeys = new Set();
+    const productionGroups = new Map();
     (biUsageRows || []).forEach(row => {
         if (!biUsageMaterialMatches(row, widget.filter)) return;
         const ptn = String(row.ma_ptn || ptnOf({ ma_vt: row.ma_spct })).trim();
@@ -846,15 +846,21 @@ function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod,
         if (Number.isFinite(usage)) detail.usageQuantity += usage;
         const production = Number(row.so_luong_lsx);
         if (!Number.isFinite(production)) return;
-        const orderKey = row.stt_rec_lsx && row.stt_rec0_lsx
-            ? [row.stt_rec_lsx, row.stt_rec0_lsx]
-            : row.so_lsx ? [row.so_lsx, ptn]
-                : [row.stt_rec || "", row.stt_rec0 || ""];
-        const productionKey = JSON.stringify([key, ...orderKey]);
-        if (productionKeys.has(productionKey)) return;
-        productionKeys.add(productionKey);
-        detail.productionQuantity += production;
-        if (!detail.productionUnit && row.dvt_lsx) detail.productionUnit = String(row.dvt_lsx).trim();
+        const productCode = String(row.ma_spct || "").trim() || ptn;
+        const productionOrder = String(row.so_lsx || row.stt_rec_lsx || "").trim();
+        const productionKey = JSON.stringify([period, productCode, productionOrder, production]);
+        if (!productionGroups.has(productionKey)) {
+            productionGroups.set(productionKey, {
+                period, ptn, quantity: production,
+                unit: String(row.dvt_lsx || "").trim()
+            });
+        }
+    });
+    productionGroups.forEach(group => {
+        const detail = detailRows.get(JSON.stringify([group.period, group.ptn]));
+        if (!detail) return;
+        detail.productionQuantity += group.quantity;
+        if (!detail.productionUnit && group.unit) detail.productionUnit = group.unit;
     });
     const periodOrder = new Map(periods.map((period, index) => [period, index]));
     const rows = [...detailRows.values()].sort((a, b) =>
