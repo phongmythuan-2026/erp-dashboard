@@ -238,41 +238,34 @@ function biLoadSupplyRows() {
     const to = biBoard.to;
     biSupplyPromise = (async () => {
         try {
-            const [usageRows, purchaseResponse, proposalResponse] = await Promise.all([
+            const [usageRows, purchaseSupplyResponse] = await Promise.all([
                 loadPartitioned("lich_su_su_dung", from, to, false, true),
-                api("getBiOutstandingPurchaseOrders", getSessionToken(), from, to),
-                api("getBiPurchaseProposalRows", getSessionToken(), from, to)
+                api("getBiPurchaseSupplyRows", getSessionToken(), from, to)
             ]);
             if (generation !== biGeneration) return;
             if (!Array.isArray(usageRows)) throw new Error("Lịch sử sử dụng trả về không hợp lệ.");
-            if (!purchaseResponse || purchaseResponse.status !== "success" || !Array.isArray(purchaseResponse.data)) {
-                throw new Error("Lượng đơn hàng mua còn lại trả về không hợp lệ.");
-            }
-            if (!proposalResponse || proposalResponse.status !== "success" ||
-                typeof proposalResponse.available !== "boolean" || !Array.isArray(proposalResponse.data)) {
-                throw new Error("Đề xuất mua hàng trả về không hợp lệ.");
+            if (!purchaseSupplyResponse || purchaseSupplyResponse.status !== "success" ||
+                typeof purchaseSupplyResponse.available !== "boolean" || !Array.isArray(purchaseSupplyResponse.data)) {
+                throw new Error("Dữ liệu đề xuất mua và đơn hàng mua trả về không hợp lệ.");
             }
             biUsageRows = usageRows.map(row => ({
                 ...row,
                 ma_ptn: ptnOf({ ma_vt: row.ma_spct })
             }));
-            biOutstandingPurchaseRows = purchaseResponse.data.map((row, index) => {
-                if (!row || typeof row.ma_vt !== "string" || typeof row.dvt !== "string" ||
-                    !/^\d{4}-\d{2}-\d{2}$/.test(String(row.ngay_dk_ve || "")) ||
-                    !Number.isFinite(Number(row.sl_con))) {
-                    throw new Error(`Dòng đơn hàng mua còn lại ${index + 1} không hợp lệ.`);
-                }
-                return { ma_vt: row.ma_vt, dvt: row.dvt, sl_con: Number(row.sl_con), ngay_dk_ve: row.ngay_dk_ve };
-            });
-            biPurchaseProposalAvailable = proposalResponse.available;
-            biPurchaseProposalRows = proposalResponse.data.map((row, index) => {
-                if (!row || typeof row.ma_vt !== "string" || typeof row.dvt !== "string" ||
-                    !/^\d{4}-\d{2}-\d{2}$/.test(String(row.ngay_ct || "")) ||
+            const purchaseSupplyRows = purchaseSupplyResponse.data.map((row, index) => {
+                if (!row || !["proposal", "purchase"].includes(row.kind) ||
+                    typeof row.ma_vt !== "string" || typeof row.dvt !== "string" ||
+                    !/^\d{4}-\d{2}-\d{2}$/.test(String(row.ngay || "")) ||
                     !Number.isFinite(Number(row.so_luong))) {
-                    throw new Error(`Dòng đề xuất mua ${index + 1} không hợp lệ.`);
+                    throw new Error(`Dòng đề xuất mua/đơn hàng mua ${index + 1} không hợp lệ.`);
                 }
-                return { ma_vt: row.ma_vt, dvt: row.dvt, so_luong: Number(row.so_luong), ngay_ct: row.ngay_ct };
+                return { ...row, so_luong: Number(row.so_luong) };
             });
+            biPurchaseProposalAvailable = purchaseSupplyResponse.available;
+            biPurchaseProposalRows = purchaseSupplyRows.filter(row => row.kind === "proposal")
+                .map(row => ({ ma_vt: row.ma_vt, dvt: row.dvt, so_luong: row.so_luong, ngay_ct: row.ngay }));
+            biOutstandingPurchaseRows = purchaseSupplyRows.filter(row => row.kind === "purchase")
+                .map(row => ({ ma_vt: row.ma_vt, dvt: row.dvt, sl_con: row.so_luong, ngay_dk_ve: row.ngay }));
             biSupplyError = "";
             biRender();
             biSetStatus(`${biUsageRows.length.toLocaleString("vi-VN")} dòng lịch sử sử dụng, ${biOutstandingPurchaseRows.length.toLocaleString("vi-VN")} dòng đơn hàng mua còn lại, ${biPurchaseProposalRows.length.toLocaleString("vi-VN")} dòng đề xuất mua; dữ liệu cung ứng đã tải.`);
@@ -726,7 +719,7 @@ function biRenderUsageReport(content, widget, result, totalUsage, usageByPeriod,
     const formatQuantity = value => Number(value || 0).toLocaleString("vi-VN", {
         minimumFractionDigits: 2, maximumFractionDigits: 2
     });
-    const totalLabel = (label, value, unit) => `${label} (Tổng: ${formatQuantity(value)} (${unit}))`;
+    const totalLabel = (label, value, unit) => `${label} (${formatQuantity(value)} (${unit}))`;
     const periodValue = (values, period) => widget.timeGrain
         ? values.periods.get(period) || 0
         : values.quantity || 0;

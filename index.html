@@ -220,7 +220,7 @@
                         <label class="flex items-center gap-2"><input id="biStockSku" type="checkbox"> Theo SKU</label>
                         <label class="flex items-center gap-2"><input id="biStockPtn" type="checkbox"> Theo Mã PTN</label>
                     </div>
-                    <p class="text-slate-500 mt-2">Dữ liệu tồn kho lấy từ ảnh chụp ton_kho.json đang dùng trong B.I. SL SX còn lại chỉ áp dụng cho Sản lượng bán hàng. Với Số lượng sử dụng, widget luôn hiển thị tồn kho theo SKU của mã vật tư đã chọn; biểu đồ còn có tổng sử dụng, đề xuất mua theo ngày chứng từ và PO còn lại theo ngày dự kiến về.</p>
+                    <p class="text-slate-500 mt-2">Dữ liệu tồn kho lấy từ ảnh chụp ton_kho.json đang dùng trong B.I. SL SX còn lại chỉ áp dụng cho Sản lượng bán hàng. Với Số lượng sử dụng, widget luôn hiển thị tồn kho theo SKU của mã vật tư đã chọn; biểu đồ còn có tổng sử dụng, Đề xuất mua theo ngày chứng từ và Đơn hàng mua theo ngày dự kiến giao hàng.</p>
                 </fieldset>
                 <p class="text-xs text-slate-500">Chọn <b>Áp dụng widget</b> để cập nhật biểu đồ, sau đó chọn <b>Lưu bảng</b> để lưu cấu hình. Giới hạn mặc định là Tất cả. Với chiều PTN/nhóm vật tư/mã vật tư, có thể tìm theo tên hoặc mã trong danh mục. Trục thời gian có Ngày/Tháng/Quý/Năm; Top giới hạn danh sách PTN bên dưới theo tổng sử dụng cao nhất trong toàn khoảng, còn đường tổng sử dụng trên biểu đồ luôn tính tất cả PTN. Dạng stack cho phép phân rã theo Nhóm vật tư hoặc Nhóm vật tư 1. Với Số lượng sử dụng, bắt buộc chọn một mã vật tư; biểu đồ có tổng sử dụng, tồn kho, đề xuất mua, đơn hàng mua và bình quân sử dụng; bảng PTN theo kỳ có mã/tên sản phẩm, SL theo lệnh sản xuất và SL sử dụng NVL, có dòng tổng cho hai cột số lượng, hỗ trợ tìm kiếm, sắp xếp, phân trang và kéo chỉnh độ rộng cột. Bình quân bán hàng/sử dụng chỉ tính các kỳ có tổng lượng lớn hơn 0.</p>
                 <div class="flex justify-end gap-2"><button id="biCancel" type="button" class="px-4 py-2 border rounded-lg text-sm">Hủy</button>
@@ -5962,6 +5962,6 @@
         }
         initializeSearchableSalesFilters();
     </script>
-    <script src="bi.js?v=20261125-usage-ptn-footer-totals"></script>
+    <script src="bi.js?v=20261125-purchase-supply"></script>
 </body>
 </html>
