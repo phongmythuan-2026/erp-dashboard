@@ -256,16 +256,27 @@ function biLoadSupplyRows() {
                 if (!row || !["proposal", "purchase"].includes(row.kind) ||
                     typeof row.ma_vt !== "string" || typeof row.dvt !== "string" ||
                     !/^\d{4}-\d{2}-\d{2}$/.test(String(row.ngay || "")) ||
-                    !Number.isFinite(Number(row.so_luong))) {
+                    !Number.isFinite(Number(row.sl_de_xuat_cl)) ||
+                    !Number.isFinite(Number(row.sl_da_dat_hang_chua_ve_kho))) {
                     throw new Error(`Dòng đề xuất mua/đơn hàng mua ${index + 1} không hợp lệ.`);
                 }
-                return { ...row, so_luong: Number(row.so_luong) };
+                return {
+                    ...row,
+                    sl_de_xuat_cl: Number(row.sl_de_xuat_cl),
+                    sl_da_dat_hang_chua_ve_kho: Number(row.sl_da_dat_hang_chua_ve_kho)
+                };
             });
             biPurchaseProposalAvailable = purchaseSupplyResponse.available;
             biPurchaseProposalRows = purchaseSupplyRows.filter(row => row.kind === "proposal")
-                .map(row => ({ ma_vt: row.ma_vt, dvt: row.dvt, so_luong: row.so_luong, ngay_ct: row.ngay }));
+                .map(row => ({
+                    ma_vt: row.ma_vt, dvt: row.dvt,
+                    sl_de_xuat_cl: row.sl_de_xuat_cl, ngay_ct: row.ngay
+                }));
             biOutstandingPurchaseRows = purchaseSupplyRows.filter(row => row.kind === "purchase")
-                .map(row => ({ ma_vt: row.ma_vt, dvt: row.dvt, sl_con: row.so_luong, ngay_dk_ve: row.ngay }));
+                .map(row => ({
+                    ma_vt: row.ma_vt, dvt: row.dvt,
+                    sl_da_dat_hang_chua_ve_kho: row.sl_da_dat_hang_chua_ve_kho, ngay_dk_ve: row.ngay
+                }));
             biSupplyError = "";
             biRender();
             biSetStatus(`${biUsageRows.length.toLocaleString("vi-VN")} dòng lịch sử sử dụng, ${biOutstandingPurchaseRows.length.toLocaleString("vi-VN")} dòng đơn hàng mua còn lại, ${biPurchaseProposalRows.length.toLocaleString("vi-VN")} dòng đề xuất mua; dữ liệu cung ứng đã tải.`);
@@ -943,7 +954,7 @@ function biOutstandingPurchaseSummary(result, widget) {
     let quantity = 0;
     biOutstandingPurchaseRows.forEach(row => {
         if (!biUsageMaterialMatches(row, widget.filter)) return;
-        const value = Number(row.sl_con);
+        const value = Number(row.sl_da_dat_hang_chua_ve_kho);
         if (!Number.isFinite(value)) return;
         quantity += value;
         const period = widget.timeGrain ? biPeriod(row, widget.timeGrain, "ngay_dk_ve") : "";
@@ -963,21 +974,11 @@ function biPurchaseProposalSummary(result, widget) {
     if (widget.measure !== "usage" || biPurchaseProposalAvailable !== true ||
         !Array.isArray(biPurchaseProposalRows)) return empty;
     const selectedRows = biPurchaseProposalRows.filter(row => biUsageMaterialMatches(row, widget.filter));
-    const totalsByMaterialUnit = new Map();
-    selectedRows.forEach(row => {
-        const key = JSON.stringify([row.ma_vt, row.dvt]);
-        totalsByMaterialUnit.set(key, (totalsByMaterialUnit.get(key) || 0) + Number(row.so_luong));
-    });
-    const positiveMaterialUnits = new Set([...totalsByMaterialUnit.entries()]
-        .filter(([, total]) => total > 0)
-        .map(([key]) => key));
     const periods = new Map();
     const units = new Set();
     let quantity = 0;
     selectedRows.forEach(row => {
-        const materialUnit = JSON.stringify([row.ma_vt, row.dvt]);
-        if (!positiveMaterialUnits.has(materialUnit)) return;
-        const value = Number(row.so_luong);
+        const value = Number(row.sl_de_xuat_cl);
         const period = widget.timeGrain ? biPeriod(row, widget.timeGrain, "ngay_ct") : "";
         if (!Number.isFinite(value)) return;
         quantity += value;
