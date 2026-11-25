@@ -87,11 +87,11 @@ function biReset() {
     biOwner = null;
     biDirty = false;
     biSetBusy(false);
-    const stockButton = document.getElementById("biRefreshStock");
+    const stockButton = document.getElementById("biRefreshData");
     stockButton.disabled = false;
     stockButton.classList.remove("bg-blue-700");
     stockButton.classList.add("bg-blue-600");
-    stockButton.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i><span>Tải tồn kho</span>';
+    stockButton.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i><span>Tải dữ liệu</span>';
     document.getElementById("biWidgets").innerHTML = "";
     document.getElementById("biEditor").classList.add("hidden");
     document.getElementById("biFrom").value = "";
@@ -231,6 +231,46 @@ async function biLoadRows(generation) {
     biSetStatus(`${salesRows.length.toLocaleString("vi-VN")} dòng bán hàng, ${returnRows.length.toLocaleString("vi-VN")} dòng trả lại, ${productionRows.length.toLocaleString("vi-VN")} dòng lệnh sản xuất; ${biDirty ? "có thay đổi chưa lưu." : "đã tải cấu hình."}`);
 }
 
+function biParseSupplyData(usageRows, purchaseSupplyResponse) {
+    if (!Array.isArray(usageRows)) throw new Error("Lịch sử sử dụng trả về không hợp lệ.");
+    if (!purchaseSupplyResponse || purchaseSupplyResponse.status !== "success" ||
+        typeof purchaseSupplyResponse.available !== "boolean" || !Array.isArray(purchaseSupplyResponse.data)) {
+        throw new Error("Dữ liệu đề xuất mua và đơn hàng mua trả về không hợp lệ.");
+    }
+    const normalizedUsageRows = usageRows.map(row => ({
+        ...row,
+        ma_ptn: ptnOf({ ma_vt: row.ma_spct })
+    }));
+    const purchaseSupplyRows = purchaseSupplyResponse.data.map((row, index) => {
+        if (!row || !["proposal", "purchase"].includes(row.kind) ||
+            typeof row.ma_vt !== "string" || typeof row.dvt !== "string" ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(String(row.ngay || "")) ||
+            !Number.isFinite(Number(row.sl_de_xuat_cl)) ||
+            !Number.isFinite(Number(row.sl_da_dat_hang_chua_ve_kho))) {
+            throw new Error(`Dòng đề xuất mua/đơn hàng mua ${index + 1} không hợp lệ.`);
+        }
+        return {
+            ...row,
+            sl_de_xuat_cl: Number(row.sl_de_xuat_cl),
+            sl_da_dat_hang_chua_ve_kho: Number(row.sl_da_dat_hang_chua_ve_kho)
+        };
+    });
+    return {
+        usageRows: normalizedUsageRows,
+        proposalAvailable: purchaseSupplyResponse.available,
+        proposalRows: purchaseSupplyRows.filter(row => row.kind === "proposal")
+            .map(row => ({
+                ma_vt: row.ma_vt, dvt: row.dvt,
+                sl_de_xuat_cl: row.sl_de_xuat_cl, ngay_ct: row.ngay
+            })),
+        outstandingRows: purchaseSupplyRows.filter(row => row.kind === "purchase")
+            .map(row => ({
+                ma_vt: row.ma_vt, dvt: row.dvt,
+                sl_da_dat_hang_chua_ve_kho: row.sl_da_dat_hang_chua_ve_kho, ngay_dk_ve: row.ngay
+            }))
+    };
+}
+
 function biLoadSupplyRows() {
     if (biUsageRows !== null || biSupplyPromise || biSupplyError) return biSupplyPromise;
     const generation = biGeneration;
@@ -243,40 +283,11 @@ function biLoadSupplyRows() {
                 api("getBiPurchaseSupplyRows", getSessionToken(), from, to)
             ]);
             if (generation !== biGeneration) return;
-            if (!Array.isArray(usageRows)) throw new Error("Lịch sử sử dụng trả về không hợp lệ.");
-            if (!purchaseSupplyResponse || purchaseSupplyResponse.status !== "success" ||
-                typeof purchaseSupplyResponse.available !== "boolean" || !Array.isArray(purchaseSupplyResponse.data)) {
-                throw new Error("Dữ liệu đề xuất mua và đơn hàng mua trả về không hợp lệ.");
-            }
-            biUsageRows = usageRows.map(row => ({
-                ...row,
-                ma_ptn: ptnOf({ ma_vt: row.ma_spct })
-            }));
-            const purchaseSupplyRows = purchaseSupplyResponse.data.map((row, index) => {
-                if (!row || !["proposal", "purchase"].includes(row.kind) ||
-                    typeof row.ma_vt !== "string" || typeof row.dvt !== "string" ||
-                    !/^\d{4}-\d{2}-\d{2}$/.test(String(row.ngay || "")) ||
-                    !Number.isFinite(Number(row.sl_de_xuat_cl)) ||
-                    !Number.isFinite(Number(row.sl_da_dat_hang_chua_ve_kho))) {
-                    throw new Error(`Dòng đề xuất mua/đơn hàng mua ${index + 1} không hợp lệ.`);
-                }
-                return {
-                    ...row,
-                    sl_de_xuat_cl: Number(row.sl_de_xuat_cl),
-                    sl_da_dat_hang_chua_ve_kho: Number(row.sl_da_dat_hang_chua_ve_kho)
-                };
-            });
-            biPurchaseProposalAvailable = purchaseSupplyResponse.available;
-            biPurchaseProposalRows = purchaseSupplyRows.filter(row => row.kind === "proposal")
-                .map(row => ({
-                    ma_vt: row.ma_vt, dvt: row.dvt,
-                    sl_de_xuat_cl: row.sl_de_xuat_cl, ngay_ct: row.ngay
-                }));
-            biOutstandingPurchaseRows = purchaseSupplyRows.filter(row => row.kind === "purchase")
-                .map(row => ({
-                    ma_vt: row.ma_vt, dvt: row.dvt,
-                    sl_da_dat_hang_chua_ve_kho: row.sl_da_dat_hang_chua_ve_kho, ngay_dk_ve: row.ngay
-                }));
+            const supplyData = biParseSupplyData(usageRows, purchaseSupplyResponse);
+            biUsageRows = supplyData.usageRows;
+            biPurchaseProposalAvailable = supplyData.proposalAvailable;
+            biPurchaseProposalRows = supplyData.proposalRows;
+            biOutstandingPurchaseRows = supplyData.outstandingRows;
             biSupplyError = "";
             biRender();
             biSetStatus(`${biUsageRows.length.toLocaleString("vi-VN")} dòng lịch sử sử dụng, ${biOutstandingPurchaseRows.length.toLocaleString("vi-VN")} dòng đơn hàng mua còn lại, ${biPurchaseProposalRows.length.toLocaleString("vi-VN")} dòng đề xuất mua; dữ liệu cung ứng đã tải.`);
@@ -320,10 +331,16 @@ function biLoadStock() {
 }
 
 function biSetStockData(response) {
+    const stockData = biParseStockData(response);
+    biStockRows = stockData.rows;
+    biStockUpdatedAt = stockData.updatedAt;
+}
+
+function biParseStockData(response) {
     if (!response || response.status !== "success" || !Array.isArray(response.data)) {
         throw new Error("Dữ liệu ton_kho.json trả về không hợp lệ.");
     }
-    biStockRows = response.data.map((row, index) => {
+    const rows = response.data.map((row, index) => {
         if (!row || typeof row.ma_vt !== "string" || typeof row.ma_ptn !== "string" || typeof row.dvt !== "string") {
             throw new Error(`Dòng tồn kho ${index + 1} không hợp lệ.`);
         }
@@ -331,39 +348,53 @@ function biSetStockData(response) {
         if (!Number.isFinite(quantity)) throw new Error(`Dòng tồn kho ${index + 1} không hợp lệ.`);
         return { ma_vt: row.ma_vt, ma_ptn: row.ma_ptn, dvt: row.dvt, ton_cuoi: quantity };
     });
-    biStockUpdatedAt = String(response.updatedAt || "");
+    return { rows, updatedAt: String(response.updatedAt || "") };
 }
 
-async function biRefreshStock() {
+async function biRefreshData() {
     if (!biBoard || biBusy) return;
-    if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được tải mới tồn kho từ SQL."));
+    if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được tải mới dữ liệu từ SQL."));
     const generation = biGeneration;
-    const button = document.getElementById("biRefreshStock");
+    const button = document.getElementById("biRefreshData");
     const originalLabel = button.innerHTML;
     const originalClass = button.className;
     biSetBusy(true);
     button.classList.remove("bg-blue-600");
     button.classList.add("bg-blue-700");
     button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang tải...</span>';
-    biSetStatus("Đang tải tồn kho mới từ SQL...");
+    biSetStatus("Đang tải tồn kho và dữ liệu cung ứng mới từ SQL; lịch sử sử dụng đọc từ các phân vùng tháng...");
     try {
         if (biStockPromise) await biStockPromise;
-        const result = await api("refreshStockData", getSessionToken());
+        if (biSupplyPromise) await biSupplyPromise;
+        const token = getSessionToken();
+        const result = await api("refreshStockData", token);
         if (generation !== biGeneration) return;
         if (!result || result.ok !== true || !Number.isInteger(result.rowCount) || result.rowCount < 0) {
             throw new Error("SQL không xác nhận kết quả tải tồn kho hợp lệ.");
         }
-        const response = await api("getData", getSessionToken(), "ton_kho");
+        const [stockResponse, usageRows, purchaseSupplyResponse] = await Promise.all([
+            api("getData", token, "ton_kho"),
+            loadPartitioned("lich_su_su_dung", biBoard.from, biBoard.to, false, true),
+            api("getBiPurchaseSupplyRows", token, biBoard.from, biBoard.to)
+        ]);
         if (generation !== biGeneration) return;
-        biSetStockData(response);
+        const stockData = biParseStockData(stockResponse);
+        const supplyData = biParseSupplyData(usageRows, purchaseSupplyResponse);
+        biStockRows = stockData.rows;
+        biStockUpdatedAt = stockData.updatedAt;
         biStockError = "";
+        biUsageRows = supplyData.usageRows;
+        biPurchaseProposalAvailable = supplyData.proposalAvailable;
+        biPurchaseProposalRows = supplyData.proposalRows;
+        biOutstandingPurchaseRows = supplyData.outstandingRows;
+        biSupplyError = "";
         biRender();
         const updatedAt = biStockUpdatedAt ? ` Cập nhật: ${biStockUpdatedAt}.` : "";
-        biSetStatus(`Đã tải mới ${Number(result.rowCount).toLocaleString("vi-VN")} dòng tồn kho từ SQL.${updatedAt}`);
+        biSetStatus(`Đã tải dữ liệu: ${Number(result.rowCount).toLocaleString("vi-VN")} dòng tồn kho; ${biPurchaseProposalRows.length.toLocaleString("vi-VN")} dòng đề xuất mua; ${biOutstandingPurchaseRows.length.toLocaleString("vi-VN")} dòng đơn hàng mua. Lịch sử sử dụng lấy từ các phân vùng tháng.${updatedAt}`);
     } catch (error) {
         if (generation !== biGeneration) return;
-        biSetStatus("Tải tồn kho thất bại; dữ liệu trước đó vẫn được giữ.");
-        reportDataError("Lỗi tải tồn kho từ SQL", error);
+        biSetStatus("Tải dữ liệu thất bại; dữ liệu trước đó vẫn được giữ.");
+        reportDataError("Lỗi tải dữ liệu B.I", error);
     } finally {
         if (generation === biGeneration) {
             biSetBusy(false);
@@ -1681,7 +1712,7 @@ document.getElementById("biDaysAhead").addEventListener("input", event => {
         document.getElementById("biTo").value = "";
     }
 });
-document.getElementById("biRefreshStock").addEventListener("click", biRefreshStock);
+document.getElementById("biRefreshData").addEventListener("click", biRefreshData);
 document.getElementById("biEditorForm").addEventListener("submit", event => {
     event.preventDefault();
     const title = document.getElementById("biTitle").value.trim();

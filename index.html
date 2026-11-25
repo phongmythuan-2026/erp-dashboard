@@ -161,11 +161,11 @@
             <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
                 <div class="flex flex-wrap justify-between items-center gap-3">
                     <div><h2 class="font-bold text-slate-900">Phân tích B.I cá nhân</h2>
-                        <p class="text-xs text-slate-500">Bảng và widget chỉ thuộc tài khoản đang đăng nhập. Dùng mũi tên lên/xuống để sắp xếp widget, rồi lưu bảng.</p></div>
+                        <p class="text-xs text-slate-500">Bảng và widget chỉ thuộc tài khoản đang đăng nhập. Tải dữ liệu làm mới tồn kho và cung ứng; lịch sử sử dụng lấy từ các phân vùng tháng.</p></div>
                     <div class="flex flex-wrap gap-2">
                         <button id="biReload" type="button" class="px-3 py-2 text-xs border border-slate-300 rounded-lg">Tải lại bảng</button>
-                        <button id="biRefreshStock" type="button" class="hidden px-3 py-2 text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold inline-flex items-center gap-1.5">
-                            <i class="fa-solid fa-arrows-rotate"></i><span>Tải tồn kho</span>
+                        <button id="biRefreshData" type="button" class="hidden px-3 py-2 text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-rotate"></i><span>Tải dữ liệu</span>
                         </button>
                         <button id="biSave" type="button" class="px-3 py-2 text-xs bg-blue-600 text-white rounded-lg">Lưu bảng</button>
                         <button id="biAdd" type="button" class="px-3 py-2 text-xs bg-emerald-600 text-white rounded-lg">+ Thêm widget</button>
@@ -1600,7 +1600,7 @@
              "deletePurchaseRangeButton", "deletePurchaseHistoryRangeButton",
              "refreshUsageHistoryButton", "importUsageHistoryButton", "downloadUsageHistoryTemplateButton", "deleteUsageHistoryRangeButton",
              "importMaterialsButton", "downloadMaterialTemplateButton", "importSalesButton", "downloadSalesTemplateButton",
-             "deleteSalesRangeButton", "refreshSalesTableButton", "biRefreshStock"].forEach(id => {
+             "deleteSalesRangeButton", "refreshSalesTableButton", "biRefreshData"].forEach(id => {
                 const button = document.getElementById(id);
                 if (button) button.classList.toggle("hidden", !isAdmin());
             });
@@ -5962,6 +5962,6 @@
         }
         initializeSearchableSalesFilters();
     </script>
-    <script src="bi.js?v=20261125-sql-proposal-column"></script>
+    <script src="bi.js?v=20261125-bi-refresh-all-data"></script>
 </body>
 </html>
