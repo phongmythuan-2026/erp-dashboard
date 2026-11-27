@@ -1566,16 +1566,28 @@
             sessionStorage.removeItem("erpSessionToken");
         }
 
-        function findBridgeWindow() {
+        function findBridgeWindows() {
             const frame = document.getElementById("appsScriptBridge");
-            let target = frame.contentWindow;
-            for (let depth = 0; depth < 5; depth++) {
-                const childCount = target.frames.length;
-                if (depth >= 2 && childCount === 0) return target;
-                if (childCount !== 1) return null;
-                target = target.frames[0];
-            }
-            throw new Error("Không tìm thấy iframe RPC của Apps Script.");
+            if (!frame || !frame.contentWindow) return [];
+
+            const found = new Set();
+            const visit = (target, depth) => {
+                if (!target || depth > 6) return;
+                found.add(target);
+                let childCount = 0;
+                try {
+                    childCount = target.frames.length;
+                } catch (_) {
+                    return;
+                }
+                for (let i = 0; i < childCount; i++) {
+                    try {
+                        visit(target.frames[i], depth + 1);
+                    } catch (_) {}
+                }
+            };
+            visit(frame.contentWindow, 0);
+            return Array.from(found);
         }
 
         async function callRpc(method, ...args) {
@@ -1614,7 +1626,8 @@
                     window.removeEventListener("message", handleReady);
                 };
                 const handleReady = event => {
-                    if (!event.data || event.data.type !== "erp-rpc-ready" ||
+                    if (!event.data ||
+                        event.data.type !== "erp-rpc-ready" ||
                         event.data.id !== id || !candidates.has(event.source)) return;
                     cleanup();
                     readyBridgeWindow = event.source;
@@ -1622,11 +1635,10 @@
                 };
                 const probe = () => {
                     try {
-                        const target = findBridgeWindow();
-                        if (target) {
+                        findBridgeWindows().forEach(target => {
                             candidates.add(target);
                             target.postMessage({ type: "erp-rpc-ready-request", id }, "*");
-                        }
+                        });
                     } catch (error) {
                         cleanup();
                         return reject(error);
@@ -2294,20 +2306,20 @@
             const originalLabel = button.innerHTML;
             button.disabled = true;
             try {
-                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL...</span>';
-                let res = await api("refreshMaterials", token, "range", 0, from, to);
-                if (res.needFull) {
-                    let offset = 0;
-                    do {
-                        res = await api("refreshMaterials", token, "full", offset);
-                        offset = res.nextOffset || 0;
-                        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang nạp toàn bộ danh mục (${offset} dòng)...</span>`;
-                    } while (!res.done);
-                    res = await api("refreshMaterials", token, "range", 0, from, to);
+                let firstPage = await api("refreshMaterials", token, "range", 0, from, to);
+                if (firstPage.needFull) {
+                    await readSqlPages(button,
+                        offset => api("refreshMaterials", token, "full", offset),
+                        "Đang nạp toàn bộ danh mục vật tư");
+                    firstPage = await api("refreshMaterials", token, "range", 0, from, to);
                 }
-                if (res.needFull) throw new Error("Chưa nạp được đầy đủ danh mục vật tư từ SQL.");
+                if (firstPage.needFull) throw new Error("Chưa nạp được đầy đủ danh mục vật tư từ SQL.");
+                const result = await readSqlPages(button,
+                    offset => api("refreshMaterials", token, "range", offset, from, to),
+                    `Đang cập nhật vật tư LDATE ${from} → ${to}`,
+                    firstPage);
                 if (!await loadDanhMucVatTu()) return;
-                showAppSuccess(`Danh mục vật tư: đã đọc ${res.rowCount || 0} dòng từ SQL theo LDATE ${from} → ${to}; danh mục vẫn hiển thị toàn bộ.`);
+                showAppSuccess(`Danh mục vật tư: đã đọc ${result.rowCount} dòng từ SQL theo LDATE ${from} → ${to} (${result.pageCount} nhóm, tối đa ${result.batchSize} dòng/nhóm); danh mục vẫn hiển thị toàn bộ.`);
             } catch (error) {
                 reportDataError("Lỗi đồng bộ danh mục vật tư từ SQL", error);
             } finally {
@@ -2388,6 +2400,44 @@
                 chunks.push([new Date(t).toISOString().slice(0, 10), new Date(end).toISOString().slice(0, 10)]);
             }
             return chunks;
+        }
+
+        async function readSqlPages(button, loadPage, label, firstPage = null) {
+            let page = firstPage;
+            let offset = 0;
+            let rowCount = 0;
+            let pageCount = 0;
+            let batchSize = 0;
+
+            while (true) {
+                if (!page) {
+                    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>${esc(label)}: đã đọc ${rowCount.toLocaleString("vi-VN")} dòng...</span>`;
+                    page = await loadPage(offset);
+                }
+                if (!page || !Number.isInteger(page.rowCount) || page.rowCount < 0 ||
+                    !Number.isInteger(page.batchSize) || page.batchSize < 1 ||
+                    page.rowCount > page.batchSize || typeof page.done !== "boolean") {
+                    throw new Error("SQL trả về thông tin phân trang không hợp lệ.");
+                }
+                if (batchSize && page.batchSize !== batchSize) {
+                    throw new Error("Kích thước nhóm SQL thay đổi trong khi đang tải.");
+                }
+                batchSize = page.batchSize;
+                rowCount += page.rowCount;
+                pageCount++;
+                if (page.done) {
+                    if (page.rowCount >= batchSize) {
+                        throw new Error("SQL đánh dấu hoàn tất khi nhóm dữ liệu chưa hết.");
+                    }
+                    return { rowCount, pageCount, batchSize };
+                }
+                if (page.rowCount !== batchSize ||
+                    !Number.isInteger(page.nextOffset) || page.nextOffset !== offset + page.rowCount) {
+                    throw new Error("SQL không trả về vị trí nhóm tiếp theo hợp lệ.");
+                }
+                offset = page.nextOffset;
+                page = null;
+            }
         }
 
         async function refreshSalesFromSql() {
@@ -4405,28 +4455,11 @@
             if (!from || !to || from > to) return reportDataError("Khoảng ngày không hợp lệ", new Error("Khoảng ngày không hợp lệ."));
             button.disabled = true;
             try {
-                const batchSize = 500;
-                let offset = 0;
-                let rowCount = 0;
-                let done = false;
-                while (!done) {
-                    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL ${rowCount.toLocaleString("vi-VN")} dòng...</span>`;
-                    const result = await api("refreshReferenceData", token, "lich_su_su_dung", from, to, offset);
-                    if (!result || !Number.isInteger(result.rowCount) || result.rowCount < 0 ||
-                        typeof result.done !== "boolean") {
-                        throw new Error("Kết quả tải nhóm lịch sử sử dụng không hợp lệ.");
-                    }
-                    rowCount += result.rowCount || 0;
-                    done = result.done === true;
-                    if (!done) {
-                        if (!Number.isInteger(result.nextOffset) || result.nextOffset <= offset) {
-                            throw new Error("SQL không trả về vị trí nhóm tiếp theo hợp lệ.");
-                        }
-                        offset = result.nextOffset;
-                    }
-                }
+                const result = await readSqlPages(button,
+                    offset => api("refreshReferenceData", token, "lich_su_su_dung", from, to, offset),
+                    "Đang tải lịch sử sử dụng");
                 if (!await loadUsageHistory()) return;
-                showAppSuccess(`Lịch sử sử dụng ${from} → ${to}: đã đọc ${rowCount} dòng từ SQL theo nhóm tối đa ${batchSize} dòng.`);
+                showAppSuccess(`Lịch sử sử dụng ${from} → ${to}: đã đọc ${result.rowCount} dòng từ SQL (${result.pageCount} nhóm, tối đa ${result.batchSize} dòng/nhóm).`);
             } catch (error) {
                 reportDataError("Lỗi đồng bộ Lịch sử sử dụng từ SQL", error);
             } finally {
