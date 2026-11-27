@@ -1099,6 +1099,12 @@
                         <button id="refreshMaterialsButton" onclick="refreshMaterialsFromSql()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-semibold text-xs flex items-center gap-1.5">
                             <i class="fa-solid fa-arrows-rotate"></i><span>Tải mới từ SQL</span>
                         </button>
+                        <label class="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                            Từ <input type="date" id="materialFromDate" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white font-normal">
+                        </label>
+                        <label class="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                            đến <input type="date" id="materialToDate" class="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white font-normal">
+                        </label>
                         <div class="relative w-full sm:w-72">
                             <input type="text" id="searchMaterialInput" onkeyup="filterMaterialTable()" placeholder="Tìm theo mã vật tư, tên vật tư..." class="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
@@ -1106,6 +1112,7 @@
                         <button type="button" onclick="exportCurrentScreen()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs whitespace-nowrap"><i class="fa-solid fa-file-export mr-1"></i>Xuất báo cáo</button>
                     </div>
                 </div>
+                <p class="text-[11px] text-slate-500">Tải từ SQL lọc theo LDATE trong khoảng đã chọn; danh mục vẫn hiển thị toàn bộ vật tư.</p>
 
                 <div class="overflow-x-auto rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs text-slate-700">
@@ -1430,6 +1437,9 @@
             document.getElementById("usageFromDate").value =
                 toDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
             document.getElementById("usageToDate").value = toDateStr(now);
+            document.getElementById("materialFromDate").value =
+                toDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
+            document.getElementById("materialToDate").value = toDateStr(now);
             document.getElementById("usageReportFromDate").value =
                 toDateStr(new Date(now.getFullYear(), now.getMonth() - 11, 1));
             document.getElementById("usageReportToDate").value = toDateStr(now);
@@ -2275,24 +2285,29 @@
             if (!isAdmin()) return reportDataError("Không đủ quyền", new Error("Chỉ admin mới được đồng bộ dữ liệu."));
             const token = getSessionToken();
             if (!token) return openAuthModal();
+            const from = getDateInput("materialFromDate");
+            const to = getDateInput("materialToDate");
+            if (!from || !to || from > to) {
+                return reportDataError("Khoảng ngày không hợp lệ", new Error("Vui lòng chọn đầy đủ Từ ngày/Đến ngày và bảo đảm Từ ngày không sau Đến ngày."));
+            }
             const button = document.getElementById("refreshMaterialsButton");
             const originalLabel = button.innerHTML;
             button.disabled = true;
             try {
                 button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL...</span>';
-                let res = await api("refreshMaterials", token, "delta", 0);
-                let total = res.rowCount || 0;
+                let res = await api("refreshMaterials", token, "range", 0, from, to);
                 if (res.needFull) {
                     let offset = 0;
                     do {
                         res = await api("refreshMaterials", token, "full", offset);
-                        total += res.rowCount || 0;
                         offset = res.nextOffset || 0;
-                        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đã đọc ${total} dòng...</span>`;
+                        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang nạp toàn bộ danh mục (${offset} dòng)...</span>`;
                     } while (!res.done);
+                    res = await api("refreshMaterials", token, "range", 0, from, to);
                 }
+                if (res.needFull) throw new Error("Chưa nạp được đầy đủ danh mục vật tư từ SQL.");
                 if (!await loadDanhMucVatTu()) return;
-                showAppSuccess(`Danh mục vật tư: đã cập nhật ${total} dòng từ SQL.`);
+                showAppSuccess(`Danh mục vật tư: đã đọc ${res.rowCount || 0} dòng từ SQL theo LDATE ${from} → ${to}; danh mục vẫn hiển thị toàn bộ.`);
             } catch (error) {
                 reportDataError("Lỗi đồng bộ danh mục vật tư từ SQL", error);
             } finally {
@@ -4390,10 +4405,28 @@
             if (!from || !to || from > to) return reportDataError("Khoảng ngày không hợp lệ", new Error("Khoảng ngày không hợp lệ."));
             button.disabled = true;
             try {
-                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL...</span>';
-                const result = await api("refreshReferenceData", token, "lich_su_su_dung", from, to);
+                const batchSize = 500;
+                let offset = 0;
+                let rowCount = 0;
+                let done = false;
+                while (!done) {
+                    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang đọc SQL ${rowCount.toLocaleString("vi-VN")} dòng...</span>`;
+                    const result = await api("refreshReferenceData", token, "lich_su_su_dung", from, to, offset);
+                    if (!result || !Number.isInteger(result.rowCount) || result.rowCount < 0 ||
+                        typeof result.done !== "boolean") {
+                        throw new Error("Kết quả tải nhóm lịch sử sử dụng không hợp lệ.");
+                    }
+                    rowCount += result.rowCount || 0;
+                    done = result.done === true;
+                    if (!done) {
+                        if (!Number.isInteger(result.nextOffset) || result.nextOffset <= offset) {
+                            throw new Error("SQL không trả về vị trí nhóm tiếp theo hợp lệ.");
+                        }
+                        offset = result.nextOffset;
+                    }
+                }
                 if (!await loadUsageHistory()) return;
-                showAppSuccess(`Lịch sử sử dụng ${from} → ${to}: đã đọc ${result.rowCount || 0} dòng từ SQL.`);
+                showAppSuccess(`Lịch sử sử dụng ${from} → ${to}: đã đọc ${rowCount} dòng từ SQL theo nhóm tối đa ${batchSize} dòng.`);
             } catch (error) {
                 reportDataError("Lỗi đồng bộ Lịch sử sử dụng từ SQL", error);
             } finally {
